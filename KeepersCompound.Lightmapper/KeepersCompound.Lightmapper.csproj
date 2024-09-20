@@ -11,4 +11,8 @@
     <PackageReference Include="TinyEmbree" Version="1.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\KeepersCompound.LGS\KeepersCompound.LGS.csproj" />
+  </ItemGroup>
+
 </Project>
