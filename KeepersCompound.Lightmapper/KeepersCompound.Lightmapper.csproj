@@ -7,4 +7,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="TinyEmbree" Version="1.0.3" />
+  </ItemGroup>
+
 </Project>
