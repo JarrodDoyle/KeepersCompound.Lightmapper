@@ -185,7 +185,7 @@ class Program
         var cells = wr.Cells;
         for (var cellIdx = 0; cellIdx < cells.Length; cellIdx++)
         {
-            Console.Write($"\rResetting cell lighting... {cellIdx + 1}/{cells.Length}");
+            Console.Write($"\rLighting cell... {cellIdx + 1}/{cells.Length}\n");
 
             var cell = cells[cellIdx];
             var numPolys = cell.PolyCount;
@@ -200,6 +200,7 @@ class Program
             }
 
             var maxPolyIdx = Math.Min(numRenderPolys, numPolys - numPortalPolys);
+            var cellIdxOffset = 0;
             for (int polyIdx = 0; polyIdx < maxPolyIdx; polyIdx++)
             {
                 var poly = cell.Polys[polyIdx];
@@ -210,36 +211,51 @@ class Program
 
                 ResetLightmap(ambientLight, lightmap);
 
+                // Get world position of lightmap (0, 0)
+                var baseU = (4.0f / info.Width) * (renderPoly.TextureBases.Item1 + (0.5f - info.Bases.Item1) * 0.25f);
+                var baseV = (4.0f / info.Height) * (renderPoly.TextureBases.Item2 + (0.5f - info.Bases.Item2) * 0.25f);
+                var topLeft = cell.Vertices[cell.Indices[cellIdxOffset]];
+                topLeft -= baseU * (info.Width * 0.25f) * renderPoly.TextureVectors.Item1;
+                topLeft -= baseV * (info.Height * 0.25f) * renderPoly.TextureVectors.Item2;
+
                 foreach (var light in lights)
                 {
                     // Check if plane normal is facing towards the light
-                    var direction = renderPoly.Center - light.position;
-                    if (Vector3.Dot(plane.Normal, direction) >= 0)
+                    // If it's not then we're never going to be (directly) lit by this
+                    // light.
+                    var centerDirection = renderPoly.Center - light.position;
+                    if (Vector3.Dot(plane.Normal, centerDirection) >= 0)
                     {
                         continue;
                     }
 
-                    // Cast from the light to the center (later each pixel)
-                    var hitResult = scene.Trace(new Ray
+                    for (var y = 0; y < lightmap.Height; y++)
                     {
-                        Origin = light.position,
-                        Direction = Vector3.Normalize(direction)
-                    });
-
-                    // cheeky epsilon
-                    var hit = hitResult && Math.Abs(hitResult.Distance - direction.Length()) < 0.001;
-                    if (hit)
-                    {
-                        for (var y = 0; y < lightmap.Height; y++)
+                        for (var x = 0; x < lightmap.Width; x++)
                         {
-                            for (var x = 0; x < lightmap.Width; x++)
+                            var pos = topLeft;
+                            pos += x * 0.25f * renderPoly.TextureVectors.Item1;
+                            pos += y * 0.25f * renderPoly.TextureVectors.Item2;
+
+                            // Cast from the light to the center (later each pixel)
+                            var direction = pos - light.position;
+                            var hitResult = scene.Trace(new Ray
+                            {
+                                Origin = light.position,
+                                Direction = Vector3.Normalize(direction),
+                            });
+
+                            // cheeky epsilon
+                            var hit = hitResult && Math.Abs(hitResult.Distance - direction.Length()) < 0.001;
+                            if (hit)
                             {
                                 lightmap.AddLight(0, x, y, (byte)light.color.X, (byte)light.color.Y, (byte)light.color.Z);
                             }
                         }
-
                     }
                 }
+
+                cellIdxOffset += poly.VertexCount;
             }
         }
 
