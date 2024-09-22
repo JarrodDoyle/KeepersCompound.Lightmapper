@@ -50,7 +50,7 @@ class Program
                         lights.Add(new Light
                         {
                             position = brush.position,
-                            color = HsbToRgb(lightColor.Hue, lightColor.Saturation, light.Brightness),
+                            color = HsbToRgb(lightColor.Hue * 360, lightColor.Saturation, light.Brightness),
                             radius = light.Brightness,
                         });
                     }
