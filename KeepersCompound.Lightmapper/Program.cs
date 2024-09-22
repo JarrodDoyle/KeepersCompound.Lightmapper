@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
 using TinyEmbree;
@@ -204,7 +204,7 @@ class Program
                     var direction = renderPoly.Center - light.position;
                     Console.WriteLine($"Light Pos: {light.position}, poly center: {renderPoly.Center}");
                     Console.WriteLine($"Dir: {direction}");
-                    // if (Vector3.Dot(plane.Normal, direction) < 0)
+                    if (Vector3.Dot(plane.Normal, direction) < 0)
                     {
                         // Cast from the light to the center (later each pixel)
                         var hit = scene.Trace(new Ray
