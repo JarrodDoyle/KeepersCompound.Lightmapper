@@ -1,7 +1,3 @@
-using System;
-using System.IO;
-using System.Text;
-
 namespace KeepersCompound.LGS.Database.Chunks;
 
 public class TxList : IChunk
@@ -16,6 +12,12 @@ public class TxList : IChunk
             Tokens = reader.ReadBytes(4);
             Name = reader.ReadNullString(16);
         }
+
+        public readonly void Write(BinaryWriter writer)
+        {
+            writer.Write(Tokens);
+            writer.WriteNullString(Name, 16);
+        }
     }
 
 
@@ -26,7 +28,6 @@ public class TxList : IChunk
     public int TokenCount { get; set; }
     public string[] Tokens { get; set; }
     public Item[] Items { get; set; }
-
 
     public void ReadData(BinaryReader reader, DbFile.TableOfContents.Entry entry)
     {
@@ -47,6 +48,16 @@ public class TxList : IChunk
 
     public void WriteData(BinaryWriter writer)
     {
-        throw new System.NotImplementedException();
+        writer.Write(BlockSize);
+        writer.Write(ItemCount);
+        writer.Write(TokenCount);
+        foreach (var token in Tokens)
+        {
+            writer.WriteNullString(token, 16);
+        }
+        foreach (var item in Items)
+        {
+            item.Write(writer);
+        }
     }
 }

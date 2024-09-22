@@ -46,6 +46,15 @@ public class BrList : IChunk
                 x = reader.ReadUInt16();
                 y = reader.ReadUInt16();
             }
+
+            public void Write(BinaryWriter writer)
+            {
+                writer.Write(id);
+                writer.Write(rot);
+                writer.Write(scale);
+                writer.Write(x);
+                writer.Write(y);
+            }
         };
 
         public short id;
@@ -104,6 +113,34 @@ public class BrList : IChunk
                 txs = Array.Empty<TexInfo>();
             }
         }
+
+        public void Write(BinaryWriter writer)
+        {
+            writer.Write(id);
+            writer.Write(time);
+            writer.Write(brushInfo);
+            writer.Write(textureId);
+            writer.Write((byte)media);
+            writer.Write(flags);
+            writer.WriteVec3(position);
+            writer.WriteVec3(size);
+            writer.WriteRotation(angle);
+            writer.Write(currentFaceIndex);
+            writer.Write(gridLineSpacing);
+            writer.WriteVec3(gridPhaseShift);
+            writer.WriteRotation(gridOrientation);
+            writer.Write(gridEnabled);
+            writer.Write(numFaces);
+            writer.Write(edgeSelected);
+            writer.Write(pointSelected);
+            writer.Write(useFlag);
+            writer.Write(groupId);
+            writer.Write(new byte[4]);
+            foreach (var info in txs)
+            {
+                info.Write(writer);
+            }
+        }
     }
 
     public ChunkHeader Header { get; set; }
@@ -120,6 +157,9 @@ public class BrList : IChunk
 
     public void WriteData(BinaryWriter writer)
     {
-        throw new System.NotImplementedException();
+        foreach (var brush in Brushes)
+        {
+            brush.Write(writer);
+        }
     }
 }

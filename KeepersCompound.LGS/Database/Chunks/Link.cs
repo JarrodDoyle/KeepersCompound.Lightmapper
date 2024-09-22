@@ -32,6 +32,11 @@ public record LinkId
     {
         return _data;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(_data);
+    }
 }
 
 public class LinkChunk : IChunk, IMergable
@@ -50,6 +55,14 @@ public class LinkChunk : IChunk, IMergable
             destination = reader.ReadInt32();
             relation = reader.ReadUInt16();
         }
+
+        public void Write(BinaryWriter writer)
+        {
+            linkId.Write(writer);
+            writer.Write(source);
+            writer.Write(destination);
+            writer.Write(relation);
+        }
     }
 
     public ChunkHeader Header { get; set; }
@@ -66,7 +79,10 @@ public class LinkChunk : IChunk, IMergable
 
     public void WriteData(BinaryWriter writer)
     {
-        throw new System.NotImplementedException();
+        foreach (var link in links)
+        {
+            link.Write(writer);
+        }
     }
 
     public void Merge(IMergable other)
@@ -88,6 +104,12 @@ public class LinkDataMetaProp : IChunk, IMergable
             linkId = new LinkId(reader.ReadUInt32());
             priority = reader.ReadInt32();
         }
+
+        public void Write(BinaryWriter writer)
+        {
+            linkId.Write(writer);
+            writer.Write(priority);
+        }
     }
 
     public ChunkHeader Header { get; set; }
@@ -106,7 +128,11 @@ public class LinkDataMetaProp : IChunk, IMergable
 
     public void WriteData(BinaryWriter writer)
     {
-        throw new System.NotImplementedException();
+        writer.Write(DataSize);
+        foreach (var data in linkData)
+        {
+            data.Write(writer);
+        }
     }
 
     public void Merge(IMergable other)

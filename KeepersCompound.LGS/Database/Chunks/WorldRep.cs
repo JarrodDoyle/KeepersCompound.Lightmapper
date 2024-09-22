@@ -39,6 +39,17 @@ public class WorldRep : IChunk
                 _ => 1.0f,
             };
         }
+
+        public readonly void Write(BinaryWriter writer)
+        {
+            writer.Write(Size);
+            writer.Write(Version);
+            writer.Write(Flags);
+            writer.Write(LightmapFormat);
+            writer.Write(LightmapScale);
+            writer.Write(DataSize);
+            writer.Write(CellCount);
+        }
     }
 
     public struct Cell
@@ -62,6 +73,17 @@ public class WorldRep : IChunk
                 MotionIndex = reader.ReadByte();
                 reader.ReadByte();
             }
+
+            public readonly void Write(BinaryWriter writer)
+            {
+                writer.Write(Flags);
+                writer.Write(VertexCount);
+                writer.Write(PlaneId);
+                writer.Write(ClutId);
+                writer.Write(Destination);
+                writer.Write(MotionIndex);
+                writer.Write((byte)0);
+            }
         }
 
         public struct RenderPoly
@@ -81,6 +103,18 @@ public class WorldRep : IChunk
                 CachedSurface = reader.ReadUInt16();
                 TextureMagnitude = reader.ReadSingle();
                 Center = reader.ReadVec3();
+            }
+
+            public readonly void Write(BinaryWriter writer)
+            {
+                writer.WriteVec3(TextureVectors.Item1);
+                writer.WriteVec3(TextureVectors.Item2);
+                writer.Write(TextureBases.Item1);
+                writer.Write(TextureBases.Item2);
+                writer.Write(TextureId);
+                writer.Write(CachedSurface);
+                writer.Write(TextureMagnitude);
+                writer.WriteVec3(Center);
             }
         }
 
@@ -103,6 +137,18 @@ public class WorldRep : IChunk
                 DataPtr = reader.ReadUInt32();
                 DynamicLightPtr = reader.ReadUInt32();
                 AnimLightBitmask = reader.ReadUInt32();
+            }
+
+            public readonly void Write(BinaryWriter writer)
+            {
+                writer.Write(Bases.Item1);
+                writer.Write(Bases.Item2);
+                writer.Write(PaddedWidth);
+                writer.Write(Height);
+                writer.Write(Width);
+                writer.Write(DataPtr);
+                writer.Write(DynamicLightPtr);
+                writer.Write(AnimLightBitmask);
             }
         }
 
@@ -185,6 +231,21 @@ public class WorldRep : IChunk
                 }
 
                 return bytes;
+            }
+
+            // TODO: This ONLY works for rgba (bpp = 4)!!!
+            public void AddLight(int layer, int x, int y, byte r, byte g, byte b)
+            {
+                var idx = (x + y * Width + layer * Width * Height) * Bpp;
+                Pixels[idx] = (byte)Math.Min(Pixels[idx] + b, 255);
+                Pixels[idx + 1] = (byte)Math.Min(Pixels[idx + 1] + g, 255);
+                Pixels[idx + 2] = (byte)Math.Min(Pixels[idx + 2] + r, 255);
+                Pixels[idx + 3] = 255;
+            }
+
+            public readonly void Write(BinaryWriter writer)
+            {
+                writer.Write(Pixels);
             }
         }
 
@@ -277,11 +338,65 @@ public class WorldRep : IChunk
                 LightIndices[i] = reader.ReadUInt16();
             }
         }
+
+        public readonly void Write(BinaryWriter writer)
+        {
+            writer.Write(VertexCount);
+            writer.Write(PolyCount);
+            writer.Write(RenderPolyCount);
+            writer.Write(PortalPolyCount);
+            writer.Write(PlaneCount);
+            writer.Write(Medium);
+            writer.Write(Flags);
+            writer.Write(PortalVertices);
+            writer.Write(NumVList);
+            writer.Write(AnimLightCount);
+            writer.Write(MotionIndex);
+            writer.WriteVec3(SphereCenter);
+            writer.Write(SphereRadius);
+            foreach (var vertex in Vertices)
+            {
+                writer.WriteVec3(vertex);
+            }
+            foreach (var poly in Polys)
+            {
+                poly.Write(writer);
+            }
+            foreach (var renderPoly in RenderPolys)
+            {
+                renderPoly.Write(writer);
+            }
+            writer.Write(IndexCount);
+            writer.Write(Indices);
+            foreach (var plane in Planes)
+            {
+                writer.WriteVec3(plane.Normal);
+                writer.Write(plane.D);
+            }
+            foreach (var animLight in AnimLights)
+            {
+                writer.Write(animLight);
+            }
+            foreach (var lightmapInfo in LightList)
+            {
+                lightmapInfo.Write(writer);
+            }
+            foreach (var lightmap in Lightmaps)
+            {
+                lightmap.Write(writer);
+            }
+            writer.Write(LightIndexCount);
+            foreach (var lightIndex in LightIndices)
+            {
+                writer.Write(lightIndex);
+            }
+        }
     }
 
     public ChunkHeader Header { get; set; }
     public WrHeader DataHeader { get; set; }
     public Cell[] Cells { get; set; }
+    private byte[] _unreadData;
 
     public void ReadData(BinaryReader reader, DbFile.TableOfContents.Entry entry)
     {
@@ -295,10 +410,17 @@ public class WorldRep : IChunk
         }
 
         // TODO: All the other info lol
+        var length = entry.Offset + entry.Size + 24 - reader.BaseStream.Position;
+        _unreadData = reader.ReadBytes((int)length);
     }
 
     public void WriteData(BinaryWriter writer)
     {
-        throw new System.NotImplementedException();
+        DataHeader.Write(writer);
+        foreach (var cell in Cells)
+        {
+            cell.Write(writer);
+        }
+        writer.Write(_unreadData);
     }
 }

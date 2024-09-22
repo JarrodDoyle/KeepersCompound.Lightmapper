@@ -1,7 +1,3 @@
-using System;
-using System.IO;
-using System.Text;
-
 namespace KeepersCompound.LGS.Database.Chunks;
 
 public class GamFile : IChunk
@@ -16,6 +12,6 @@ public class GamFile : IChunk
 
     public void WriteData(BinaryWriter writer)
     {
-        throw new System.NotImplementedException();
+        writer.WriteNullString(fileName, 256);
     }
 }

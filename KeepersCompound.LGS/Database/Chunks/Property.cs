@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.IO;
 using System.Numerics;
 
 namespace KeepersCompound.LGS.Database.Chunks;
@@ -13,6 +11,12 @@ public class Property
     {
         objectId = reader.ReadInt32();
         length = (int)reader.ReadUInt32();
+    }
+
+    public virtual void Write(BinaryWriter writer)
+    {
+        writer.Write(objectId);
+        writer.Write((uint)length);
     }
 }
 
@@ -34,7 +38,10 @@ public class PropertyChunk<T> : IChunk, IMergable where T : Property, new()
 
     public void WriteData(BinaryWriter writer)
     {
-        throw new System.NotImplementedException();
+        foreach (var prop in properties)
+        {
+            prop.Write(writer);
+        }
     }
 
     public void Merge(IMergable other)
@@ -52,6 +59,12 @@ public class PropGeneric : Property
         base.Read(reader);
         data = reader.ReadBytes(length);
     }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.Write(data);
+    }
 }
 
 public class PropBool : Property
@@ -62,6 +75,12 @@ public class PropBool : Property
     {
         base.Read(reader);
         value = reader.ReadInt32() != 0;
+    }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.Write(value ? 1 : 0);
     }
 }
 
@@ -74,6 +93,12 @@ public class PropInt : Property
         base.Read(reader);
         value = reader.ReadInt32();
     }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.Write(value);
+    }
 }
 
 public class PropLabel : Property
@@ -84,6 +109,12 @@ public class PropLabel : Property
     {
         base.Read(reader);
         value = reader.ReadNullString(length);
+    }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.WriteNullString(value, length);
     }
 }
 
@@ -98,6 +129,13 @@ public class PropString : Property
         stringLength = reader.ReadInt32();
         value = reader.ReadNullString(stringLength);
     }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.Write(stringLength);
+        writer.WriteNullString(value, stringLength);
+    }
 }
 
 public class PropFloat : Property
@@ -109,6 +147,12 @@ public class PropFloat : Property
         base.Read(reader);
         value = reader.ReadSingle();
     }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.Write(value);
+    }
 }
 
 public class PropVector : Property
@@ -119,6 +163,12 @@ public class PropVector : Property
     {
         base.Read(reader);
         value = reader.ReadVec3();
+    }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.WriteVec3(value);
     }
 }
 
@@ -140,6 +190,12 @@ public class PropRenderType : Property
         base.Read(reader);
         mode = (Mode)reader.ReadUInt32();
     }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.Write((uint)mode);
+    }
 }
 
 public class PropSlayResult : Property
@@ -156,6 +212,12 @@ public class PropSlayResult : Property
         base.Read(reader);
         effect = (Effect)reader.ReadUInt32();
     }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.Write((uint)effect);
+    }
 }
 
 public class PropInventoryType : Property
@@ -171,6 +233,12 @@ public class PropInventoryType : Property
     {
         base.Read(reader);
         type = (Slot)reader.ReadUInt32();
+    }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.Write((uint)type);
     }
 }
 
@@ -194,6 +262,19 @@ public class PropCollisionType : Property
         NoResult = (flags & (0x1 << 4)) != 0;
         FullCollisionSound = (flags & (0x1 << 5)) != 0;
     }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        var flags = 0u;
+        if (Bounce) flags += 1;
+        if (DestroyOnImpact) flags += 2;
+        if (SlayOnImpact) flags += 4;
+        if (NoCollisionSound) flags += 8;
+        if (NoResult) flags += 16;
+        if (FullCollisionSound) flags += 32;
+        writer.Write(flags);
+    }
 }
 
 public class PropPosition : Property
@@ -207,6 +288,14 @@ public class PropPosition : Property
         Location = reader.ReadVec3();
         reader.ReadBytes(4); // Runtime Cell/Hint in editor
         Rotation = reader.ReadRotation();
+    }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.WriteVec3(Location);
+        writer.Write(new byte[4]);
+        writer.WriteRotation(Rotation);
     }
 }
 
@@ -228,6 +317,17 @@ public class PropLight : Property
         reader.ReadBytes(3);
         InnerRadius = reader.ReadSingle();
     }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.Write(Brightness);
+        writer.WriteVec3(Offset);
+        writer.Write(Radius);
+        writer.Write(QuadLit);
+        writer.Write(new byte[3]);
+        writer.Write(InnerRadius);
+    }
 }
 
 public class PropLightColor : Property
@@ -240,6 +340,13 @@ public class PropLightColor : Property
         base.Read(reader);
         Hue = reader.ReadSingle();
         Saturation = reader.ReadSingle();
+    }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.Write(Hue);
+        writer.Write(Saturation);
     }
 }
 
@@ -254,6 +361,14 @@ public class PropSpotlight : Property
         InnerAngle = reader.ReadSingle();
         OuterAngle = reader.ReadSingle();
         reader.ReadBytes(4); // Z is unused
+    }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.Write(InnerAngle);
+        writer.Write(OuterAngle);
+        writer.Write(new byte[4]);
     }
 }
 
@@ -270,21 +385,12 @@ public class PropSpotlightAndAmbient : Property
         OuterAngle = reader.ReadSingle();
         SpotBrightness = reader.ReadSingle();
     }
-}
 
-// TODO: Work out what this property actually does
-public class PropLightBasedAlpha : Property
-{
-    public bool Enabled;
-    public Vector2 AlphaRange;
-    public Vector2 LightRange;
-
-    public override void Read(BinaryReader reader)
+    public override void Write(BinaryWriter writer)
     {
-        base.Read(reader);
-        Enabled = reader.ReadBoolean();
-        reader.ReadBytes(3);
-        AlphaRange = reader.ReadVec2();
-        LightRange = new Vector2(reader.ReadInt32(), reader.ReadInt32());
+        base.Write(writer);
+        writer.Write(InnerAngle);
+        writer.Write(OuterAngle);
+        writer.Write(SpotBrightness);
     }
 }

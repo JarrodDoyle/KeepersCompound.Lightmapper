@@ -52,6 +52,13 @@ public class DbFile
                 // return $"Name: {Name}, Offset: {O}"
                 return base.ToString();
             }
+
+            public readonly void Write(BinaryWriter writer)
+            {
+                writer.WriteNullString(Name, 12);
+                writer.Write(Offset);
+                writer.Write(Size);
+            }
         }
 
         public uint ItemCount { get; }
@@ -65,6 +72,15 @@ public class DbFile
                 Items.Add(new Entry(reader));
             Items.Sort((a, b) => a.Offset.CompareTo(b.Offset));
         }
+
+        public readonly void Write(BinaryWriter writer)
+        {
+            writer.Write(ItemCount);
+            foreach (var entry in Items)
+            {
+                entry.Write(writer);
+            }
+        }
     }
 
     public FHeader Header { get; private set; }
@@ -73,6 +89,7 @@ public class DbFile
 
     public DbFile(string filename)
     {
+        // TODO: Throw rather than return
         if (!File.Exists(filename)) return;
 
         using MemoryStream stream = new(File.ReadAllBytes(filename));
@@ -91,6 +108,22 @@ public class DbFile
         }
     }
 
+    public void Save(string filename)
+    {
+        // !HACK: Right now we don't need to adjust TOC offset or anything because we're only
+        // overwriting data, not writing new lengths of data
+
+        using var stream = File.Open(filename, FileMode.Create);
+        using var writer = new BinaryWriter(stream, Encoding.UTF8, false);
+
+        Header.Write(writer);
+        foreach (var (name, chunk) in Chunks)
+        {
+            chunk.Write(writer);
+        }
+        Toc.Write(writer);
+    }
+
     private static IChunk NewChunk(string entryName)
     {
         return entryName switch
@@ -101,6 +134,7 @@ public class DbFile
             "TXLIST" => new TxList(),
             "WREXT" => new WorldRep(),
             "BRLIST" => new BrList(),
+            "RENDPARAMS" => new RendParams(),
             "P$ModelName" => new PropertyChunk<PropLabel>(),
             "P$Scale" => new PropertyChunk<PropVector>(),
             "P$RenderTyp" => new PropertyChunk<PropRenderType>(),
