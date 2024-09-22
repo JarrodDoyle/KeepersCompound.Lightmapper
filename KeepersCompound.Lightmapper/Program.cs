@@ -34,7 +34,7 @@ class Program
                     lights.Add(new Light
                     {
                         position = brush.position,
-                        color = HsbToRgb(360 * sz.Y, sz.Z, Math.Min(sz.X, 255.0f)),
+                        color = HsbToRgb(sz.Y, sz.Z, Math.Min(sz.X, 255.0f)),
                         radius = float.MaxValue
                     });
                 }
@@ -50,7 +50,7 @@ class Program
                         lights.Add(new Light
                         {
                             position = brush.position,
-                            color = HsbToRgb(lightColor.Hue * 360, lightColor.Saturation, light.Brightness),
+                            color = HsbToRgb(lightColor.Hue, lightColor.Saturation, light.Brightness),
                             radius = light.Radius,
                         });
                     }
@@ -84,10 +84,11 @@ class Program
         Console.WriteLine($"Lit {lights.Count} light");
     }
 
-    // Expects Hue to be 0-360, saturation 0-1, brightness 0-255
+    // Expects Hue and Saturation are 0-1, Brightness 0-255
     // https://en.wikipedia.org/wiki/HSL_and_HSV#HSV_to_RGB
     private static Vector3 HsbToRgb(float hue, float saturation, float brightness)
     {
+        hue *= 360;
         var hi = Convert.ToInt32(Math.Floor(hue / 60)) % 6;
         var f = hue / 60 - Math.Floor(hue / 60);
 
@@ -162,7 +163,6 @@ class Program
                 for (var j = 0; j < numPolyVertices; j++)
                 {
                     var vertex = cell.Vertices[cell.Indices[cellIdxOffset + j]];
-                    // Console.WriteLine($"Cell: {cellIdx}, Poly: {polyIdx}, V: {j}, Vert: {vertex}");
                     vertices.Add(vertex);
                 }
 
@@ -185,12 +185,15 @@ class Program
         var cells = wr.Cells;
         for (var cellIdx = 0; cellIdx < cells.Length; cellIdx++)
         {
+            Console.Write($"\rResetting cell lighting... {cellIdx + 1}/{cells.Length}");
+
             var cell = cells[cellIdx];
             var numPolys = cell.PolyCount;
             var numRenderPolys = cell.RenderPolyCount;
             var numPortalPolys = cell.PortalPolyCount;
 
             // There's nothing to render
+            // Portal polys can be render polys (e.g. water) but we're ignoring them for now
             if (numRenderPolys == 0 || numPortalPolys >= numPolys)
             {
                 continue;
@@ -205,62 +208,56 @@ class Program
                 var info = cell.LightList[polyIdx];
                 var lightmap = cell.Lightmaps[polyIdx];
 
-                // Clear existing lightmap data
-                for (var i = 0; i < lightmap.Pixels.Length; i++)
-                {
-                    lightmap.Pixels[i] = 0;
-                }
-
-                for (var y = 0; y < lightmap.Height; y++)
-                {
-                    for (var x = 0; x < lightmap.Width; x++)
-                    {
-                        lightmap.AddLight(0, x, y, (byte)ambientLight.X, (byte)ambientLight.Y, (byte)ambientLight.Z);
-                    }
-                }
+                ResetLightmap(ambientLight, lightmap);
 
                 foreach (var light in lights)
                 {
-                    Console.WriteLine("Doing a light...");
                     // Check if plane normal is facing towards the light
                     var direction = renderPoly.Center - light.position;
-                    Console.WriteLine($"Light Pos: {light.position}, poly center: {renderPoly.Center}");
-                    Console.WriteLine($"Dir: {direction}");
-                    if (Vector3.Dot(plane.Normal, direction) < 0)
+                    if (Vector3.Dot(plane.Normal, direction) >= 0)
                     {
-                        // Cast from the light to the center (later each pixel)
-                        var hit = scene.Trace(new Ray
-                        {
-                            Origin = light.position,
-                            Direction = Vector3.Normalize(direction)
-                        });
+                        continue;
+                    }
 
-                        // cheeky epsilon
-                        var goodHit = hit && Math.Abs(hit.Distance - direction.Length()) < 0.001;
-                        Console.WriteLine($"Did we hit? {goodHit}");
-                        Console.WriteLine($"Distance: {hit.Distance}, target dist: {direction.Length()}");
-                        Console.WriteLine($"Pos: {hit.Position}, Target Pos: {renderPoly.Center}");
+                    // Cast from the light to the center (later each pixel)
+                    var hitResult = scene.Trace(new Ray
+                    {
+                        Origin = light.position,
+                        Direction = Vector3.Normalize(direction)
+                    });
 
-                        // Iterate all pixels
-                        if (goodHit)
+                    // cheeky epsilon
+                    var hit = hitResult && Math.Abs(hitResult.Distance - direction.Length()) < 0.001;
+                    if (hit)
+                    {
+                        for (var y = 0; y < lightmap.Height; y++)
                         {
-                            for (var y = 0; y < lightmap.Height; y++)
+                            for (var x = 0; x < lightmap.Width; x++)
                             {
-                                for (var x = 0; x < lightmap.Width; x++)
-                                {
-                                    lightmap.AddLight(0, x, y, (byte)light.color.X, (byte)light.color.Y, (byte)light.color.Z);
-                                }
+                                lightmap.AddLight(0, x, y, (byte)light.color.X, (byte)light.color.Y, (byte)light.color.Z);
                             }
                         }
+
                     }
                 }
+            }
+        }
 
+        Console.Write("\n");
+    }
 
-                // // TODO: Get world position of each pixel?
+    private static void ResetLightmap(Vector3 ambientLight, WorldRep.Cell.Lightmap lightmap)
+    {
+        for (var i = 0; i < lightmap.Pixels.Length; i++)
+        {
+            lightmap.Pixels[i] = 0;
+        }
 
-                // var poly = cell.Polys[polyIdx];
-
-                // poly.
+        for (var y = 0; y < lightmap.Height; y++)
+        {
+            for (var x = 0; x < lightmap.Width; x++)
+            {
+                lightmap.AddLight(0, x, y, (byte)ambientLight.X, (byte)ambientLight.Y, (byte)ambientLight.Z);
             }
         }
     }
