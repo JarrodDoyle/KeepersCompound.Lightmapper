@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
 using TinyEmbree;
@@ -220,12 +220,14 @@ class Program
                         Console.WriteLine($"Pos: {hit.Position}, Target Pos: {renderPoly.Center}");
 
                         // Iterate all pixels
-                        var color = goodHit ? light.color : ambientLight;
-                        for (var y = 0; y < lightmap.Height; y++)
+                        if (goodHit)
                         {
-                            for (var x = 0; x < lightmap.Width; x++)
+                            for (var y = 0; y < lightmap.Height; y++)
                             {
-                                lightmap.AddLight(0, x, y, (byte)color.X, (byte)color.Y, (byte)color.Z);
+                                for (var x = 0; x < lightmap.Width; x++)
+                                {
+                                    lightmap.AddLight(0, x, y, (byte)light.color.X, (byte)light.color.Y, (byte)light.color.Z);
+                                }
                             }
                         }
                     }
