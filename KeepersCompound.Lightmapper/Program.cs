@@ -38,9 +38,29 @@ class Program
                         radius = float.MaxValue
                     });
                 }
-            }
+                else if (brush.media == BrList.Brush.Media.Object)
+                {
+                    var id = (int)brush.brushInfo;
+                    var light = hierarchy.GetProperty<PropLight>(id, "P$Light");
+                    var lightColor = hierarchy.GetProperty<PropLightColor>(id, "P$LightColo");
 
-            // TODO: object lights
+                    if (light != null)
+                    {
+                        lightColor ??= new PropLightColor { Hue = 0, Saturation = 0 };
+                        lights.Add(new Light
+                        {
+                            position = brush.position,
+                            color = HsbToRgb(lightColor.Hue, lightColor.Saturation, light.Brightness),
+                            radius = light.Brightness,
+                        });
+                    }
+                    else
+                    {
+                        Console.WriteLine($"no light prop apparently");
+
+                    }
+                }
+            }
         }
 
         // Build embree mesh
@@ -60,6 +80,8 @@ class Program
         var dir = Path.GetDirectoryName(misPath);
         var filename = Path.GetFileNameWithoutExtension(misPath);
         mis.Save(Path.Join(dir, $"{filename}-lit.cow"));
+
+        Console.WriteLine($"Lit {lights.Count} light");
     }
 
     // Expects Hue to be 0-360, saturation 0-1, brightness 0-255
