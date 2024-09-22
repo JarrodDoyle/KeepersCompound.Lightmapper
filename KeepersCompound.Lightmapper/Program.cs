@@ -51,7 +51,7 @@ class Program
                         {
                             position = brush.position,
                             color = HsbToRgb(lightColor.Hue * 360, lightColor.Saturation, light.Brightness),
-                            radius = light.Brightness,
+                            radius = light.Radius,
                         });
                     }
                     else
