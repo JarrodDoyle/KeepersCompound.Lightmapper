@@ -99,6 +99,8 @@ public class ObjectHierarchy
         AddProp<PropString>("P$OTxtRepr2");
         AddProp<PropString>("P$OTxtRepr3");
         AddProp<PropFloat>("P$RenderAlp");
+        AddProp<PropLight>("P$Light");
+        AddProp<PropLightColor>("P$LightColo");
     }
 
     public T GetProperty<T>(int objectId, string propName) where T : Property

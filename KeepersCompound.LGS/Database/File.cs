@@ -142,6 +142,8 @@ public class DbFile
             "P$OTxtRepr1" => new PropertyChunk<PropString>(),
             "P$OTxtRepr2" => new PropertyChunk<PropString>(),
             "P$OTxtRepr3" => new PropertyChunk<PropString>(),
+            "P$Light" => new PropertyChunk<PropLight>(),
+            "P$LightColo" => new PropertyChunk<PropLightColor>(),
             "P$RenderAlp" => new PropertyChunk<PropFloat>(),
             "LD$MetaProp" => new LinkDataMetaProp(),
             _ when entryName.StartsWith("L$") => new LinkChunk(),
