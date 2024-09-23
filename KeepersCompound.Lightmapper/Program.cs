@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
 using TinyEmbree;
@@ -18,12 +18,77 @@ class Program
 
     static void Main(string[] args)
     {
-        var misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/JAYRUDE_Tests/lm_test.cow";
-        var mis = new DbFile(misPath);
-        var hierarchy = BuildHierarchy(misPath, mis);
+        Timing.Reset();
 
-        // Get list of brush lights, and object lights (ignore anim lights for now)
+        var misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/JAYRUDE_Tests/lm_test.cow";
+        misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/AtdV/miss20.mis";
+        Timing.TimeStage("Total", () => LightmapMission(misPath));
+
+        Timing.LogAll();
+    }
+
+    private static void LightmapMission(string misPath)
+    {
+        var mis = Timing.TimeStage("Parse DB", () => new DbFile(misPath));
+        var hierarchy = Timing.TimeStage("Build Hierarchy", () => BuildHierarchy(misPath, mis));
+
+        var lights = Timing.TimeStage("Gather Lights", () => BuildLightList(mis, hierarchy));
+
+        // Build embree mesh
+        if (!mis.Chunks.TryGetValue("WREXT", out var wrRaw))
+            return;
+        var worldRep = (WorldRep)wrRaw;
+        var scene = Timing.TimeStage("Build Scene", () =>
+        {
+            var rt = new Raytracer();
+            rt.AddMesh(BuildWrMesh(worldRep));
+            rt.CommitScene();
+            return rt;
+        });
+
+        // For each lightmap pixel cast against all the brush and object lights
+        if (!mis.Chunks.TryGetValue("RENDPARAMS", out var rendParamsRaw))
+            return;
+        var ambient = ((RendParams)rendParamsRaw).ambientLight * 255;
+        Timing.TimeStage("Light", () => CastScene(scene, worldRep, [.. lights], ambient));
+
+        var dir = Path.GetDirectoryName(misPath);
+        var filename = Path.GetFileNameWithoutExtension(misPath);
+        var savePath = Path.Join(dir, $"{filename}-lit.cow");
+        Timing.TimeStage("Save DB", () => mis.Save(savePath));
+
+        Console.WriteLine($"Lit {lights.Count} light");
+    }
+
+    // Expects Hue and Saturation are 0-1, Brightness 0-255
+    // https://en.wikipedia.org/wiki/HSL_and_HSV#HSV_to_RGB
+    private static Vector3 HsbToRgb(float hue, float saturation, float brightness)
+    {
+        hue *= 360;
+        var hi = Convert.ToInt32(Math.Floor(hue / 60)) % 6;
+        var f = hue / 60 - Math.Floor(hue / 60);
+
+        var v = Convert.ToInt32(brightness);
+        var p = Convert.ToInt32(brightness * (1 - saturation));
+        var q = Convert.ToInt32(brightness * (1 - f * saturation));
+        var t = Convert.ToInt32(brightness * (1 - (1 - f) * saturation));
+
+        return hi switch
+        {
+            0 => new Vector3(v, t, p),
+            1 => new Vector3(q, v, p),
+            2 => new Vector3(p, v, t),
+            3 => new Vector3(p, q, v),
+            4 => new Vector3(t, p, v),
+            _ => new Vector3(v, p, q),
+        };
+    }
+
+    // Get list of brush lights, and object lights (ignore anim lights for now)
+    private static List<Light> BuildLightList(DbFile mis, ObjectHierarchy hierarchy)
+    {
         var lights = new List<Light>();
+
         if (mis.Chunks.TryGetValue("BRLIST", out var brListRaw))
         {
             var brList = (BrList)brListRaw;
@@ -61,49 +126,7 @@ class Program
             }
         }
 
-        // Build embree mesh
-        if (!mis.Chunks.TryGetValue("WREXT", out var wrRaw))
-            return;
-        var worldRep = (WorldRep)wrRaw;
-        var scene = new Raytracer();
-        scene.AddMesh(BuildWrMesh(worldRep));
-        scene.CommitScene();
-
-        // For each lightmap pixel cast against all the brush and object lights
-        if (!mis.Chunks.TryGetValue("RENDPARAMS", out var rendParamsRaw))
-            return;
-        var ambient = ((RendParams)rendParamsRaw).ambientLight * 255;
-        CastScene(scene, worldRep, [.. lights], ambient);
-
-        var dir = Path.GetDirectoryName(misPath);
-        var filename = Path.GetFileNameWithoutExtension(misPath);
-        mis.Save(Path.Join(dir, $"{filename}-lit.cow"));
-
-        Console.WriteLine($"Lit {lights.Count} light");
-    }
-
-    // Expects Hue and Saturation are 0-1, Brightness 0-255
-    // https://en.wikipedia.org/wiki/HSL_and_HSV#HSV_to_RGB
-    private static Vector3 HsbToRgb(float hue, float saturation, float brightness)
-    {
-        hue *= 360;
-        var hi = Convert.ToInt32(Math.Floor(hue / 60)) % 6;
-        var f = hue / 60 - Math.Floor(hue / 60);
-
-        var v = Convert.ToInt32(brightness);
-        var p = Convert.ToInt32(brightness * (1 - saturation));
-        var q = Convert.ToInt32(brightness * (1 - f * saturation));
-        var t = Convert.ToInt32(brightness * (1 - (1 - f) * saturation));
-
-        return hi switch
-        {
-            0 => new Vector3(v, t, p),
-            1 => new Vector3(q, v, p),
-            2 => new Vector3(p, v, t),
-            3 => new Vector3(p, q, v),
-            4 => new Vector3(t, p, v),
-            _ => new Vector3(v, p, q),
-        };
+        return lights;
     }
 
     private static ObjectHierarchy BuildHierarchy(string misPath, DbFile misFile)
@@ -183,7 +206,7 @@ class Program
         var cells = wr.Cells;
         for (var cellIdx = 0; cellIdx < cells.Length; cellIdx++)
         {
-            Console.Write($"\rLighting cell... {cellIdx + 1}/{cells.Length}\n");
+            Console.Write($"\rLighting cell... {cellIdx + 1}/{cells.Length}");
 
             var cell = cells[cellIdx];
             var numPolys = cell.PolyCount;
