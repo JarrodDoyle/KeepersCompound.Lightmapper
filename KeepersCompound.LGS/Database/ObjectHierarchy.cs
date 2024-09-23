@@ -44,7 +44,8 @@ public class ObjectHierarchy
                 if (gam != null && gam.Chunks.TryGetValue(name, out var rawGamChunk))
                 {
                     var gamChunk = (T)rawGamChunk;
-                    chunk.Merge(gamChunk);
+                    gamChunk.Merge(chunk);
+                    return gamChunk;
                 }
                 return chunk;
             }
