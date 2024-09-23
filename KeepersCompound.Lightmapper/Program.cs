@@ -211,12 +211,10 @@ class Program
 
                 ResetLightmap(ambientLight, lightmap);
 
-                // Get world position of lightmap (0, 0)
-                var baseU = (4.0f / info.Width) * (renderPoly.TextureBases.Item1 + (0.5f - info.Bases.Item1) * 0.25f);
-                var baseV = (4.0f / info.Height) * (renderPoly.TextureBases.Item2 + (0.5f - info.Bases.Item2) * 0.25f);
+                // Get world position of lightmap (0, 0) (+0.5 so we cast from the center of a pixel)
                 var topLeft = cell.Vertices[cell.Indices[cellIdxOffset]];
-                topLeft -= baseU * (info.Width * 0.25f) * renderPoly.TextureVectors.Item1;
-                topLeft -= baseV * (info.Height * 0.25f) * renderPoly.TextureVectors.Item2;
+                topLeft -= renderPoly.TextureVectors.Item1 * (renderPoly.TextureBases.Item1 - info.Bases.Item1 * 0.25f);
+                topLeft -= renderPoly.TextureVectors.Item2 * (renderPoly.TextureBases.Item2 - info.Bases.Item2 * 0.25f);
 
                 foreach (var light in lights)
                 {
