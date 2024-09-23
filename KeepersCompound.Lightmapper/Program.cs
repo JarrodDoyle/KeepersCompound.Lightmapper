@@ -13,6 +13,7 @@ class Program
         public Vector3 position;
         public Vector3 color;
         public float radius;
+        public float r2;
     }
 
     static void Main(string[] args)
@@ -35,7 +36,8 @@ class Program
                     {
                         position = brush.position,
                         color = HsbToRgb(sz.Y, sz.Z, Math.Min(sz.X, 255.0f)),
-                        radius = float.MaxValue
+                        radius = float.MaxValue,
+                        r2 = float.MaxValue
                     });
                 }
                 else if (brush.media == BrList.Brush.Media.Object)
@@ -52,6 +54,7 @@ class Program
                             position = brush.position,
                             color = HsbToRgb(lightColor.Hue, lightColor.Saturation, light.Brightness),
                             radius = light.Radius,
+                            r2 = light.Radius * light.Radius,
                         });
                     }
                     else
@@ -235,8 +238,17 @@ class Program
                             pos += x * 0.25f * renderPoly.TextureVectors.Item1;
                             pos += y * 0.25f * renderPoly.TextureVectors.Item2;
 
-                            // Cast from the light to the center (later each pixel)
+                            // If we're out of range there's no point casting a ray
+                            // There's probably a better way to discard the entire lightmap
+                            // if we're massively out of range
                             var direction = pos - light.position;
+                            if (direction.LengthSquared() > light.r2)
+                            {
+                                continue;
+                            }
+
+                            // We cast from the light to the pixel because the light has
+                            // no mesh in the scene to hit
                             var hitResult = scene.Trace(new Ray
                             {
                                 Origin = light.position,
