@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
 using TinyEmbree;
@@ -286,7 +286,16 @@ class Program
                             var hit = hitResult && Math.Abs(hitResult.Distance - direction.Length()) < 0.001;
                             if (hit)
                             {
-                                lightmap.AddLight(0, x, y, (byte)light.color.X, (byte)light.color.Y, (byte)light.color.Z);
+                                // TODO: This isn't perfectly accurate, but it's pretty fucking close tbh
+                                var dir = light.position - pos;
+                                var angle = Vector3.Dot(Vector3.Normalize(dir), plane.Normal);
+                                var len = dir.Length();
+                                var slen = len / 4.0f;
+                                var strength = (angle + 1.0f) / slen;
+                                strength = Math.Min(1.0f, strength);
+
+                                var c = light.color * strength;
+                                lightmap.AddLight(0, x, y, (byte)c.X, (byte)c.Y, (byte)c.Z);
                             }
                         }
                     }
