@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
 using TinyEmbree;
@@ -56,11 +56,6 @@ class Program
                             radius = light.Radius,
                             r2 = light.Radius * light.Radius,
                         });
-                    }
-                    else
-                    {
-                        Console.WriteLine($"no light prop apparently");
-
                     }
                 }
             }
