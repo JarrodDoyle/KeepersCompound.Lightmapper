@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
 using TinyEmbree;
@@ -108,19 +108,28 @@ class Program
                 else if (brush.media == BrList.Brush.Media.Object)
                 {
                     var id = (int)brush.brushInfo;
-                    var light = hierarchy.GetProperty<PropLight>(id, "P$Light");
-                    var lightColor = hierarchy.GetProperty<PropLightColor>(id, "P$LightColo");
+                    var propLight = hierarchy.GetProperty<PropLight>(id, "P$Light");
+                    var propLightColor = hierarchy.GetProperty<PropLightColor>(id, "P$LightColo");
 
-                    if (light != null)
+                    if (propLight != null)
                     {
-                        lightColor ??= new PropLightColor { Hue = 0, Saturation = 0 };
-                        lights.Add(new Light
+                        propLightColor ??= new PropLightColor { Hue = 0, Saturation = 0 };
+
+                        var light = new Light
                         {
                             position = brush.position,
-                            color = HsbToRgb(lightColor.Hue, lightColor.Saturation, light.Brightness),
-                            radius = light.Radius,
-                            r2 = light.Radius * light.Radius,
-                        });
+                            color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propLight.Brightness),
+                            radius = propLight.Radius,
+                            r2 = propLight.Radius * propLight.Radius,
+                        };
+
+                        if (propLight.Radius == 0)
+                        {
+                            light.radius = float.MaxValue;
+                            light.r2 = float.MaxValue;
+                        }
+
+                        lights.Add(light);
                     }
                 }
             }
