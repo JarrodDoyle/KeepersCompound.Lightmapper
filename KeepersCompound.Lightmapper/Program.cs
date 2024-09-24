@@ -243,7 +243,7 @@ class Program
                 var info = cell.LightList[polyIdx];
                 var lightmap = cell.Lightmaps[polyIdx];
 
-                ResetLightmap(ambientLight, lightmap);
+                ResetLightmap(ambientLight, lightmap, hdr);
 
                 // Get world position of lightmap (0, 0) (+0.5 so we cast from the center of a pixel)
                 var topLeft = cell.Vertices[cell.Indices[cellIdxOffset]];
@@ -367,18 +367,24 @@ class Program
         Console.Write("\n");
     }
 
-    private static void ResetLightmap(Vector3 ambientLight, WorldRep.Cell.Lightmap lightmap)
+    private static void ResetLightmap(Vector3 ambientLight, WorldRep.Cell.Lightmap lightmap, bool hdr)
     {
         for (var i = 0; i < lightmap.Pixels.Length; i++)
         {
             lightmap.Pixels[i] = 0;
         }
 
+        var c = ambientLight;
+        if (hdr)
+        {
+            c /= 2.0f;
+        }
+
         for (var y = 0; y < lightmap.Height; y++)
         {
             for (var x = 0; x < lightmap.Width; x++)
             {
-                lightmap.AddLight(0, x, y, (byte)ambientLight.X, (byte)ambientLight.Y, (byte)ambientLight.Z);
+                lightmap.AddLight(0, x, y, (byte)c.X, (byte)c.Y, (byte)c.Z);
             }
         }
     }
