@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
 using TinyEmbree;
@@ -22,6 +22,7 @@ class Program
 
         var misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/JAYRUDE_Tests/lm_test.cow";
         misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/AtdV/miss20.mis";
+        misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/TDP20AC_a_burrick_in_a_room/miss20.mis";
         Timing.TimeStage("Total", () => LightmapMission(misPath));
 
         Timing.LogAll();
@@ -246,6 +247,15 @@ class Program
                 topLeft -= renderPoly.TextureVectors.Item1 * (renderPoly.TextureBases.Item1 - info.Bases.Item1 * 0.25f);
                 topLeft -= renderPoly.TextureVectors.Item2 * (renderPoly.TextureBases.Item2 - info.Bases.Item2 * 0.25f);
 
+                var xDir = 0.25f * lightmap.Width * renderPoly.TextureVectors.Item1;
+                var yDir = 0.25f * lightmap.Height * renderPoly.TextureVectors.Item2;
+                var aabb = new MathUtils.Aabb([
+                    topLeft,
+                    topLeft + xDir,
+                    topLeft + yDir,
+                    topLeft + xDir + yDir,
+                ]);
+
                 foreach (var light in lights)
                 {
                     // Check if plane normal is facing towards the light
@@ -262,6 +272,13 @@ class Program
                     // The more compact a map is the less effective this is
                     var planeDist = MathUtils.DistanceFromPlane(plane, light.position);
                     if (planeDist > light.radius)
+                    {
+                        continue;
+                    }
+
+                    // If the poly of the lightmap doesn't intersect the light radius then
+                    // none of the lightmap points will so we can discard.
+                    if (!MathUtils.Intersects(new MathUtils.Sphere(light.position, light.radius), aabb))
                     {
                         continue;
                     }
