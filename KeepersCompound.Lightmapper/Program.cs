@@ -259,6 +259,13 @@ class Program
                     topLeft + xDir + yDir,
                 ]);
 
+                // Used for clipping points to poly
+                var vs = new Vector3[poly.VertexCount];
+                for (var i = 0; i < poly.VertexCount; i++)
+                {
+                    vs[i] = cell.Vertices[cell.Indices[cellIdxOffset + i]];
+                }
+
                 foreach (var light in lights)
                 {
                     // Check if plane normal is facing towards the light
@@ -293,6 +300,8 @@ class Program
                             var pos = topLeft;
                             pos += x * 0.25f * renderPoly.TextureVectors.Item1;
                             pos += y * 0.25f * renderPoly.TextureVectors.Item2;
+
+                            pos = MathUtils.ClipPointToPoly3d(pos, vs, plane);
 
                             // If we're out of range there's no point casting a ray
                             // There's probably a better way to discard the entire lightmap
