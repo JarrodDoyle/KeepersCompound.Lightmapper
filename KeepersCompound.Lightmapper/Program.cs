@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
 using TinyEmbree;
@@ -253,6 +253,15 @@ class Program
                     // light.
                     var centerDirection = renderPoly.Center - light.position;
                     if (Vector3.Dot(plane.Normal, centerDirection) >= 0)
+                    {
+                        continue;
+                    }
+
+                    // If there aren't *any* points on the plane that are in range of the light
+                    // then none of the lightmap points will be so we can discard.
+                    // The more compact a map is the less effective this is
+                    var planeDist = MathUtils.DistanceFromPlane(plane, light.position);
+                    if (planeDist > light.radius)
                     {
                         continue;
                     }
