@@ -213,6 +213,8 @@ class Program
 
     private static void CastScene(Raytracer scene, WorldRep wr, Light[] lights, Vector3 ambientLight)
     {
+        var hdr = wr.DataHeader.LightmapFormat == 2;
+
         var cells = wr.Cells;
         for (var cellIdx = 0; cellIdx < cells.Length; cellIdx++)
         {
@@ -318,6 +320,10 @@ class Program
                                 var len = dir.Length();
                                 var slen = len / 4.0f;
                                 var strength = (angle + 1.0f) / slen;
+                                if (hdr)
+                                {
+                                    strength /= 2;
+                                }
                                 strength = Math.Min(1.0f, strength);
 
                                 var c = light.color * strength;
