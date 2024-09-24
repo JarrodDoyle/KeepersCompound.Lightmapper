@@ -324,9 +324,9 @@ class Program
                                 {
                                     strength /= 2;
                                 }
-                                strength = Math.Min(1.0f, strength);
 
                                 var c = light.color * strength;
+                                c = Vector3.Min(Vector3.One * 255, c);
                                 lightmap.AddLight(0, x, y, (byte)c.X, (byte)c.Y, (byte)c.Z);
                             }
                         }
