@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics;
+using System.Numerics;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
 using TinyEmbree;
@@ -311,10 +312,13 @@ class Program
                             });
 
                             // cheeky epsilon
+                            // TODO: Some pixels aren't hitting and I'm not sure why
                             var hit = hitResult && Math.Abs(hitResult.Distance - direction.Length()) < 0.001;
                             if (hit)
                             {
-                                // TODO: This isn't perfectly accurate, but it's pretty fucking close tbh
+                                // Calculate light strength at a given point. As far as I can tell
+                                // this is exact to Dark (I'm a genius??). It's just an inverse distance
+                                // falloff with diffuse angle, except we have to scale the length.
                                 var dir = light.position - pos;
                                 var angle = Vector3.Dot(Vector3.Normalize(dir), plane.Normal);
                                 var len = dir.Length();
@@ -325,8 +329,22 @@ class Program
                                     strength /= 2;
                                 }
 
+                                // We need to make sure we don't go over (255, 255, 255).
+                                // If we just do Max(color, (255, 255, 255)) then we change
+                                // the hue/saturation of coloured lights. Got to make sure we
+                                // maintain the colour ratios.
                                 var c = light.color * strength;
-                                c = Vector3.Min(Vector3.One * 255, c);
+                                var ratio = 0.0f;
+                                foreach (var e in new float[] { c.X, c.Y, c.Z })
+                                {
+                                    ratio = Math.Max(ratio, e / 255.0f);
+                                }
+
+                                if (ratio > 1.0f)
+                                {
+                                    c /= ratio;
+                                }
+
                                 lightmap.AddLight(0, x, y, (byte)c.X, (byte)c.Y, (byte)c.Z);
                             }
                         }
