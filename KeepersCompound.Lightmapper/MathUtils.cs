@@ -59,8 +59,7 @@ public static class MathUtils
     /// </summary>
     public static Vector3 ClipPointToPoly3d(Vector3 point, Vector3[] vertices, Plane projectionPlane)
     {
-        // Shouldn't need to pass 3d. We can just pass the luxel coord, and then we only need the 
-
+        // TODO: Shouldn't need to pass 3d. We can just pass the luxel coord, and then we only need the 
         var (p2d, v2ds) = LocalPlaneCoords(point, vertices, projectionPlane);
 
         // !HACK: Replace this shit
@@ -70,7 +69,6 @@ public static class MathUtils
         locX = Vector3.Normalize(locX);
         locY = Vector3.Normalize(locY);
 
-        var inside = true;
         for (var i = 0; i < v2ds.Length; i++)
         {
             var a = v2ds[i];
@@ -81,16 +79,14 @@ public static class MathUtils
             var side = Vector2.Dot(norm, offset);
             if (side >= -Epsilon)
             {
+                // We apply epsilon so that we push slightly into the poly. If we only
+                // push to the edge then Embree sometimes misses casts. The reason
+                // it's 2 epsilon is so Side == -Epsilon still gets pushed in properly
                 p2d -= norm * (side + 2 * Epsilon);
-                inside = false;
             }
         }
 
-        // return p2d;
-
         return origin + p2d.X * locX + p2d.Y * locY;
-
-        // return Vector3.One;
     }
 
     // TODO: Only do this once per poly
