@@ -104,20 +104,6 @@ public static class MathUtils
         }
     }
 
-    /// <summary>
-    /// Expects poly to be convex. Given a point
-    /// </summary>
-    public static Vector3 ClipPointToPoly3d(Vector3 point, Vector3[] vertices, Plane projectionPlane)
-    {
-        var mapper = new PlanePointMapper(projectionPlane.Normal, vertices[0], vertices[1]);
-
-        var v2ds = mapper.MapTo2d(vertices);
-        var p2d = mapper.MapTo2d(point);
-        p2d = ClipPointToPoly2d(p2d, v2ds);
-
-        return mapper.MapTo3d(p2d);
-    }
-
     public static Vector2 ClipPointToPoly2d(Vector2 point, Vector2[] vertices)
     {
         var vertexCount = vertices.Length;
