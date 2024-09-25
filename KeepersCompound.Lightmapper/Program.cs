@@ -117,9 +117,11 @@ class Program
                     {
                         propLightColor ??= new PropLightColor { Hue = 0, Saturation = 0 };
 
+                        // TODO: There's still some lights that aren't positioned right such as Streetlamp.
+                        //       Perhaps there's a light point specified in model files?
                         var light = new Light
                         {
-                            position = brush.position,
+                            position = brush.position + propLight.Offset,
                             color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propLight.Brightness),
                             radius = propLight.Radius,
                             r2 = propLight.Radius * propLight.Radius,
