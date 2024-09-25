@@ -4,6 +4,8 @@ namespace KeepersCompound.Lightmapper;
 
 public static class MathUtils
 {
+    public const float Epsilon = 0.001f;
+
     public readonly struct Aabb
     {
         public readonly Vector3 Min;
@@ -77,9 +79,9 @@ public static class MathUtils
             var offset = p2d - a;
             var norm = Vector2.Normalize(new Vector2(-segment.Y, segment.X));
             var side = Vector2.Dot(norm, offset);
-            if (side >= -0.001)
+            if (side >= -Epsilon)
             {
-                p2d -= norm * (side + 0.0015f);
+                p2d -= norm * (side + 2 * Epsilon);
                 inside = false;
             }
         }

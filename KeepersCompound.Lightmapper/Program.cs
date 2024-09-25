@@ -322,7 +322,7 @@ class Program
 
                             // cheeky epsilon
                             // TODO: Some pixels aren't hitting and I'm not sure why
-                            var hit = hitResult && Math.Abs(hitResult.Distance - direction.Length()) < 0.001;
+                            var hit = hitResult && Math.Abs(hitResult.Distance - direction.Length()) < MathUtils.Epsilon;
                             if (hit)
                             {
                                 // Calculate light strength at a given point. As far as I can tell
