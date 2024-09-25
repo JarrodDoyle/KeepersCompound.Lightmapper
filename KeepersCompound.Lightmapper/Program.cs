@@ -22,7 +22,7 @@ class Program
         Timing.Reset();
 
         var misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/JAYRUDE_Tests/lm_test.cow";
-        misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/AtdV/miss20.mis";
+        // misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/AtdV/miss20.mis";
         misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/TDP20AC_a_burrick_in_a_room/miss20.mis";
         Timing.TimeStage("Total", () => LightmapMission(misPath));
 
@@ -265,6 +265,8 @@ class Program
                 {
                     vs[i] = cell.Vertices[cell.Indices[cellIdxOffset + i]];
                 }
+                var planeMapper = new MathUtils.PlanePointMapper(plane.Normal, vs[0], vs[1]);
+                var v2ds = planeMapper.MapTo2d(vs);
 
                 foreach (var light in lights)
                 {
@@ -301,7 +303,17 @@ class Program
                             pos += x * 0.25f * renderPoly.TextureVectors.Item1;
                             pos += y * 0.25f * renderPoly.TextureVectors.Item2;
 
-                            pos = MathUtils.ClipPointToPoly3d(pos, vs, plane);
+                            // We need to clip the point to slightly inside of the poly
+                            // to avoid three problems:
+                            // 1. Darkened spots from lightmap pixels who's center is outside
+                            //    of the polygon but is partially contained in the polygon
+                            // 2. Darkened spots from linear filtering of points outside of the
+                            //    polygon which have missed
+                            // 3. Darkened spots where centers are on the exact edge of a poly
+                            //    which can sometimes cause Embree to miss casts
+                            var p2d = planeMapper.MapTo2d(pos);
+                            p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
+                            pos = planeMapper.MapTo3d(p2d);
 
                             // If we're out of range there's no point casting a ray
                             // There's probably a better way to discard the entire lightmap
