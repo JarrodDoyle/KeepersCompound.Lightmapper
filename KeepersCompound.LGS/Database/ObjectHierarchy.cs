@@ -102,6 +102,7 @@ public class ObjectHierarchy
         AddProp<PropFloat>("P$RenderAlp");
         AddProp<PropLight>("P$Light");
         AddProp<PropLightColor>("P$LightColo");
+        AddProp<PropSpotlight>("P$Spotlight");
     }
 
     public T GetProperty<T>(int objectId, string propName) where T : Property
