@@ -13,6 +13,7 @@ class Program
     {
         public Vector3 position;
         public Vector3 color;
+        public float innerRadius;
         public float radius;
         public float r2;
     }
@@ -23,7 +24,7 @@ class Program
 
         var misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/JAYRUDE_Tests/lm_test.cow";
         // misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/AtdV/miss20.mis";
-        misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/TDP20AC_a_burrick_in_a_room/miss20.mis";
+        // misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/TDP20AC_a_burrick_in_a_room/miss20.mis";
         Timing.TimeStage("Total", () => LightmapMission(misPath));
 
         Timing.LogAll();
@@ -103,6 +104,7 @@ class Program
                     {
                         position = brush.position,
                         color = HsbToRgb(sz.Y, sz.Z, Math.Min(sz.X, 255.0f)),
+                        innerRadius = 0.0f,
                         radius = float.MaxValue,
                         r2 = float.MaxValue
                     });
@@ -123,6 +125,7 @@ class Program
                         {
                             position = brush.position + propLight.Offset,
                             color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propLight.Brightness),
+                            innerRadius = propLight.InnerRadius,
                             radius = propLight.Radius,
                             r2 = propLight.Radius * propLight.Radius,
                         };
@@ -357,6 +360,12 @@ class Program
         var len = dir.Length();
         var slen = len / 4.0f;
         var strength = (angle + 1.0f) / slen;
+
+        // Inner radius starts a linear falloff to 0 at the radius
+        if (light.innerRadius != 0 && len > light.innerRadius)
+        {
+            strength *= (light.radius - len) / (light.radius - light.innerRadius);
+        }
 
         return strength;
     }
