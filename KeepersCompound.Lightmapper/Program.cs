@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Numerics;
+using KeepersCompound.LGS;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
 using TinyEmbree;
@@ -27,20 +28,34 @@ class Program
     {
         Timing.Reset();
 
-        var misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/JAYRUDE_Tests/lm_test.cow";
+        // TODO: Read this from args
+        var installPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/";
+        var campaignName = "JAYRUDE_Tests";
+        var missionName = "lm_test.cow";
+
+        // Setup extract path
+        var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
+        Console.WriteLine(tmpDir.FullName);
+        var resPathManager = new ResourcePathManager(tmpDir.FullName);
+        resPathManager.Init(installPath);
+
+        var campaign = resPathManager.GetCampaign(campaignName);
+        var misPath = campaign.GetResourcePath(ResourceType.Mission, missionName);
+
+        // misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/JAYRUDE_Tests/lm_test.cow";
         // misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/AtdV/miss20.mis";
         // misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/TDP20AC_a_burrick_in_a_room/miss20.mis";
-        Timing.TimeStage("Total", () => LightmapMission(misPath));
+        Timing.TimeStage("Total", () => LightmapMission(campaign, misPath));
 
         Timing.LogAll();
     }
 
-    private static void LightmapMission(string misPath)
+    private static void LightmapMission(ResourcePathManager.CampaignResources campaign, string misPath)
     {
         var mis = Timing.TimeStage("Parse DB", () => new DbFile(misPath));
         var hierarchy = Timing.TimeStage("Build Hierarchy", () => BuildHierarchy(misPath, mis));
 
-        var lights = Timing.TimeStage("Gather Lights", () => BuildLightList(mis, hierarchy));
+        var lights = Timing.TimeStage("Gather Lights", () => BuildLightList(mis, hierarchy, campaign));
 
         // Build embree mesh
         if (!mis.Chunks.TryGetValue("WREXT", out var wrRaw))
@@ -93,7 +108,7 @@ class Program
     }
 
     // Get list of brush lights, and object lights (ignore anim lights for now)
-    private static List<Light> BuildLightList(DbFile mis, ObjectHierarchy hierarchy)
+    private static List<Light> BuildLightList(DbFile mis, ObjectHierarchy hierarchy, ResourcePathManager.CampaignResources campaign)
     {
         var lights = new List<Light>();
 
@@ -120,6 +135,7 @@ class Program
                     var propLight = hierarchy.GetProperty<PropLight>(id, "P$Light");
                     var propLightColor = hierarchy.GetProperty<PropLightColor>(id, "P$LightColo");
                     var propSpotlight = hierarchy.GetProperty<PropSpotlight>(id, "P$Spotlight");
+                    var propModelname = hierarchy.GetProperty<PropLabel>(id, "P$ModelName");
 
                     if (propLight != null)
                     {
@@ -134,7 +150,23 @@ class Program
                             innerRadius = propLight.InnerRadius,
                             radius = propLight.Radius,
                             r2 = propLight.Radius * propLight.Radius,
+                            spotlightDir = -Vector3.UnitZ,
                         };
+
+                        if (propModelname != null)
+                        {
+                            var resName = $"{propModelname.value.ToLower()}.bin";
+                            var modelPath = campaign.GetResourcePath(ResourceType.Object, resName);
+                            var model = new ModelFile(modelPath);
+                            if (model.TryGetVhot(ModelFile.VhotId.LightPosition, out var vhot))
+                            {
+                                light.position += vhot.Position;
+                            }
+                            if (model.TryGetVhot(ModelFile.VhotId.LightDirection, out vhot))
+                            {
+                                light.spotlightDir = vhot.Position;
+                            }
+                        }
 
                         if (propSpotlight != null)
                         {
@@ -145,7 +177,7 @@ class Program
                             rot *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
 
                             light.spotlight = true;
-                            light.spotlightDir = Vector3.Transform(-Vector3.UnitZ, rot);
+                            light.spotlightDir = Vector3.Transform(light.spotlightDir, rot);
                             light.spotlightInnerAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.InnerAngle));
                             light.spotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.OuterAngle));
                         }

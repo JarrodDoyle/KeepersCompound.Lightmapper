@@ -153,6 +153,30 @@ public class ModelFile
         }
     }
 
+    public enum VhotId
+    {
+        LightPosition = 1,
+        LightDirection = 8,
+        Anchor = 2,
+        Particle1 = 3,
+        Particle2 = 4,
+        Particle3 = 5,
+        Particle4 = 6,
+        Particle5 = 7,
+    }
+
+    public struct VHot
+    {
+        public int Id;
+        public Vector3 Position;
+
+        public VHot(BinaryReader reader)
+        {
+            Id = reader.ReadInt32();
+            Position = reader.ReadVec3();
+        }
+    }
+
     public BHeader BinHeader { get; set; }
     public MHeader Header { get; set; }
     public Vector3[] Vertices { get; }
@@ -160,6 +184,7 @@ public class ModelFile
     public Vector3[] Normals { get; }
     public Polygon[] Polygons { get; }
     public Material[] Materials { get; }
+    public VHot[] VHots { get; }
 
     public ModelFile(string filename)
     {
@@ -202,5 +227,25 @@ public class ModelFile
         {
             Materials[i] = new Material(reader);
         }
+        stream.Seek(Header.VHotOffset, SeekOrigin.Begin);
+        VHots = new VHot[Header.VHotCount];
+        for (var i = 0; i < VHots.Length; i++)
+        {
+            VHots[i] = new VHot(reader);
+        }
+    }
+
+    public bool TryGetVhot(VhotId id, out VHot vhot)
+    {
+        foreach (var v in VHots)
+        {
+            if (v.Id == (int)id)
+            {
+                vhot = v;
+                return true;
+            }
+        }
+        vhot = new VHot();
+        return false;
     }
 }
