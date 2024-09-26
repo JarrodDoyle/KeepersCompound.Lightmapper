@@ -16,6 +16,11 @@ class Program
         public float innerRadius;
         public float radius;
         public float r2;
+
+        public bool spotlight;
+        public Vector3 spotlightDir;
+        public float spotlightInnerAngle;
+        public float spotlightOuterAngle;
     }
 
     static void Main(string[] args)
@@ -104,16 +109,17 @@ class Program
                     {
                         position = brush.position,
                         color = HsbToRgb(sz.Y, sz.Z, Math.Min(sz.X, 255.0f)),
-                        innerRadius = 0.0f,
                         radius = float.MaxValue,
-                        r2 = float.MaxValue
+                        r2 = float.MaxValue,
                     });
                 }
                 else if (brush.media == BrList.Brush.Media.Object)
                 {
+                    // TODO: Handle PropSpotlightAndAmbient
                     var id = (int)brush.brushInfo;
                     var propLight = hierarchy.GetProperty<PropLight>(id, "P$Light");
                     var propLightColor = hierarchy.GetProperty<PropLightColor>(id, "P$LightColo");
+                    var propSpotlight = hierarchy.GetProperty<PropSpotlight>(id, "P$Spotlight");
 
                     if (propLight != null)
                     {
@@ -129,6 +135,20 @@ class Program
                             radius = propLight.Radius,
                             r2 = propLight.Radius * propLight.Radius,
                         };
+
+                        if (propSpotlight != null)
+                        {
+                            // TODO: Some objects seem to have spotlight direction embedded in the model file
+                            var rot = Matrix4x4.Identity;
+                            rot *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.angle.X));
+                            rot *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
+                            rot *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
+
+                            light.spotlight = true;
+                            light.spotlightDir = Vector3.Transform(-Vector3.UnitZ, rot);
+                            light.spotlightInnerAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.InnerAngle));
+                            light.spotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.OuterAngle));
+                        }
 
                         if (propLight.Radius == 0)
                         {
@@ -365,6 +385,34 @@ class Program
         if (light.innerRadius != 0 && len > light.innerRadius)
         {
             strength *= (light.radius - len) / (light.radius - light.innerRadius);
+        }
+
+        // This is basically the same as how inner radius works. It just applies
+        // a linear falloff to 0 between the inner angle and outer angle.
+        if (light.spotlight)
+        {
+            var spotAngle = Vector3.Dot(-Vector3.Normalize(dir), light.spotlightDir);
+            var inner = light.spotlightInnerAngle;
+            var outer = light.spotlightOuterAngle;
+
+            // In an improperly configured spotlight inner and outer angles might be the
+            // same. So to avoid division by zero (and some clamping) we explicitly handle
+            // some cases
+            float spotlightMultiplier;
+            if (spotAngle >= inner)
+            {
+                spotlightMultiplier = 1.0f;
+            }
+            else if (spotAngle <= outer)
+            {
+                spotlightMultiplier = 0.0f;
+            }
+            else
+            {
+                spotlightMultiplier = (spotAngle - outer) / (inner - outer);
+            }
+
+            strength *= spotlightMultiplier;
         }
 
         return strength;
