@@ -347,28 +347,8 @@ class Program
                                 var len = dir.Length();
                                 var slen = len / 4.0f;
                                 var strength = (angle + 1.0f) / slen;
-                                if (hdr)
-                                {
-                                    strength /= 2;
-                                }
 
-                                // We need to make sure we don't go over (255, 255, 255).
-                                // If we just do Max(color, (255, 255, 255)) then we change
-                                // the hue/saturation of coloured lights. Got to make sure we
-                                // maintain the colour ratios.
-                                var c = light.color * strength;
-                                var ratio = 0.0f;
-                                foreach (var e in new float[] { c.X, c.Y, c.Z })
-                                {
-                                    ratio = Math.Max(ratio, e / 255.0f);
-                                }
-
-                                if (ratio > 1.0f)
-                                {
-                                    c /= ratio;
-                                }
-
-                                lightmap.AddLight(0, x, y, (byte)c.X, (byte)c.Y, (byte)c.Z);
+                                lightmap.AddLight(0, x, y, light.color, strength, hdr);
                             }
                         }
                     }
@@ -388,17 +368,11 @@ class Program
             lightmap.Pixels[i] = 0;
         }
 
-        var c = ambientLight;
-        if (hdr)
-        {
-            c /= 2.0f;
-        }
-
         for (var y = 0; y < lightmap.Height; y++)
         {
             for (var x = 0; x < lightmap.Width; x++)
             {
-                lightmap.AddLight(0, x, y, (byte)c.X, (byte)c.Y, (byte)c.Z);
+                lightmap.AddLight(0, x, y, ambientLight, 1.0f, hdr);
             }
         }
     }

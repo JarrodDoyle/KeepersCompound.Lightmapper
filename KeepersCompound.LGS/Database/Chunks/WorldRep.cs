@@ -243,6 +243,32 @@ public class WorldRep : IChunk
                 Pixels[idx + 3] = 255;
             }
 
+            public void AddLight(int layer, int x, int y, Vector3 color, float strength, bool hdr)
+            {
+                if (hdr)
+                {
+                    strength /= 2.0f;
+                }
+
+                // We need to make sure we don't go over (255, 255, 255).
+                // If we just do Max(color, (255, 255, 255)) then we change
+                // the hue/saturation of coloured lights. Got to make sure we
+                // maintain the colour ratios.
+                var c = color * strength;
+                var ratio = 0.0f;
+                foreach (var e in new float[] { c.X, c.Y, c.Z })
+                {
+                    ratio = Math.Max(ratio, e / 255.0f);
+                }
+
+                if (ratio > 1.0f)
+                {
+                    c /= ratio;
+                }
+
+                AddLight(layer, x, y, (byte)c.X, (byte)c.Y, (byte)c.Z);
+            }
+
             public readonly void Write(BinaryWriter writer)
             {
                 writer.Write(Pixels);
