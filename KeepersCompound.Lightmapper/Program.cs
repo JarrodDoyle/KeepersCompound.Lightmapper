@@ -52,7 +52,7 @@ class Program
         if (!mis.Chunks.TryGetValue("RENDPARAMS", out var rendParamsRaw))
             return;
         var ambient = ((RendParams)rendParamsRaw).ambientLight * 255;
-        Timing.TimeStage("Light", () => CastScene(scene, worldRep, [.. lights], ambient));
+        Timing.TimeStage("Light", () => CastSceneParallel(scene, worldRep, [.. lights], ambient));
 
         var dir = Path.GetDirectoryName(misPath);
         var filename = Path.GetFileNameWithoutExtension(misPath);
@@ -214,16 +214,12 @@ class Program
         return new TriangleMesh([.. vertices], [.. indices]);
     }
 
-    private static void CastScene(Raytracer scene, WorldRep wr, Light[] lights, Vector3 ambientLight)
+    private static void CastSceneParallel(Raytracer scene, WorldRep wr, Light[] lights, Vector3 ambientLight)
     {
         var hdr = wr.DataHeader.LightmapFormat == 2;
 
-        var cells = wr.Cells;
-        for (var cellIdx = 0; cellIdx < cells.Length; cellIdx++)
+        Parallel.ForEach(wr.Cells, cell =>
         {
-            Console.Write($"\rLighting cell... {cellIdx + 1}/{cells.Length}");
-
-            var cell = cells[cellIdx];
             var numPolys = cell.PolyCount;
             var numRenderPolys = cell.RenderPolyCount;
             var numPortalPolys = cell.PortalPolyCount;
@@ -232,7 +228,7 @@ class Program
             // Portal polys can be render polys (e.g. water) but we're ignoring them for now
             if (numRenderPolys == 0 || numPortalPolys >= numPolys)
             {
-                continue;
+                return;
             }
 
             var maxPolyIdx = Math.Min(numRenderPolys, numPolys - numPortalPolys);
@@ -348,9 +344,7 @@ class Program
 
                 cellIdxOffset += poly.VertexCount;
             }
-        }
-
-        Console.Write("\n");
+        });
     }
 
     private static float CalculateLightStrengthAtPoint(Light light, Vector3 point, Plane plane)
