@@ -339,15 +339,7 @@ class Program
                             var hit = hitResult && Math.Abs(hitResult.Distance - direction.Length()) < MathUtils.Epsilon;
                             if (hit)
                             {
-                                // Calculate light strength at a given point. As far as I can tell
-                                // this is exact to Dark (I'm a genius??). It's just an inverse distance
-                                // falloff with diffuse angle, except we have to scale the length.
-                                var dir = light.position - pos;
-                                var angle = Vector3.Dot(Vector3.Normalize(dir), plane.Normal);
-                                var len = dir.Length();
-                                var slen = len / 4.0f;
-                                var strength = (angle + 1.0f) / slen;
-
+                                var strength = CalculateLightStrengthAtPoint(light, pos, plane);
                                 lightmap.AddLight(0, x, y, light.color, strength, hdr);
                             }
                         }
@@ -359,6 +351,20 @@ class Program
         }
 
         Console.Write("\n");
+    }
+
+    private static float CalculateLightStrengthAtPoint(Light light, Vector3 point, Plane plane)
+    {
+        // Calculate light strength at a given point. As far as I can tell
+        // this is exact to Dark (I'm a genius??). It's just an inverse distance
+        // falloff with diffuse angle, except we have to scale the length.
+        var dir = light.position - point;
+        var angle = Vector3.Dot(Vector3.Normalize(dir), plane.Normal);
+        var len = dir.Length();
+        var slen = len / 4.0f;
+        var strength = (angle + 1.0f) / slen;
+
+        return strength;
     }
 
     private static void ResetLightmap(Vector3 ambientLight, WorldRep.Cell.Lightmap lightmap, bool hdr)
