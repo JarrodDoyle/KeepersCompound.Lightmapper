@@ -32,13 +32,13 @@ public class DbFile
         }
     }
 
-    public readonly struct TableOfContents
+    public struct TableOfContents
     {
-        public readonly struct Entry
+        public struct Entry
         {
-            public string Name { get; }
-            public uint Offset { get; }
-            public uint Size { get; }
+            public string Name;
+            public uint Offset;
+            public uint Size;
 
             public Entry(BinaryReader reader)
             {
@@ -47,10 +47,9 @@ public class DbFile
                 Size = reader.ReadUInt32();
             }
 
-            public override string ToString()
+            public override readonly string ToString()
             {
-                // return $"Name: {Name}, Offset: {O}"
-                return base.ToString();
+                return $"Name: {Name}, Offset: {Offset}, Size: {Size}";
             }
 
             public readonly void Write(BinaryWriter writer)
@@ -110,18 +109,28 @@ public class DbFile
 
     public void Save(string filename)
     {
-        // !HACK: Right now we don't need to adjust TOC offset or anything because we're only
-        // overwriting data, not writing new lengths of data
-
         using var stream = File.Open(filename, FileMode.Create);
         using var writer = new BinaryWriter(stream, Encoding.UTF8, false);
 
         Header.Write(writer);
-        foreach (var (name, chunk) in Chunks)
+        for (var i = 0; i < Toc.ItemCount; i++)
         {
+            var item = Toc.Items[i];
+            var pos = stream.Position;
+
+            var chunk = Chunks[item.Name];
             chunk.Write(writer);
+            var size = stream.Position - pos - 24;
+
+            item.Offset = (uint)pos;
+            item.Size = (uint)size;
+            Toc.Items[i] = item;
         }
+        var tocOffset = (uint)stream.Position;
         Toc.Write(writer);
+
+        stream.Seek(0, SeekOrigin.Begin);
+        writer.Write(tocOffset);
     }
 
     private static IChunk NewChunk(string entryName)
