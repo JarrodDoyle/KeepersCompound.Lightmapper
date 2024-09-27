@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using System.Numerics;
 
 namespace KeepersCompound.LGS.Database.Chunks;
@@ -419,9 +417,179 @@ public class WorldRep : IChunk
         }
     }
 
+    public struct BspTree
+    {
+        public struct Node
+        {
+            int parentIndex; // TODO: Split the flags out of this
+            int cellId;
+            int planeId;
+            uint insideIndex;
+            uint outsideIndex;
+
+            public Node(BinaryReader reader)
+            {
+                parentIndex = reader.ReadInt32();
+                cellId = reader.ReadInt32();
+                planeId = reader.ReadInt32();
+                insideIndex = reader.ReadUInt32();
+                outsideIndex = reader.ReadUInt32();
+            }
+
+            public readonly void Write(BinaryWriter writer)
+            {
+                writer.Write(parentIndex);
+                writer.Write(cellId);
+                writer.Write(planeId);
+                writer.Write(insideIndex);
+                writer.Write(outsideIndex);
+            }
+        }
+
+        public uint PlaneCount;
+        public uint NodeCount;
+        public Plane[] Planes;
+        public Node[] Nodes;
+
+        public BspTree(BinaryReader reader)
+        {
+            PlaneCount = reader.ReadUInt32();
+            Planes = new Plane[PlaneCount];
+            for (var i = 0; i < PlaneCount; i++)
+            {
+                Planes[i] = new Plane(reader.ReadVec3(), reader.ReadSingle());
+            }
+
+            NodeCount = reader.ReadUInt32();
+            Nodes = new Node[NodeCount];
+            for (var i = 0; i < NodeCount; i++)
+            {
+                Nodes[i] = new Node(reader);
+            }
+        }
+
+        public readonly void Write(BinaryWriter writer)
+        {
+            writer.Write(PlaneCount);
+            foreach (var plane in Planes)
+            {
+                writer.WriteVec3(plane.Normal);
+                writer.Write(plane.D);
+            }
+            writer.Write(NodeCount);
+            foreach (var node in Nodes)
+            {
+                node.Write(writer);
+            }
+        }
+    }
+
+    public struct LightTable
+    {
+        public struct LightData
+        {
+            public Vector3 Location;
+            public Vector3 Direction;
+            public Vector3 Color;
+            float InnerAngle; // I'm pretty sure these are the spotlight angles
+            float OuterAngle;
+            float Radius;
+
+            public LightData(BinaryReader reader)
+            {
+                Location = reader.ReadVec3();
+                Direction = reader.ReadVec3();
+                Color = reader.ReadVec3();
+                InnerAngle = reader.ReadSingle();
+                OuterAngle = reader.ReadSingle();
+                Radius = reader.ReadSingle();
+            }
+
+            public readonly void Write(BinaryWriter writer)
+            {
+                writer.WriteVec3(Location);
+                writer.WriteVec3(Direction);
+                writer.WriteVec3(Color);
+                writer.Write(InnerAngle);
+                writer.Write(OuterAngle);
+                writer.Write(Radius);
+            }
+        }
+
+        public struct AnimCellMap
+        {
+            public ushort CellIndex;
+            public ushort LightIndex;
+
+            public AnimCellMap(BinaryReader reader)
+            {
+                CellIndex = reader.ReadUInt16();
+                LightIndex = reader.ReadUInt16();
+            }
+
+            public readonly void Write(BinaryWriter writer)
+            {
+                writer.Write(CellIndex);
+                writer.Write(LightIndex);
+            }
+        }
+
+        public int LightCount;
+        public int DynamicLightCount;
+        public int AnimMapCount;
+        public LightData[] Lights;
+        public LightData[] ScratchpadLights;
+        public AnimCellMap[] AnimCellMaps;
+
+        // TODO: Support olddark
+        public LightTable(BinaryReader reader)
+        {
+            LightCount = reader.ReadInt32();
+            DynamicLightCount = reader.ReadInt32();
+            Lights = new LightData[LightCount + DynamicLightCount];
+            for (var i = 0; i < Lights.Length; i++)
+            {
+                Lights[i] = new LightData(reader);
+            }
+            ScratchpadLights = new LightData[32];
+            for (var i = 0; i < ScratchpadLights.Length; i++)
+            {
+                ScratchpadLights[i] = new LightData(reader);
+            }
+            AnimMapCount = reader.ReadInt32();
+            AnimCellMaps = new AnimCellMap[AnimMapCount];
+            for (var i = 0; i < AnimCellMaps.Length; i++)
+            {
+                AnimCellMaps[i] = new AnimCellMap(reader);
+            }
+        }
+
+        public readonly void Write(BinaryWriter writer)
+        {
+            writer.Write(LightCount);
+            writer.Write(DynamicLightCount);
+            foreach (var light in Lights)
+            {
+                light.Write(writer);
+            }
+            foreach (var light in ScratchpadLights)
+            {
+                light.Write(writer);
+            }
+            writer.Write(AnimMapCount);
+            foreach (var map in AnimCellMaps)
+            {
+                map.Write(writer);
+            }
+        }
+    }
+
     public ChunkHeader Header { get; set; }
     public WrHeader DataHeader { get; set; }
     public Cell[] Cells { get; set; }
+    public BspTree Bsp { get; set; }
+    public LightTable LightingTable { get; set; }
+    private byte[] _unknown;
     private byte[] _unreadData;
 
     public void ReadData(BinaryReader reader, DbFile.TableOfContents.Entry entry)
@@ -435,6 +603,12 @@ public class WorldRep : IChunk
             Cells[i] = new Cell(reader, bpp);
         }
 
+        Bsp = new BspTree(reader);
+
+        // TODO: Work out what this is
+        _unknown = reader.ReadBytes(Cells.Length);
+        LightingTable = new LightTable(reader);
+
         // TODO: All the other info lol
         var length = entry.Offset + entry.Size + 24 - reader.BaseStream.Position;
         _unreadData = reader.ReadBytes((int)length);
@@ -447,6 +621,9 @@ public class WorldRep : IChunk
         {
             cell.Write(writer);
         }
+        Bsp.Write(writer);
+        writer.Write(_unknown);
+        LightingTable.Write(writer);
         writer.Write(_unreadData);
     }
 }
