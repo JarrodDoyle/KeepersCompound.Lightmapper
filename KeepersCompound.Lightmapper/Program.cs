@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Numerics;
 using KeepersCompound.LGS;
 using KeepersCompound.LGS.Database;
@@ -151,15 +151,20 @@ class Program
                     {
                         var resName = $"{propModelname.value.ToLower()}.bin";
                         var modelPath = campaign.GetResourcePath(ResourceType.Object, resName);
-                        var model = new ModelFile(modelPath);
-                        if (model.TryGetVhot(ModelFile.VhotId.LightPosition, out var vhot))
+                        if (modelPath != null)
                         {
-                            baseLight.position += vhot.Position;
+                            // TODO: Handle failing to find model more gracefully
+                            var model = new ModelFile(modelPath);
+                            if (model.TryGetVhot(ModelFile.VhotId.LightPosition, out var vhot))
+                            {
+                                baseLight.position += vhot.Position;
+                            }
+                            if (model.TryGetVhot(ModelFile.VhotId.LightDirection, out vhot))
+                            {
+                                baseLight.spotlightDir = vhot.Position;
+                            }
                         }
-                        if (model.TryGetVhot(ModelFile.VhotId.LightDirection, out vhot))
-                        {
-                            baseLight.spotlightDir = vhot.Position;
-                        }
+
                     }
 
                     if (propSpotlight != null)
