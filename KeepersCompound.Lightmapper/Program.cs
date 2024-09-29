@@ -141,7 +141,7 @@ class Program
 
                     propLightColor ??= new PropLightColor { Hue = 0, Saturation = 0 };
 
-                    var light = new Light
+                    var baseLight = new Light
                     {
                         position = brush.position,
                         spotlightDir = -Vector3.UnitZ,
@@ -154,11 +154,11 @@ class Program
                         var model = new ModelFile(modelPath);
                         if (model.TryGetVhot(ModelFile.VhotId.LightPosition, out var vhot))
                         {
-                            light.position += vhot.Position;
+                            baseLight.position += vhot.Position;
                         }
                         if (model.TryGetVhot(ModelFile.VhotId.LightDirection, out vhot))
                         {
-                            light.spotlightDir = vhot.Position;
+                            baseLight.spotlightDir = vhot.Position;
                         }
                     }
 
@@ -169,24 +169,45 @@ class Program
                         rot *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
                         rot *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
 
-                        light.spotlight = true;
-                        light.spotlightDir = Vector3.Transform(light.spotlightDir, rot);
-                        light.spotlightInnerAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.InnerAngle));
-                        light.spotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.OuterAngle));
+                        baseLight.spotlight = true;
+                        baseLight.spotlightDir = Vector3.Transform(baseLight.spotlightDir, rot);
+                        baseLight.spotlightInnerAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.InnerAngle));
+                        baseLight.spotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.OuterAngle));
                     }
-
-                    // if (propAnimLight != null)
-                    // {
-                    // }
 
                     if (propLight != null)
                     {
-                        light.position += propLight.Offset;
-                        light.color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propLight.Brightness);
-                        light.innerRadius = propLight.InnerRadius;
-                        light.radius = propLight.Radius;
-                        light.r2 = propLight.Radius * propLight.Radius;
+                        var light = new Light
+                        {
+                            position = baseLight.position + propLight.Offset,
+                            color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propLight.Brightness),
+                            innerRadius = propLight.InnerRadius,
+                            radius = propLight.Radius,
+                            r2 = propLight.Radius * propLight.Radius,
+                        };
+
                         if (propLight.Radius == 0)
+                        {
+                            light.radius = float.MaxValue;
+                            light.r2 = float.MaxValue;
+                        }
+
+                        lights.Add(light);
+                    }
+
+                    if (propAnimLight != null)
+                    {
+                        var light = new Light
+                        {
+                            position = baseLight.position + propAnimLight.Offset,
+                            color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propAnimLight.Brightness),
+                            innerRadius = propAnimLight.InnerRadius,
+                            radius = propAnimLight.Radius,
+                            r2 = propAnimLight.Radius * propAnimLight.Radius,
+                            anim = true,
+                            animObjId = id,
+                        };
+                        if (propAnimLight.Radius == 0)
                         {
                             light.radius = float.MaxValue;
                             light.r2 = float.MaxValue;
@@ -327,6 +348,12 @@ class Program
 
                 foreach (var light in lights)
                 {
+                    // For now we're not actually doing anything
+                    if (light.anim)
+                    {
+                        continue;
+                    }
+
                     // Check if plane normal is facing towards the light
                     // If it's not then we're never going to be (directly) lit by this
                     // light.
