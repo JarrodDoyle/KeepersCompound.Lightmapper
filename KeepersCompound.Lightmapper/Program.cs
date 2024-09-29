@@ -37,7 +37,8 @@ class Program
         var missionName = "lm_test.cow";
 
         // campaignName = "TDP20AC_a_burrick_in_a_room";
-        // missionName = "miss20.mis";
+        campaignName = "AtdV";
+        missionName = "miss20.mis";
 
         // Setup extract path
         var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
@@ -189,6 +190,10 @@ class Program
                             innerRadius = propLight.InnerRadius,
                             radius = propLight.Radius,
                             r2 = propLight.Radius * propLight.Radius,
+                            spotlight = baseLight.spotlight,
+                            spotlightDir = baseLight.spotlightDir,
+                            spotlightInnerAngle = baseLight.spotlightInnerAngle,
+                            spotlightOuterAngle = baseLight.spotlightOuterAngle,
                         };
 
                         if (propLight.Radius == 0)
@@ -209,6 +214,10 @@ class Program
                             innerRadius = propAnimLight.InnerRadius,
                             radius = propAnimLight.Radius,
                             r2 = propAnimLight.Radius * propAnimLight.Radius,
+                            spotlight = baseLight.spotlight,
+                            spotlightDir = baseLight.spotlightDir,
+                            spotlightInnerAngle = baseLight.spotlightInnerAngle,
+                            spotlightOuterAngle = baseLight.spotlightOuterAngle,
                             anim = true,
                             animLightTableIndex = propAnimLight.LightTableLightIndex,
                         };
