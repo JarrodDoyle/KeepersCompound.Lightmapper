@@ -418,6 +418,8 @@ public class PropAnimLight : Property
         writer.Write((ushort)Mode);
         writer.Write(MsToBrighten);
         writer.Write(MsToDim);
+        writer.Write(MinBrightness);
+        writer.Write(MaxBrightness);
         writer.Write(CurrentBrightness);
         writer.Write(Rising);
         writer.Write(new byte[3]);
