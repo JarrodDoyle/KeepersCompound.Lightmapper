@@ -106,7 +106,8 @@ public class ObjectHierarchy
         AddProp<PropSpotlight>("P$Spotlight");
     }
 
-    public T GetProperty<T>(int objectId, string propName) where T : Property
+    // TODO: Work out if there's some nice way to automatically decide if we inherit
+    public T GetProperty<T>(int objectId, string propName, bool inherit = true) where T : Property
     {
         if (!_objects.ContainsKey(objectId))
         {
@@ -122,7 +123,7 @@ public class ObjectHierarchy
             }
 
             var prop = obj.GetProperty<T>(propName);
-            if (prop != null)
+            if (prop != null || !inherit)
             {
                 return prop;
             }

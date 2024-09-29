@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Numerics;
 using KeepersCompound.LGS;
 using KeepersCompound.LGS.Database;
@@ -132,7 +132,8 @@ class Program
                 {
                     // TODO: Handle PropSpotlightAndAmbient
                     var id = (int)brush.brushInfo;
-                    var propLight = hierarchy.GetProperty<PropLight>(id, "P$Light");
+                    var propAnimLight = hierarchy.GetProperty<PropAnimLight>(id, "P$AnimLight", false);
+                    var propLight = hierarchy.GetProperty<PropLight>(id, "P$Light", false);
                     var propLightColor = hierarchy.GetProperty<PropLightColor>(id, "P$LightColo");
                     var propSpotlight = hierarchy.GetProperty<PropSpotlight>(id, "P$Spotlight");
                     var propModelname = hierarchy.GetProperty<PropLabel>(id, "P$ModelName");
