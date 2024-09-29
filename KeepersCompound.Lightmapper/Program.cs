@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Numerics;
 using KeepersCompound.LGS;
 using KeepersCompound.LGS.Database;
@@ -24,7 +24,7 @@ class Program
         public float spotlightOuterAngle;
 
         public bool anim;
-        public int animObjId;
+        public int animLightTableIndex;
     }
 
     static void Main(string[] args)
@@ -200,12 +200,12 @@ class Program
                         var light = new Light
                         {
                             position = baseLight.position + propAnimLight.Offset,
-                            color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propAnimLight.Brightness),
+                            color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propAnimLight.MaxBrightness),
                             innerRadius = propAnimLight.InnerRadius,
                             radius = propAnimLight.Radius,
                             r2 = propAnimLight.Radius * propAnimLight.Radius,
                             anim = true,
-                            animObjId = id,
+                            animLightTableIndex = propAnimLight.LightTableLightIndex,
                         };
                         if (propAnimLight.Radius == 0)
                         {
