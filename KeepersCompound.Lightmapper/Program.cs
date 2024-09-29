@@ -348,10 +348,26 @@ class Program
 
                 foreach (var light in lights)
                 {
-                    // For now we're not actually doing anything
+                    var layer = 0;
                     if (light.anim)
                     {
-                        continue;
+                        var paletteIdx = -1;
+                        for (var i = 0; i < cell.AnimLightCount; i++)
+                        {
+                            var id = cell.AnimLights[i];
+                            if (id == light.animLightTableIndex)
+                            {
+                                paletteIdx = i;
+                            }
+                        }
+
+                        if (paletteIdx == -1 || (info.AnimLightBitmask & (1 << paletteIdx)) == 0)
+                        {
+                            continue;
+                        }
+
+                        var mask = info.AnimLightBitmask & ((1 << (paletteIdx + 1)) - 1);
+                        layer = BitOperations.PopCount((uint)mask);
                     }
 
                     // Check if plane normal is facing towards the light
@@ -422,7 +438,7 @@ class Program
                             if (hit)
                             {
                                 var strength = CalculateLightStrengthAtPoint(light, pos, plane);
-                                lightmap.AddLight(0, x, y, light.color, strength, hdr);
+                                lightmap.AddLight(layer, x, y, light.color, strength, hdr);
                             }
                         }
                     }
