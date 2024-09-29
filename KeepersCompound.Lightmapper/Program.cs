@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Numerics;
 using KeepersCompound.LGS;
 using KeepersCompound.LGS.Database;
@@ -22,6 +22,9 @@ class Program
         public Vector3 spotlightDir;
         public float spotlightInnerAngle;
         public float spotlightOuterAngle;
+
+        public bool anim;
+        public int animObjId;
     }
 
     static void Main(string[] args)
@@ -33,18 +36,16 @@ class Program
         var campaignName = "JAYRUDE_Tests";
         var missionName = "lm_test.cow";
 
+        // campaignName = "TDP20AC_a_burrick_in_a_room";
+        // missionName = "miss20.mis";
+
         // Setup extract path
         var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
-        Console.WriteLine(tmpDir.FullName);
         var resPathManager = new ResourcePathManager(tmpDir.FullName);
         resPathManager.Init(installPath);
 
         var campaign = resPathManager.GetCampaign(campaignName);
         var misPath = campaign.GetResourcePath(ResourceType.Mission, missionName);
-
-        // misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/JAYRUDE_Tests/lm_test.cow";
-        // misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/AtdV/miss20.mis";
-        // misPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/FMs/TDP20AC_a_burrick_in_a_room/miss20.mis";
         Timing.TimeStage("Total", () => LightmapMission(campaign, misPath));
 
         Timing.LogAll();
@@ -138,49 +139,53 @@ class Program
                     var propSpotlight = hierarchy.GetProperty<PropSpotlight>(id, "P$Spotlight");
                     var propModelname = hierarchy.GetProperty<PropLabel>(id, "P$ModelName");
 
+                    propLightColor ??= new PropLightColor { Hue = 0, Saturation = 0 };
+
+                    var light = new Light
+                    {
+                        position = brush.position,
+                        spotlightDir = -Vector3.UnitZ,
+                    };
+
+                    if (propModelname != null)
+                    {
+                        var resName = $"{propModelname.value.ToLower()}.bin";
+                        var modelPath = campaign.GetResourcePath(ResourceType.Object, resName);
+                        var model = new ModelFile(modelPath);
+                        if (model.TryGetVhot(ModelFile.VhotId.LightPosition, out var vhot))
+                        {
+                            light.position += vhot.Position;
+                        }
+                        if (model.TryGetVhot(ModelFile.VhotId.LightDirection, out vhot))
+                        {
+                            light.spotlightDir = vhot.Position;
+                        }
+                    }
+
+                    if (propSpotlight != null)
+                    {
+                        var rot = Matrix4x4.Identity;
+                        rot *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.angle.X));
+                        rot *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
+                        rot *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
+
+                        light.spotlight = true;
+                        light.spotlightDir = Vector3.Transform(light.spotlightDir, rot);
+                        light.spotlightInnerAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.InnerAngle));
+                        light.spotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.OuterAngle));
+                    }
+
+                    // if (propAnimLight != null)
+                    // {
+                    // }
+
                     if (propLight != null)
                     {
-                        propLightColor ??= new PropLightColor { Hue = 0, Saturation = 0 };
-
-                        var light = new Light
-                        {
-                            position = brush.position + propLight.Offset,
-                            color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propLight.Brightness),
-                            innerRadius = propLight.InnerRadius,
-                            radius = propLight.Radius,
-                            r2 = propLight.Radius * propLight.Radius,
-                            spotlightDir = -Vector3.UnitZ,
-                        };
-
-                        if (propModelname != null)
-                        {
-                            var resName = $"{propModelname.value.ToLower()}.bin";
-                            var modelPath = campaign.GetResourcePath(ResourceType.Object, resName);
-                            var model = new ModelFile(modelPath);
-                            if (model.TryGetVhot(ModelFile.VhotId.LightPosition, out var vhot))
-                            {
-                                light.position += vhot.Position;
-                            }
-                            if (model.TryGetVhot(ModelFile.VhotId.LightDirection, out vhot))
-                            {
-                                light.spotlightDir = vhot.Position;
-                            }
-                        }
-
-                        if (propSpotlight != null)
-                        {
-                            // TODO: Some objects seem to have spotlight direction embedded in the model file
-                            var rot = Matrix4x4.Identity;
-                            rot *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.angle.X));
-                            rot *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
-                            rot *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
-
-                            light.spotlight = true;
-                            light.spotlightDir = Vector3.Transform(light.spotlightDir, rot);
-                            light.spotlightInnerAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.InnerAngle));
-                            light.spotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.OuterAngle));
-                        }
-
+                        light.position += propLight.Offset;
+                        light.color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propLight.Brightness);
+                        light.innerRadius = propLight.InnerRadius;
+                        light.radius = propLight.Radius;
+                        light.r2 = propLight.Radius * propLight.Radius;
                         if (propLight.Radius == 0)
                         {
                             light.radius = float.MaxValue;
