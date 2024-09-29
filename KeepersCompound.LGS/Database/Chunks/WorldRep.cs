@@ -232,16 +232,16 @@ public class WorldRep : IChunk
             }
 
             // TODO: This ONLY works for rgba (bpp = 4)!!!
-            public void AddLight(int layer, int x, int y, byte r, byte g, byte b)
+            public readonly void AddLight(int layer, int x, int y, float r, float g, float b)
             {
                 var idx = (x + y * Width + layer * Width * Height) * Bpp;
-                Pixels[idx] = (byte)Math.Min(Pixels[idx] + b, 255);
-                Pixels[idx + 1] = (byte)Math.Min(Pixels[idx + 1] + g, 255);
-                Pixels[idx + 2] = (byte)Math.Min(Pixels[idx + 2] + r, 255);
+                Pixels[idx] = (byte)Math.Clamp(Pixels[idx] + r, 0, 255);
+                Pixels[idx + 1] = (byte)Math.Clamp(Pixels[idx + 1] + g, 0, 255);
+                Pixels[idx + 2] = (byte)Math.Clamp(Pixels[idx + 2] + b, 0, 255);
                 Pixels[idx + 3] = 255;
             }
 
-            public void AddLight(int layer, int x, int y, Vector3 color, float strength, bool hdr)
+            public readonly void AddLight(int layer, int x, int y, Vector3 color, float strength, bool hdr)
             {
                 if (hdr)
                 {
@@ -264,7 +264,7 @@ public class WorldRep : IChunk
                     c /= ratio;
                 }
 
-                AddLight(layer, x, y, (byte)c.X, (byte)c.Y, (byte)c.Z);
+                AddLight(layer, x, y, c.Z, c.Y, c.X);
             }
 
             public readonly void Write(BinaryWriter writer)
