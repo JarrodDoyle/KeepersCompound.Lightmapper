@@ -330,6 +330,110 @@ public class PropLight : Property
     }
 }
 
+public class PropAnimLight : Property
+{
+    public enum AnimMode
+    {
+        FlipMinMax,
+        SlideSmoothly,
+        Random,
+        MinBrightness,
+        MaxBrightness,
+        ZeroBrightness,
+        SmoothlyBrighten,
+        SmoothlyDim,
+        RandomButCoherent,
+        FlickerMinMax,
+    }
+
+    // Standard light props
+    public float Brightness;
+    public Vector3 Offset;
+    public float Radius;
+    public float InnerRadius;
+    public bool QuadLit;
+    public bool Dynamic;
+
+    // Animation
+    public AnimMode Mode;
+    public int MsToBrighten;
+    public int MsToDim;
+    public float MinBrightness;
+    public float MaxBrightness;
+
+    // Start state
+    public float CurrentBrightness;
+    public bool Rising;
+    public int Timer;
+    public bool Inactive;
+
+    // World rep info
+    public bool Refresh; // Not relevant to us. It's used to tell dromed it needs to relight
+    public ushort LightTableMapIndex;
+    public ushort LightTableLightIndex;
+    public ushort CellsReached;
+
+    private int _unknown;
+
+    public override void Read(BinaryReader reader)
+    {
+        base.Read(reader);
+        Brightness = reader.ReadSingle();
+        Offset = reader.ReadVec3();
+        Refresh = reader.ReadBoolean();
+        reader.ReadBytes(3);
+        LightTableMapIndex = reader.ReadUInt16();
+        CellsReached = reader.ReadUInt16();
+        LightTableLightIndex = reader.ReadUInt16();
+        Mode = (AnimMode)reader.ReadUInt16();
+        MsToBrighten = reader.ReadInt32();
+        MsToDim = reader.ReadInt32();
+        MinBrightness = reader.ReadSingle();
+        MaxBrightness = reader.ReadSingle();
+        CurrentBrightness = reader.ReadSingle();
+        Rising = reader.ReadBoolean();
+        reader.ReadBytes(3);
+        Timer = reader.ReadInt32();
+        Inactive = reader.ReadBoolean();
+        reader.ReadBytes(3);
+        Radius = reader.ReadSingle();
+        _unknown = reader.ReadInt32();
+        QuadLit = reader.ReadBoolean();
+        reader.ReadBytes(3);
+        InnerRadius = reader.ReadSingle();
+        Dynamic = reader.ReadBoolean();
+        reader.ReadBytes(3);
+    }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        writer.Write(Brightness);
+        writer.WriteVec3(Offset);
+        writer.Write(Refresh);
+        writer.Write(new byte[3]);
+        writer.Write(LightTableMapIndex);
+        writer.Write(CellsReached);
+        writer.Write(LightTableLightIndex);
+        writer.Write((ushort)Mode);
+        writer.Write(MsToBrighten);
+        writer.Write(MsToDim);
+        writer.Write(CurrentBrightness);
+        writer.Write(Rising);
+        writer.Write(new byte[3]);
+        writer.Write(Timer);
+        writer.Write(Inactive);
+        writer.Write(new byte[3]);
+        writer.Write(Radius);
+        writer.Write(_unknown);
+        writer.Write(QuadLit);
+        writer.Write(new byte[3]);
+        writer.Write(InnerRadius);
+        writer.Write(Dynamic);
+        writer.Write(new byte[3]);
+    }
+}
+
 public class PropLightColor : Property
 {
     public float Hue;

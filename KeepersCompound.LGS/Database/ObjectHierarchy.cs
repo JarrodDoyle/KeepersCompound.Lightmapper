@@ -101,6 +101,7 @@ public class ObjectHierarchy
         AddProp<PropString>("P$OTxtRepr3");
         AddProp<PropFloat>("P$RenderAlp");
         AddProp<PropLight>("P$Light");
+        AddProp<PropAnimLight>("P$AnimLight");
         AddProp<PropLightColor>("P$LightColo");
         AddProp<PropSpotlight>("P$Spotlight");
     }

@@ -152,6 +152,7 @@ public class DbFile
             "P$OTxtRepr2" => new PropertyChunk<PropString>(),
             "P$OTxtRepr3" => new PropertyChunk<PropString>(),
             "P$Light" => new PropertyChunk<PropLight>(),
+            "P$AnimLight" => new PropertyChunk<PropAnimLight>(),
             "P$LightColo" => new PropertyChunk<PropLightColor>(),
             "P$Spotlight" => new PropertyChunk<PropSpotlight>(),
             "P$RenderAlp" => new PropertyChunk<PropFloat>(),
