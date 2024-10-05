@@ -50,7 +50,7 @@ public class WorldRep : IChunk
         }
     }
 
-    public struct Cell
+    public class Cell
     {
         public struct Poly
         {
@@ -394,7 +394,7 @@ public class WorldRep : IChunk
             }
         }
 
-        public readonly void Write(BinaryWriter writer)
+        public void Write(BinaryWriter writer)
         {
             writer.Write(VertexCount);
             writer.Write(PolyCount);
@@ -515,16 +515,16 @@ public class WorldRep : IChunk
         }
     }
 
-    public struct LightTable
+    public class LightTable
     {
         public struct LightData
         {
             public Vector3 Location;
             public Vector3 Direction;
             public Vector3 Color;
-            float InnerAngle; // I'm pretty sure these are the spotlight angles
-            float OuterAngle;
-            float Radius;
+            public float InnerAngle; // I'm pretty sure these are the spotlight angles
+            public float OuterAngle;
+            public float Radius;
 
             public LightData(BinaryReader reader)
             {
@@ -595,7 +595,7 @@ public class WorldRep : IChunk
             }
         }
 
-        public readonly void Write(BinaryWriter writer)
+        public void Write(BinaryWriter writer)
         {
             writer.Write(LightCount);
             writer.Write(DynamicLightCount);
