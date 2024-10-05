@@ -408,23 +408,10 @@ class Program
                     var layer = 0;
                     if (light.anim)
                     {
-                        var paletteIdx = -1;
-                        for (var i = 0; i < cell.AnimLightCount; i++)
-                        {
-                            var id = cell.AnimLights[i];
-                            if (id == light.animLightTableIndex)
-                            {
-                                paletteIdx = i;
-                            }
-                        }
-
-                        if (paletteIdx == -1 || (info.AnimLightBitmask & (1 << paletteIdx)) == 0)
-                        {
-                            continue;
-                        }
-
-                        var mask = info.AnimLightBitmask & ((1 << (paletteIdx + 1)) - 1);
-                        layer = BitOperations.PopCount((uint)mask);
+                        // Because we're building the AnimLightBitmask in this loop we
+                        // know there aren't any layers set above us. So the target layer
+                        // is just the number of set bits + 1.
+                        layer = BitOperations.PopCount(info.AnimLightBitmask) + 1;
                     }
 
                     // Check if plane normal is facing towards the light
@@ -494,6 +481,27 @@ class Program
                             var hit = hitResult && Math.Abs(hitResult.Distance - direction.Length()) < MathUtils.Epsilon;
                             if (hit)
                             {
+                                // If we're an anim light there's a lot of stuff we need to update
+                                // Firstly we need to add the light to the cells anim light palette
+                                // Secondly we need to set the appropriate bit of the lightmap's
+                                // bitmask. Finally we need to check if the lightmap needs another layer
+                                if (light.anim)
+                                {
+                                    // TODO: Don't recalculate this for every point lol
+                                    var paletteIdx = cell.AnimLights.IndexOf((ushort)light.animLightTableIndex);
+                                    if (paletteIdx == -1)
+                                    {
+                                        paletteIdx = cell.AnimLightCount;
+                                        cell.AnimLightCount++;
+                                        cell.AnimLights.Add((ushort)light.animLightTableIndex);
+                                    }
+                                    info.AnimLightBitmask |= 1u << paletteIdx;
+
+                                    if (layer >= lightmap.Layers)
+                                    {
+                                        lightmap.AddLayer();
+                                    }
+                                }
                                 var strength = CalculateLightStrengthAtPoint(light, pos, plane);
                                 lightmap.AddLight(layer, x, y, light.color, strength, hdr);
                             }
