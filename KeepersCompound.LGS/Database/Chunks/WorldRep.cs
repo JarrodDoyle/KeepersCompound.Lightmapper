@@ -617,6 +617,7 @@ public class WorldRep : IChunk
 
         public void Reset()
         {
+            // TODO: Seems light we store something for sunlight at index 0 even if sunlight isn't being used
             LightCount = 0;
             DynamicLightCount = 0;
             AnimMapCount = 0;
