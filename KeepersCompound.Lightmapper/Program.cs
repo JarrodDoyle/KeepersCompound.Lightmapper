@@ -23,6 +23,7 @@ class Program
         public float spotlightOuterAngle;
 
         public bool anim;
+        public int animObjId;
         public int animLightTableIndex;
     }
 
@@ -73,6 +74,57 @@ class Program
         var ambient = rendParams.ambientLight * 255;
         var lights = Timing.TimeStage("Gather Lights", () => BuildLightList(mis, hierarchy, campaign));
         Timing.TimeStage("Light", () => CastSceneParallel(scene, worldRep, [.. lights], ambient));
+
+        // TODO: Move this to a function
+        // Now that we've set all the per-cell stuff we need to aggregate the cell mappings
+        // We can't do this in parallel which is why it's being done afterwards rather than
+        // as we go
+        var map = new Dictionary<ushort, List<WorldRep.LightTable.AnimCellMap>>();
+        for (var i = 0; i < worldRep.Cells.Length; i++)
+        {
+            var cell = worldRep.Cells[i];
+            for (var j = 0; j < cell.AnimLightCount; j++)
+            {
+                var animLightIdx = cell.AnimLights[j];
+                if (!map.TryGetValue(animLightIdx, out var value))
+                {
+                    value = [];
+                    map[animLightIdx] = value;
+                }
+                value.Add(new WorldRep.LightTable.AnimCellMap
+                {
+                    CellIndex = (ushort)i,
+                    LightIndex = (ushort)j,
+                });
+            }
+        }
+
+        if (!mis.TryGetChunk<PropertyChunk<PropAnimLight>>("P$AnimLight", out var animLightChunk))
+        {
+            return;
+        }
+        foreach (var (lightIdx, animCellMaps) in map)
+        {
+            // TODO: Set the range on the property
+            // Get the appropriate property!!
+            var light = lights.Find((l) => l.anim && l.animLightTableIndex == lightIdx);
+            foreach (var prop in animLightChunk.properties)
+            {
+                if (prop.objectId == light.animObjId)
+                {
+                    prop.LightTableLightIndex = lightIdx;
+                    prop.LightTableMapIndex = (ushort)worldRep.LightingTable.AnimMapCount;
+                    prop.CellsReached = (ushort)animCellMaps.Count;
+                    break;
+                }
+            }
+
+            foreach (var animCellMap in animCellMaps)
+            {
+                worldRep.LightingTable.AnimCellMaps.Add(animCellMap);
+                worldRep.LightingTable.AnimMapCount++;
+            }
+        }
 
         var dir = Path.GetDirectoryName(misPath);
         var filename = Path.GetFileNameWithoutExtension(misPath);
@@ -249,6 +301,7 @@ class Program
                         spotlightInnerAngle = baseLight.spotlightInnerAngle,
                         spotlightOuterAngle = baseLight.spotlightOuterAngle,
                         anim = true,
+                        animObjId = id,
                         animLightTableIndex = propAnimLight.LightTableLightIndex,
                     };
                     if (propAnimLight.Radius == 0)
