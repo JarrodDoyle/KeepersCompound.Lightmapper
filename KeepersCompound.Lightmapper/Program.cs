@@ -57,8 +57,6 @@ class Program
         var mis = Timing.TimeStage("Parse DB", () => new DbFile(misPath));
         var hierarchy = Timing.TimeStage("Build Hierarchy", () => BuildHierarchy(misPath, mis));
 
-        var lights = Timing.TimeStage("Gather Lights", () => BuildLightList(mis, hierarchy, campaign));
-
         // Build embree mesh
         if (!mis.Chunks.TryGetValue("WREXT", out var wrRaw))
             return;
@@ -75,6 +73,7 @@ class Program
         if (!mis.Chunks.TryGetValue("RENDPARAMS", out var rendParamsRaw))
             return;
         var ambient = ((RendParams)rendParamsRaw).ambientLight * 255;
+        var lights = Timing.TimeStage("Gather Lights", () => BuildLightList(mis, hierarchy, campaign));
         Timing.TimeStage("Light", () => CastSceneParallel(scene, worldRep, [.. lights], ambient));
 
         var dir = Path.GetDirectoryName(misPath);
@@ -109,126 +108,167 @@ class Program
         };
     }
 
-    // Get list of brush lights, and object lights (ignore anim lights for now)
-    private static List<Light> BuildLightList(DbFile mis, ObjectHierarchy hierarchy, ResourcePathManager.CampaignResources campaign)
+    // Gather all the brush, object, and anim ligths. Resets the lighting table
+    // TODO: Handle dynamic lights
+    private static List<Light> BuildLightList(
+        DbFile mis,
+        ObjectHierarchy hierarchy,
+        ResourcePathManager.CampaignResources campaign)
     {
         var lights = new List<Light>();
 
-        if (mis.Chunks.TryGetValue("BRLIST", out var brListRaw))
+        // Get the chunks we need
+        if (!mis.TryGetChunk<WorldRep>("WREXT", out var worldRep) ||
+            !mis.TryGetChunk<BrList>("BRLIST", out var brList))
         {
-            var brList = (BrList)brListRaw;
-            foreach (var brush in brList.Brushes)
+            return lights;
+        }
+
+        worldRep.LightingTable.Reset();
+
+        foreach (var brush in brList.Brushes)
+        {
+            if (brush.media == BrList.Brush.Media.Light)
             {
-                if (brush.media == BrList.Brush.Media.Light)
+                var sz = brush.size;
+                var light = new Light
                 {
-                    var sz = brush.size;
-                    lights.Add(new Light
+                    position = brush.position,
+                    color = HsbToRgb(sz.Y, sz.Z, Math.Min(sz.X, 255.0f)),
+                    radius = float.MaxValue,
+                    r2 = float.MaxValue,
+                };
+
+                lights.Add(light);
+                worldRep.LightingTable.AddLight(new WorldRep.LightTable.LightData
+                {
+                    Location = light.position,
+                    Direction = light.spotlightDir,
+                    Color = light.color / 32.0f, // TODO: This is based on light_scale config var
+                    InnerAngle = -1.0f,
+                    Radius = 0,
+                });
+            }
+            else if (brush.media == BrList.Brush.Media.Object)
+            {
+                // TODO: Handle PropSpotlightAndAmbient
+                var id = (int)brush.brushInfo;
+                var propAnimLight = hierarchy.GetProperty<PropAnimLight>(id, "P$AnimLight", false);
+                var propLight = hierarchy.GetProperty<PropLight>(id, "P$Light", false);
+                var propLightColor = hierarchy.GetProperty<PropLightColor>(id, "P$LightColo");
+                var propSpotlight = hierarchy.GetProperty<PropSpotlight>(id, "P$Spotlight");
+                var propModelname = hierarchy.GetProperty<PropLabel>(id, "P$ModelName");
+
+                propLightColor ??= new PropLightColor { Hue = 0, Saturation = 0 };
+
+                var baseLight = new Light
+                {
+                    position = brush.position,
+                    spotlightDir = -Vector3.UnitZ,
+                    spotlightInnerAngle = -1.0f,
+                };
+
+                if (propModelname != null)
+                {
+                    var resName = $"{propModelname.value.ToLower()}.bin";
+                    var modelPath = campaign.GetResourcePath(ResourceType.Object, resName);
+                    if (modelPath != null)
                     {
-                        position = brush.position,
-                        color = HsbToRgb(sz.Y, sz.Z, Math.Min(sz.X, 255.0f)),
-                        radius = float.MaxValue,
-                        r2 = float.MaxValue,
-                    });
+                        // TODO: Handle failing to find model more gracefully
+                        var model = new ModelFile(modelPath);
+                        if (model.TryGetVhot(ModelFile.VhotId.LightPosition, out var vhot))
+                        {
+                            baseLight.position += vhot.Position;
+                        }
+                        if (model.TryGetVhot(ModelFile.VhotId.LightDirection, out vhot))
+                        {
+                            baseLight.spotlightDir = vhot.Position;
+                        }
+                    }
+
                 }
-                else if (brush.media == BrList.Brush.Media.Object)
+
+                if (propSpotlight != null)
                 {
-                    // TODO: Handle PropSpotlightAndAmbient
-                    var id = (int)brush.brushInfo;
-                    var propAnimLight = hierarchy.GetProperty<PropAnimLight>(id, "P$AnimLight", false);
-                    var propLight = hierarchy.GetProperty<PropLight>(id, "P$Light", false);
-                    var propLightColor = hierarchy.GetProperty<PropLightColor>(id, "P$LightColo");
-                    var propSpotlight = hierarchy.GetProperty<PropSpotlight>(id, "P$Spotlight");
-                    var propModelname = hierarchy.GetProperty<PropLabel>(id, "P$ModelName");
+                    var rot = Matrix4x4.Identity;
+                    rot *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.angle.X));
+                    rot *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
+                    rot *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
 
-                    propLightColor ??= new PropLightColor { Hue = 0, Saturation = 0 };
+                    baseLight.spotlight = true;
+                    baseLight.spotlightDir = Vector3.Transform(baseLight.spotlightDir, rot);
+                    baseLight.spotlightInnerAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.InnerAngle));
+                    baseLight.spotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.OuterAngle));
+                }
 
-                    var baseLight = new Light
+                if (propLight != null)
+                {
+                    var light = new Light
                     {
-                        position = brush.position,
-                        spotlightDir = -Vector3.UnitZ,
+                        position = baseLight.position + propLight.Offset,
+                        color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propLight.Brightness),
+                        innerRadius = propLight.InnerRadius,
+                        radius = propLight.Radius,
+                        r2 = propLight.Radius * propLight.Radius,
+                        spotlight = baseLight.spotlight,
+                        spotlightDir = baseLight.spotlightDir,
+                        spotlightInnerAngle = baseLight.spotlightInnerAngle,
+                        spotlightOuterAngle = baseLight.spotlightOuterAngle,
                     };
 
-                    if (propModelname != null)
+                    if (propLight.Radius == 0)
                     {
-                        var resName = $"{propModelname.value.ToLower()}.bin";
-                        var modelPath = campaign.GetResourcePath(ResourceType.Object, resName);
-                        if (modelPath != null)
-                        {
-                            // TODO: Handle failing to find model more gracefully
-                            var model = new ModelFile(modelPath);
-                            if (model.TryGetVhot(ModelFile.VhotId.LightPosition, out var vhot))
-                            {
-                                baseLight.position += vhot.Position;
-                            }
-                            if (model.TryGetVhot(ModelFile.VhotId.LightDirection, out vhot))
-                            {
-                                baseLight.spotlightDir = vhot.Position;
-                            }
-                        }
-
+                        light.radius = float.MaxValue;
+                        light.r2 = float.MaxValue;
                     }
 
-                    if (propSpotlight != null)
+                    lights.Add(light);
+                    worldRep.LightingTable.AddLight(new WorldRep.LightTable.LightData
                     {
-                        var rot = Matrix4x4.Identity;
-                        rot *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.angle.X));
-                        rot *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
-                        rot *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
+                        Location = light.position,
+                        Direction = light.spotlightDir,
+                        Color = light.color / 32.0f, // TODO: This is based on light_scale config var
+                        InnerAngle = light.spotlightInnerAngle,
+                        OuterAngle = light.spotlightOuterAngle,
+                        Radius = propLight.Radius,
+                    });
+                }
 
-                        baseLight.spotlight = true;
-                        baseLight.spotlightDir = Vector3.Transform(baseLight.spotlightDir, rot);
-                        baseLight.spotlightInnerAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.InnerAngle));
-                        baseLight.spotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.OuterAngle));
+                if (propAnimLight != null)
+                {
+                    var lightIndex = worldRep.LightingTable.LightCount;
+                    propAnimLight.LightTableLightIndex = (ushort)lightIndex;
+
+                    var light = new Light
+                    {
+                        position = baseLight.position + propAnimLight.Offset,
+                        color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propAnimLight.MaxBrightness),
+                        innerRadius = propAnimLight.InnerRadius,
+                        radius = propAnimLight.Radius,
+                        r2 = propAnimLight.Radius * propAnimLight.Radius,
+                        spotlight = baseLight.spotlight,
+                        spotlightDir = baseLight.spotlightDir,
+                        spotlightInnerAngle = baseLight.spotlightInnerAngle,
+                        spotlightOuterAngle = baseLight.spotlightOuterAngle,
+                        anim = true,
+                        animLightTableIndex = propAnimLight.LightTableLightIndex,
+                    };
+                    if (propAnimLight.Radius == 0)
+                    {
+                        light.radius = float.MaxValue;
+                        light.r2 = float.MaxValue;
                     }
 
-                    if (propLight != null)
+                    lights.Add(light);
+                    worldRep.LightingTable.AddLight(new WorldRep.LightTable.LightData
                     {
-                        var light = new Light
-                        {
-                            position = baseLight.position + propLight.Offset,
-                            color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propLight.Brightness),
-                            innerRadius = propLight.InnerRadius,
-                            radius = propLight.Radius,
-                            r2 = propLight.Radius * propLight.Radius,
-                            spotlight = baseLight.spotlight,
-                            spotlightDir = baseLight.spotlightDir,
-                            spotlightInnerAngle = baseLight.spotlightInnerAngle,
-                            spotlightOuterAngle = baseLight.spotlightOuterAngle,
-                        };
-
-                        if (propLight.Radius == 0)
-                        {
-                            light.radius = float.MaxValue;
-                            light.r2 = float.MaxValue;
-                        }
-
-                        lights.Add(light);
-                    }
-
-                    if (propAnimLight != null)
-                    {
-                        var light = new Light
-                        {
-                            position = baseLight.position + propAnimLight.Offset,
-                            color = HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propAnimLight.MaxBrightness),
-                            innerRadius = propAnimLight.InnerRadius,
-                            radius = propAnimLight.Radius,
-                            r2 = propAnimLight.Radius * propAnimLight.Radius,
-                            spotlight = baseLight.spotlight,
-                            spotlightDir = baseLight.spotlightDir,
-                            spotlightInnerAngle = baseLight.spotlightInnerAngle,
-                            spotlightOuterAngle = baseLight.spotlightOuterAngle,
-                            anim = true,
-                            animLightTableIndex = propAnimLight.LightTableLightIndex,
-                        };
-                        if (propAnimLight.Radius == 0)
-                        {
-                            light.radius = float.MaxValue;
-                            light.r2 = float.MaxValue;
-                        }
-
-                        lights.Add(light);
-                    }
+                        Location = light.position,
+                        Direction = light.spotlightDir,
+                        Color = light.color / 32.0f, // TODO: This is based on light_scale config var
+                        InnerAngle = light.spotlightInnerAngle,
+                        OuterAngle = light.spotlightOuterAngle,
+                        Radius = propAnimLight.Radius,
+                    });
                 }
             }
         }
@@ -314,6 +354,8 @@ class Program
 
         Parallel.ForEach(wr.Cells, cell =>
         {
+            // TODO: Reset cell anim light count and palette
+
             var numPolys = cell.PolyCount;
             var numRenderPolys = cell.RenderPolyCount;
             var numPortalPolys = cell.PortalPolyCount;
@@ -335,6 +377,7 @@ class Program
                 var info = cell.LightList[polyIdx];
                 var lightmap = cell.Lightmaps[polyIdx];
 
+                info.AnimLightBitmask = 0;
                 lightmap.Reset(ambientLight, hdr);
 
                 // Get world position of lightmap (0, 0) (+0.5 so we cast from the center of a pixel)

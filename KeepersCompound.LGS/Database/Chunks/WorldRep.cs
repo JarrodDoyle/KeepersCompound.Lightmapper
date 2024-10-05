@@ -274,16 +274,16 @@ public class WorldRep : IChunk
                 AddLight(layer, x, y, c.Z, c.Y, c.X);
             }
 
-            public readonly void Reset(Vector3 ambientLight, bool hdr)
+            public void Reset(Vector3 ambientLight, bool hdr)
             {
-                // TODO: This should set to one layer when we write our own lighttable etc
                 var bytesPerLayer = Width * Height * Bpp;
-                for (var i = 0; i < Layers; i++)
+                Pixels.Clear();
+                Pixels.Add(new byte[bytesPerLayer]);
+                Layers = 1;
+
+                for (var j = 0; j < bytesPerLayer; j++)
                 {
-                    for (var j = 0; j < bytesPerLayer; j++)
-                    {
-                        Pixels[i][j] = 0;
-                    }
+                    Pixels[0][j] = 0;
                 }
 
                 for (var y = 0; y < Height; y++)
@@ -568,30 +568,31 @@ public class WorldRep : IChunk
         public int LightCount;
         public int DynamicLightCount;
         public int AnimMapCount;
-        public LightData[] Lights;
+        public List<LightData> Lights;
         public LightData[] ScratchpadLights;
-        public AnimCellMap[] AnimCellMaps;
+        public List<AnimCellMap> AnimCellMaps;
 
         // TODO: Support olddark
         public LightTable(BinaryReader reader)
         {
             LightCount = reader.ReadInt32();
             DynamicLightCount = reader.ReadInt32();
-            Lights = new LightData[LightCount + DynamicLightCount];
-            for (var i = 0; i < Lights.Length; i++)
+            var totalLightCount = LightCount + DynamicLightCount;
+            Lights = new List<LightData>(totalLightCount);
+            for (var i = 0; i < totalLightCount; i++)
             {
-                Lights[i] = new LightData(reader);
+                Lights.Add(new LightData(reader));
             }
             ScratchpadLights = new LightData[32];
-            for (var i = 0; i < ScratchpadLights.Length; i++)
+            for (var i = 0; i < 32; i++)
             {
                 ScratchpadLights[i] = new LightData(reader);
             }
             AnimMapCount = reader.ReadInt32();
-            AnimCellMaps = new AnimCellMap[AnimMapCount];
-            for (var i = 0; i < AnimCellMaps.Length; i++)
+            AnimCellMaps = new List<AnimCellMap>(AnimMapCount);
+            for (var i = 0; i < AnimMapCount; i++)
             {
-                AnimCellMaps[i] = new AnimCellMap(reader);
+                AnimCellMaps.Add(new AnimCellMap(reader));
             }
         }
 
@@ -612,6 +613,29 @@ public class WorldRep : IChunk
             {
                 map.Write(writer);
             }
+        }
+
+        public void Reset()
+        {
+            LightCount = 0;
+            DynamicLightCount = 0;
+            AnimMapCount = 0;
+            Lights.Clear();
+            AnimCellMaps.Clear();
+        }
+
+        public void AddLight(LightData data, bool dynamicLight = false)
+        {
+            if (dynamicLight)
+            {
+                DynamicLightCount++;
+            }
+            else
+            {
+                LightCount++;
+            }
+
+            Lights.Add(data);
         }
     }
 
