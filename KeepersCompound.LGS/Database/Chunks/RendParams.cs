@@ -1,4 +1,3 @@
-
 using System.Numerics;
 
 namespace KeepersCompound.LGS.Database.Chunks;

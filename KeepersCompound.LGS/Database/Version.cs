@@ -1,5 +1,3 @@
-using System.IO;
-
 namespace KeepersCompound.LGS.Database;
 
 public struct Version
