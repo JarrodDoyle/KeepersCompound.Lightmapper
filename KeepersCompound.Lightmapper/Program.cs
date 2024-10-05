@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using KeepersCompound.LGS;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
@@ -185,6 +185,9 @@ class Program
         {
             if (brush.media == BrList.Brush.Media.Light)
             {
+                // For some reason the light table index on brush lights is 1 indexed
+                brush.brushInfo = (uint)worldRep.LightingTable.LightCount + 1;
+
                 var sz = brush.size;
                 var light = new Light
                 {
