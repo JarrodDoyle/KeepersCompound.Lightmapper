@@ -352,7 +352,9 @@ class Program
 
         Parallel.ForEach(wr.Cells, cell =>
         {
-            // TODO: Reset cell anim light count and palette
+            // Reset cell AnimLight palette
+            cell.AnimLightCount = 0;
+            cell.AnimLights.Clear();
 
             var numPolys = cell.PolyCount;
             var numRenderPolys = cell.RenderPolyCount;

@@ -323,7 +323,7 @@ public class WorldRep : IChunk
         public uint IndexCount { get; set; }
         public byte[] Indices { get; set; }
         public Plane[] Planes { get; set; }
-        public ushort[] AnimLights { get; set; }
+        public List<ushort> AnimLights { get; set; }
         public LightmapInfo[] LightList { get; set; }
         public Lightmap[] Lightmaps { get; set; }
         public int LightIndexCount { get; set; }
@@ -370,10 +370,10 @@ public class WorldRep : IChunk
             {
                 Planes[i] = new Plane(reader.ReadVec3(), reader.ReadSingle());
             }
-            AnimLights = new ushort[AnimLightCount];
+            AnimLights = new List<ushort>(AnimLightCount);
             for (var i = 0; i < AnimLightCount; i++)
             {
-                AnimLights[i] = reader.ReadUInt16();
+                AnimLights.Add(reader.ReadUInt16());
             }
             LightList = new LightmapInfo[RenderPolyCount];
             for (var i = 0; i < RenderPolyCount; i++)
