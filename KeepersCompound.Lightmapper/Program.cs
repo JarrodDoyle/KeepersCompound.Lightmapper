@@ -74,57 +74,7 @@ class Program
         var ambient = rendParams.ambientLight * 255;
         var lights = Timing.TimeStage("Gather Lights", () => BuildLightList(mis, hierarchy, campaign));
         Timing.TimeStage("Light", () => CastSceneParallel(scene, worldRep, [.. lights], ambient));
-
-        // TODO: Move this to a function
-        // Now that we've set all the per-cell stuff we need to aggregate the cell mappings
-        // We can't do this in parallel which is why it's being done afterwards rather than
-        // as we go
-        var map = new Dictionary<ushort, List<WorldRep.LightTable.AnimCellMap>>();
-        for (var i = 0; i < worldRep.Cells.Length; i++)
-        {
-            var cell = worldRep.Cells[i];
-            for (var j = 0; j < cell.AnimLightCount; j++)
-            {
-                var animLightIdx = cell.AnimLights[j];
-                if (!map.TryGetValue(animLightIdx, out var value))
-                {
-                    value = [];
-                    map[animLightIdx] = value;
-                }
-                value.Add(new WorldRep.LightTable.AnimCellMap
-                {
-                    CellIndex = (ushort)i,
-                    LightIndex = (ushort)j,
-                });
-            }
-        }
-
-        if (!mis.TryGetChunk<PropertyChunk<PropAnimLight>>("P$AnimLight", out var animLightChunk))
-        {
-            return;
-        }
-        foreach (var (lightIdx, animCellMaps) in map)
-        {
-            // TODO: Set the range on the property
-            // Get the appropriate property!!
-            var light = lights.Find((l) => l.anim && l.animLightTableIndex == lightIdx);
-            foreach (var prop in animLightChunk.properties)
-            {
-                if (prop.objectId == light.animObjId)
-                {
-                    prop.LightTableLightIndex = lightIdx;
-                    prop.LightTableMapIndex = (ushort)worldRep.LightingTable.AnimMapCount;
-                    prop.CellsReached = (ushort)animCellMaps.Count;
-                    break;
-                }
-            }
-
-            foreach (var animCellMap in animCellMaps)
-            {
-                worldRep.LightingTable.AnimCellMaps.Add(animCellMap);
-                worldRep.LightingTable.AnimMapCount++;
-            }
-        }
+        Timing.TimeStage("Update Anim Mapping", () => SetAnimLightCellMaps(mis, worldRep, lights));
 
         var dir = Path.GetDirectoryName(misPath);
         var filename = Path.GetFileNameWithoutExtension(misPath);
@@ -156,6 +106,61 @@ class Program
             4 => new Vector3(t, p, v),
             _ => new Vector3(v, p, q),
         };
+    }
+
+    private static void SetAnimLightCellMaps(
+        DbFile mis,
+        WorldRep worldRep,
+        List<Light> lights)
+    {
+        // Now that we've set all the per-cell stuff we need to aggregate the cell mappings
+        // We can't do this in parallel which is why it's being done afterwards rather than
+        // as we go
+        var map = new Dictionary<ushort, List<WorldRep.LightTable.AnimCellMap>>();
+        for (var i = 0; i < worldRep.Cells.Length; i++)
+        {
+            var cell = worldRep.Cells[i];
+            for (var j = 0; j < cell.AnimLightCount; j++)
+            {
+                var animLightIdx = cell.AnimLights[j];
+                if (!map.TryGetValue(animLightIdx, out var value))
+                {
+                    value = [];
+                    map[animLightIdx] = value;
+                }
+                value.Add(new WorldRep.LightTable.AnimCellMap
+                {
+                    CellIndex = (ushort)i,
+                    LightIndex = (ushort)j,
+                });
+            }
+        }
+
+        if (!mis.TryGetChunk<PropertyChunk<PropAnimLight>>("P$AnimLight", out var animLightChunk))
+        {
+            return;
+        }
+        foreach (var (lightIdx, animCellMaps) in map)
+        {
+            // Get the appropriate property!!
+            var light = lights.Find((l) => l.anim && l.animLightTableIndex == lightIdx);
+            foreach (var prop in animLightChunk.properties)
+            {
+                if (prop.objectId == light.animObjId)
+                {
+                    prop.LightTableLightIndex = lightIdx;
+                    prop.LightTableMapIndex = (ushort)worldRep.LightingTable.AnimMapCount;
+                    prop.CellsReached = (ushort)animCellMaps.Count;
+                    break;
+                }
+            }
+
+            foreach (var animCellMap in animCellMaps)
+            {
+                worldRep.LightingTable.AnimCellMaps.Add(animCellMap);
+                worldRep.LightingTable.AnimMapCount++;
+            }
+        }
     }
 
     // Gather all the brush, object, and anim ligths. Resets the lighting table
