@@ -116,7 +116,7 @@ public class WorldRep : IChunk
             }
         }
 
-        public struct LightmapInfo
+        public class LightmapInfo
         {
             public (short, short) Bases { get; set; }
             public short PaddedWidth { get; set; }
@@ -137,7 +137,7 @@ public class WorldRep : IChunk
                 AnimLightBitmask = reader.ReadUInt32();
             }
 
-            public readonly void Write(BinaryWriter writer)
+            public void Write(BinaryWriter writer)
             {
                 writer.Write(Bases.Item1);
                 writer.Write(Bases.Item2);
