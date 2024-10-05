@@ -150,7 +150,7 @@ public class WorldRep : IChunk
             }
         }
 
-        public struct Lightmap
+        public class Lightmap
         {
             public List<byte[]> Pixels { get; set; }
 
@@ -174,7 +174,7 @@ public class WorldRep : IChunk
                 Bpp = bytesPerPixel;
             }
 
-            public readonly Vector4 GetPixel(uint layer, uint x, uint y)
+            public Vector4 GetPixel(uint layer, uint x, uint y)
             {
                 if (layer >= Layers || x >= Width || y >= Height)
                 {
@@ -198,7 +198,7 @@ public class WorldRep : IChunk
                 }
             }
 
-            public readonly byte[] AsBytesRgba(int layer)
+            public byte[] AsBytesRgba(int layer)
             {
                 ArgumentOutOfRangeException.ThrowIfLessThan(layer, 0, nameof(layer));
                 ArgumentOutOfRangeException.ThrowIfGreaterThan(layer, Layers, nameof(layer));
@@ -238,7 +238,7 @@ public class WorldRep : IChunk
             }
 
             // TODO: This ONLY works for rgba (bpp = 4)!!!
-            public readonly void AddLight(int layer, int x, int y, float r, float g, float b)
+            public void AddLight(int layer, int x, int y, float r, float g, float b)
             {
                 var idx = (x + y * Width) * Bpp;
                 var pLayer = Pixels[layer];
@@ -248,7 +248,7 @@ public class WorldRep : IChunk
                 pLayer[idx + 3] = 255;
             }
 
-            public readonly void AddLight(int layer, int x, int y, Vector3 color, float strength, bool hdr)
+            public void AddLight(int layer, int x, int y, Vector3 color, float strength, bool hdr)
             {
                 if (hdr)
                 {
@@ -276,15 +276,9 @@ public class WorldRep : IChunk
 
             public void Reset(Vector3 ambientLight, bool hdr)
             {
-                var bytesPerLayer = Width * Height * Bpp;
+                Layers = 0;
                 Pixels.Clear();
-                Pixels.Add(new byte[bytesPerLayer]);
-                Layers = 1;
-
-                for (var j = 0; j < bytesPerLayer; j++)
-                {
-                    Pixels[0][j] = 0;
-                }
+                AddLayer();
 
                 for (var y = 0; y < Height; y++)
                 {
@@ -295,7 +289,18 @@ public class WorldRep : IChunk
                 }
             }
 
-            public readonly void Write(BinaryWriter writer)
+            public void AddLayer()
+            {
+                var bytesPerLayer = Width * Height * Bpp;
+                Pixels.Add(new byte[bytesPerLayer]);
+                for (var j = 0; j < bytesPerLayer; j++)
+                {
+                    Pixels[Layers][j] = 0;
+                }
+                Layers++;
+            }
+
+            public void Write(BinaryWriter writer)
             {
                 foreach (var layer in Pixels)
                 {
