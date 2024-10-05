@@ -58,9 +58,8 @@ class Program
         var hierarchy = Timing.TimeStage("Build Hierarchy", () => BuildHierarchy(misPath, mis));
 
         // Build embree mesh
-        if (!mis.Chunks.TryGetValue("WREXT", out var wrRaw))
+        if (!mis.TryGetChunk<WorldRep>("WREXT", out var worldRep))
             return;
-        var worldRep = (WorldRep)wrRaw;
         var scene = Timing.TimeStage("Build Scene", () =>
         {
             var rt = new Raytracer();
@@ -70,9 +69,9 @@ class Program
         });
 
         // For each lightmap pixel cast against all the brush and object lights
-        if (!mis.Chunks.TryGetValue("RENDPARAMS", out var rendParamsRaw))
+        if (!mis.TryGetChunk<RendParams>("RENDPARAMS", out var rendParams))
             return;
-        var ambient = ((RendParams)rendParamsRaw).ambientLight * 255;
+        var ambient = rendParams.ambientLight * 255;
         var lights = Timing.TimeStage("Gather Lights", () => BuildLightList(mis, hierarchy, campaign));
         Timing.TimeStage("Light", () => CastSceneParallel(scene, worldRep, [.. lights], ambient));
 
@@ -279,11 +278,11 @@ class Program
     private static ObjectHierarchy BuildHierarchy(string misPath, DbFile misFile)
     {
         ObjectHierarchy objHierarchy;
-        if (misFile.Chunks.TryGetValue("GAM_FILE", out var gamFileChunk))
+        if (misFile.TryGetChunk<GamFile>("GAM_FILE", out var gamFile))
         {
             var dir = Path.GetDirectoryName(misPath);
             var options = new EnumerationOptions { MatchCasing = MatchCasing.CaseInsensitive };
-            var name = ((GamFile)gamFileChunk).fileName;
+            var name = gamFile.fileName;
             var paths = Directory.GetFiles(dir!, name, options);
             if (paths.Length > 0)
             {

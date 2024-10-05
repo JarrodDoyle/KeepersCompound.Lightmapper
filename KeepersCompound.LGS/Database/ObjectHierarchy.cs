@@ -38,19 +38,17 @@ public class ObjectHierarchy
 
         T GetMergedChunk<T>(string name) where T : IMergable
         {
-            if (db.Chunks.TryGetValue(name, out var rawChunk))
+            if (!db.TryGetChunk<T>(name, out var chunk))
             {
-                var chunk = (T)rawChunk;
-                if (gam != null && gam.Chunks.TryGetValue(name, out var rawGamChunk))
-                {
-                    var gamChunk = (T)rawGamChunk;
-                    gamChunk.Merge(chunk);
-                    return gamChunk;
-                }
-                return chunk;
+                throw new ArgumentException($"No chunk with name ({name}) found", nameof(name));
             }
 
-            throw new ArgumentException($"No chunk with name ({name}) found", nameof(name));
+            if (gam != null && gam.TryGetChunk<T>(name, out var gamChunk))
+            {
+                gamChunk.Merge(chunk);
+                return gamChunk;
+            }
+            return chunk;
         }
 
         // Add parentages
