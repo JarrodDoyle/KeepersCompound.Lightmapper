@@ -133,6 +133,17 @@ public class DbFile
         writer.Write(tocOffset);
     }
 
+    public bool TryGetChunk<T>(string name, out T chunk)
+    {
+        if (Chunks.TryGetValue(name, out var rawChunk))
+        {
+            chunk = (T)rawChunk;
+            return true;
+        }
+        chunk = default;
+        return false;
+    }
+
     private static IChunk NewChunk(string entryName)
     {
         return entryName switch
