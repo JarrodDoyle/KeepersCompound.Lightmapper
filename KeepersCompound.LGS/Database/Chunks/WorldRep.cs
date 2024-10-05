@@ -617,11 +617,14 @@ public class WorldRep : IChunk
 
         public void Reset()
         {
-            // TODO: Seems light we store something for sunlight at index 0 even if sunlight isn't being used
-            LightCount = 0;
+            // Seems light we store something for sunlight at index 0 even if sunlight isn't being used
+            // TODO: Work out what to actually *put* here
+            LightCount = 1;
+            Lights.Clear();
+            Lights.Add(new LightData());
+
             DynamicLightCount = 0;
             AnimMapCount = 0;
-            Lights.Clear();
             AnimCellMaps.Clear();
         }
 
