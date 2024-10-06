@@ -49,6 +49,12 @@ public static class MathUtils
         return d2 < r2;
     }
 
+    public static bool Intersects(Sphere sphere, Sphere other)
+    {
+        var rsum = sphere.Radius + other.Radius;
+        return (sphere.Position - other.Position).Length() <= rsum;
+    }
+
     public static float DistanceFromPlane(Plane plane, Vector3 point)
     {
         return Math.Abs(Vector3.Dot(plane.Normal, point) + plane.D) / plane.Normal.Length();
