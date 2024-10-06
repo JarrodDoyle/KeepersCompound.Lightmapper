@@ -22,9 +22,9 @@ class Program
         public float spotlightInnerAngle;
         public float spotlightOuterAngle;
 
+        public int objId;
+        public int lightTableIndex;
         public bool anim;
-        public int animObjId;
-        public int animLightTableIndex;
     }
 
     static void Main(string[] args)
@@ -36,9 +36,10 @@ class Program
         var campaignName = "JAYRUDE_Tests";
         var missionName = "lm_test.cow";
 
+        // campaignName = "JAYRUDE_1MIL_Mages";
         // campaignName = "TDP20AC_a_burrick_in_a_room";
-        campaignName = "AtdV";
-        missionName = "miss20.mis";
+        // campaignName = "AtdV";
+        // missionName = "miss20.mis";
 
         // Setup extract path
         var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
@@ -143,10 +144,10 @@ class Program
         foreach (var (lightIdx, animCellMaps) in map)
         {
             // Get the appropriate property!!
-            var light = lights.Find((l) => l.anim && l.animLightTableIndex == lightIdx);
+            var light = lights.Find((l) => l.anim && l.lightTableIndex == lightIdx);
             foreach (var prop in animLightChunk.properties)
             {
-                if (prop.objectId == light.animObjId)
+                if (prop.objectId == light.objId)
                 {
                     prop.LightTableLightIndex = lightIdx;
                     prop.LightTableMapIndex = (ushort)worldRep.LightingTable.AnimMapCount;
@@ -195,6 +196,7 @@ class Program
                     color = HsbToRgb(sz.Y, sz.Z, Math.Min(sz.X, 255.0f)),
                     radius = float.MaxValue,
                     r2 = float.MaxValue,
+                    lightTableIndex = worldRep.LightingTable.LightCount,
                 };
 
                 lights.Add(light);
@@ -272,6 +274,7 @@ class Program
                         spotlightDir = baseLight.spotlightDir,
                         spotlightInnerAngle = baseLight.spotlightInnerAngle,
                         spotlightOuterAngle = baseLight.spotlightOuterAngle,
+                        lightTableIndex = worldRep.LightingTable.LightCount,
                     };
 
                     if (propLight.Radius == 0)
@@ -309,8 +312,8 @@ class Program
                         spotlightInnerAngle = baseLight.spotlightInnerAngle,
                         spotlightOuterAngle = baseLight.spotlightOuterAngle,
                         anim = true,
-                        animObjId = id,
-                        animLightTableIndex = propAnimLight.LightTableLightIndex,
+                        objId = id,
+                        lightTableIndex = propAnimLight.LightTableLightIndex,
                     };
                     if (propAnimLight.Radius == 0)
                     {
@@ -410,6 +413,41 @@ class Program
     private static void CastSceneParallel(Raytracer scene, WorldRep wr, Light[] lights, Vector3 ambientLight)
     {
         var hdr = wr.DataHeader.LightmapFormat == 2;
+
+        // We set up light indices in a separate loop because the actual lighting
+        // phase takes a lot of shortcuts that we don't want
+        Parallel.ForEach(wr.Cells, cell =>
+        {
+            cell.LightIndexCount = 0;
+            cell.LightIndices.Clear();
+
+            // The OG lightmapper uses the cell traversal to work out all the cells that
+            // are actually visited. We're a lot more coarse and just say if a cell is
+            // in range then we potentially affect the lighting in the cell and add it 
+            // to the list. Cells already contain their sphere bounds so we just use
+            // that for now, but a tighter AABB is another option.
+            var cellSphere = new MathUtils.Sphere(cell.SphereCenter, cell.SphereRadius);
+            foreach (var light in lights)
+            {
+                // If the light had radius 0 (represented here with max float) then we
+                // always add it to the list
+                // TODO: Neaten this up
+                if (light.radius == float.MaxValue)
+                {
+                    cell.LightIndexCount++;
+                    cell.LightIndices.Add((ushort)light.lightTableIndex);
+                }
+                else
+                {
+                    var lightSphere = new MathUtils.Sphere(light.position, light.radius);
+                    if (MathUtils.Intersects(cellSphere, lightSphere))
+                    {
+                        cell.LightIndexCount++;
+                        cell.LightIndices.Add((ushort)light.lightTableIndex);
+                    }
+                }
+            }
+        });
 
         Parallel.ForEach(wr.Cells, cell =>
         {
@@ -549,12 +587,12 @@ class Program
                                 if (light.anim)
                                 {
                                     // TODO: Don't recalculate this for every point lol
-                                    var paletteIdx = cell.AnimLights.IndexOf((ushort)light.animLightTableIndex);
+                                    var paletteIdx = cell.AnimLights.IndexOf((ushort)light.lightTableIndex);
                                     if (paletteIdx == -1)
                                     {
                                         paletteIdx = cell.AnimLightCount;
                                         cell.AnimLightCount++;
-                                        cell.AnimLights.Add((ushort)light.animLightTableIndex);
+                                        cell.AnimLights.Add((ushort)light.lightTableIndex);
                                     }
                                     info.AnimLightBitmask |= 1u << paletteIdx;
 
