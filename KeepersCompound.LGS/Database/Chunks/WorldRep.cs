@@ -332,7 +332,7 @@ public class WorldRep : IChunk
         public LightmapInfo[] LightList { get; set; }
         public Lightmap[] Lightmaps { get; set; }
         public int LightIndexCount { get; set; }
-        public ushort[] LightIndices { get; set; }
+        public List<ushort> LightIndices { get; set; }
 
         public Cell(BinaryReader reader, int bpp)
         {
@@ -392,10 +392,10 @@ public class WorldRep : IChunk
                 Lightmaps[i] = new Lightmap(reader, info.Width, info.Height, info.AnimLightBitmask, bpp);
             }
             LightIndexCount = reader.ReadInt32();
-            LightIndices = new ushort[LightIndexCount];
+            LightIndices = new List<ushort>(LightIndexCount);
             for (var i = 0; i < LightIndexCount; i++)
             {
-                LightIndices[i] = reader.ReadUInt16();
+                LightIndices.Add(reader.ReadUInt16());
             }
         }
 
