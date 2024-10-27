@@ -346,9 +346,8 @@ class Program
         var indices = new List<int>();
 
         var cells = worldRep.Cells;
-        for (var cellIdx = 0; cellIdx < cells.Length; cellIdx++)
+        foreach (var cell in cells)
         {
-            var cell = cells[cellIdx];
             var numPolys = cell.PolyCount;
             var numRenderPolys = cell.RenderPolyCount;
             var numPortalPolys = cell.PortalPolyCount;
@@ -361,7 +360,7 @@ class Program
 
             var maxPolyIdx = Math.Min(numRenderPolys, numPolys - numPortalPolys);
             var cellIdxOffset = 0;
-            for (int polyIdx = 0; polyIdx < maxPolyIdx; polyIdx++)
+            for (var polyIdx = 0; polyIdx < maxPolyIdx; polyIdx++)
             {
                 var poly = cell.Polys[polyIdx];
 
@@ -373,7 +372,7 @@ class Program
                     vertices.Add(vertex);
                 }
 
-                for (int j = 1; j < numPolyVertices - 1; j++)
+                for (var j = 1; j < numPolyVertices - 1; j++)
                 {
                     indices.Add(meshIndexOffset);
                     indices.Add(meshIndexOffset + j);
@@ -409,7 +408,7 @@ class Program
 
             var maxPolyIdx = Math.Min(numRenderPolys, numPolys - numPortalPolys);
             var cellIdxOffset = 0;
-            for (int polyIdx = 0; polyIdx < maxPolyIdx; polyIdx++)
+            for (var polyIdx = 0; polyIdx < maxPolyIdx; polyIdx++)
             {
                 var poly = cell.Polys[polyIdx];
                 var plane = cell.Planes[poly.PlaneId];
