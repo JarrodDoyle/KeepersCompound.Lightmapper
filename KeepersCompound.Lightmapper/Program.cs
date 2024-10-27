@@ -445,13 +445,6 @@ class Program
                 foreach (var light in lights)
                 {
                     var layer = 0;
-                    if (light.anim)
-                    {
-                        // Because we're building the AnimLightBitmask in this loop we
-                        // know there aren't any layers set above us. So the target layer
-                        // is just the number of set bits + 1.
-                        layer = BitOperations.PopCount(info.AnimLightBitmask) + 1;
-                    }
 
                     // Check if plane normal is facing towards the light
                     // If it's not then we're never going to be (directly) lit by this
@@ -535,11 +528,7 @@ class Program
                                         cell.AnimLights.Add((ushort)light.lightTableIndex);
                                     }
                                     info.AnimLightBitmask |= 1u << paletteIdx;
-
-                                    if (layer >= lightmap.Layers)
-                                    {
-                                        lightmap.AddLayer();
-                                    }
+                                    layer = paletteIdx + 1;
                                 }
                                 var strength = CalculateLightStrengthAtPoint(light, pos, plane);
                                 lightmap.AddLight(layer, x, y, light.color, strength, hdr);
