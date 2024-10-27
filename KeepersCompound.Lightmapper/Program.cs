@@ -95,10 +95,10 @@ class Program
         // We can't do this in parallel which is why it's being done afterwards rather than
         // as we go
         var map = new Dictionary<ushort, List<WorldRep.LightTable.AnimCellMap>>();
-        for (var i = 0; i < worldRep.Cells.Length; i++)
+        for (ushort i = 0; i < worldRep.Cells.Length; i++)
         {
             var cell = worldRep.Cells[i];
-            for (var j = 0; j < cell.AnimLightCount; j++)
+            for (ushort j = 0; j < cell.AnimLightCount; j++)
             {
                 var animLightIdx = cell.AnimLights[j];
                 if (!map.TryGetValue(animLightIdx, out var value))
@@ -108,8 +108,8 @@ class Program
                 }
                 value.Add(new WorldRep.LightTable.AnimCellMap
                 {
-                    CellIndex = (ushort)i,
-                    LightIndex = (ushort)j,
+                    CellIndex = i,
+                    LightIndex = j,
                 });
             }
         }
@@ -120,24 +120,16 @@ class Program
         }
         foreach (var (lightIdx, animCellMaps) in map)
         {
-            // Get the appropriate property!!
-            var light = lights.Find((l) => l.anim && l.lightTableIndex == lightIdx);
-            foreach (var prop in animLightChunk.properties)
-            {
-                if (prop.objectId == light.objId)
-                {
-                    prop.LightTableLightIndex = lightIdx;
-                    prop.LightTableMapIndex = (ushort)worldRep.LightingTable.AnimMapCount;
-                    prop.CellsReached = (ushort)animCellMaps.Count;
-                    break;
-                }
-            }
+            // We need to update the object property so it knows its mapping range
+            // TODO: Handle nulls
+            var light = lights.Find(l => l.anim && l.lightTableIndex == lightIdx);
+            var prop = animLightChunk.properties.Find(p => p.objectId == light.objId);
+            prop.LightTableLightIndex = lightIdx;
+            prop.LightTableMapIndex = (ushort)worldRep.LightingTable.AnimMapCount;
+            prop.CellsReached = (ushort)animCellMaps.Count;
 
-            foreach (var animCellMap in animCellMaps)
-            {
-                worldRep.LightingTable.AnimCellMaps.Add(animCellMap);
-                worldRep.LightingTable.AnimMapCount++;
-            }
+            worldRep.LightingTable.AnimCellMaps.AddRange(animCellMaps);
+            worldRep.LightingTable.AnimMapCount += animCellMaps.Count;
         }
     }
 
