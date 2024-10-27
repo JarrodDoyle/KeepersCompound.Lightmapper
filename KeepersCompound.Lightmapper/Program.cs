@@ -74,6 +74,7 @@ class Program
             return;
         var ambient = rendParams.ambientLight * 255;
         var lights = Timing.TimeStage("Gather Lights", () => BuildLightList(mis, hierarchy, campaign));
+        Timing.TimeStage("Set Light Indices", () => SetCellLightIndices(worldRep, [.. lights]));
         Timing.TimeStage("Light", () => CastSceneParallel(scene, worldRep, [.. lights], ambient));
         Timing.TimeStage("Update Anim Mapping", () => SetAnimLightCellMaps(mis, worldRep, lights));
 
@@ -389,42 +390,6 @@ class Program
     private static void CastSceneParallel(Raytracer scene, WorldRep wr, Light[] lights, Vector3 ambientLight)
     {
         var hdr = wr.DataHeader.LightmapFormat == 2;
-
-        // We set up light indices in a separate loop because the actual lighting
-        // phase takes a lot of shortcuts that we don't want
-        Parallel.ForEach(wr.Cells, cell =>
-        {
-            cell.LightIndexCount = 0;
-            cell.LightIndices.Clear();
-
-            // The OG lightmapper uses the cell traversal to work out all the cells that
-            // are actually visited. We're a lot more coarse and just say if a cell is
-            // in range then we potentially affect the lighting in the cell and add it 
-            // to the list. Cells already contain their sphere bounds so we just use
-            // that for now, but a tighter AABB is another option.
-            var cellSphere = new MathUtils.Sphere(cell.SphereCenter, cell.SphereRadius);
-            foreach (var light in lights)
-            {
-                // If the light had radius 0 (represented here with max float) then we
-                // always add it to the list
-                // TODO: Neaten this up
-                if (light.radius == float.MaxValue)
-                {
-                    cell.LightIndexCount++;
-                    cell.LightIndices.Add((ushort)light.lightTableIndex);
-                }
-                else
-                {
-                    var lightSphere = new MathUtils.Sphere(light.position, light.radius);
-                    if (MathUtils.Intersects(cellSphere, lightSphere))
-                    {
-                        cell.LightIndexCount++;
-                        cell.LightIndices.Add((ushort)light.lightTableIndex);
-                    }
-                }
-            }
-        });
-
         Parallel.ForEach(wr.Cells, cell =>
         {
             // Reset cell AnimLight palette
@@ -585,6 +550,35 @@ class Program
                 }
 
                 cellIdxOffset += poly.VertexCount;
+            }
+        });
+    }
+
+    private static void SetCellLightIndices(WorldRep wr, Light[] lights)
+    {
+        // We set up light indices in separately from lighting because the actual
+        // lighting phase takes a lot of shortcuts that we don't want
+        Parallel.ForEach(wr.Cells, cell =>
+        {
+            cell.LightIndexCount = 0;
+            cell.LightIndices.Clear();
+
+            // The OG lightmapper uses the cell traversal to work out all the cells that
+            // are actually visited. We're a lot more coarse and just say if a cell is
+            // in range then we potentially affect the lighting in the cell and add it 
+            // to the list. Cells already contain their sphere bounds so we just use
+            // that for now, but a tighter AABB is another option.
+            var cellSphere = new MathUtils.Sphere(cell.SphereCenter, cell.SphereRadius);
+            foreach (var light in lights)
+            {
+                // Lights should only get added if their radius intersects with the cell
+                // 0 radius (infinite) lights are a special case with max float
+                if (light.radius == float.MaxValue ||
+                    MathUtils.Intersects(cellSphere, new MathUtils.Sphere(light.position, light.radius)))
+                {
+                    cell.LightIndexCount++;
+                    cell.LightIndices.Add((ushort)light.lightTableIndex);
+                }
             }
         });
     }
