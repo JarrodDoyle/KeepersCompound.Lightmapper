@@ -571,10 +571,7 @@ class Program
             var cellSphere = new MathUtils.Sphere(cell.SphereCenter, cell.SphereRadius);
             foreach (var light in lights)
             {
-                // Lights should only get added if their radius intersects with the cell
-                // 0 radius (infinite) lights are a special case with max float
-                if (light.radius == float.MaxValue ||
-                    MathUtils.Intersects(cellSphere, new MathUtils.Sphere(light.position, light.radius)))
+                if (MathUtils.Intersects(cellSphere, new MathUtils.Sphere(light.position, light.radius)))
                 {
                     cell.LightIndexCount++;
                     cell.LightIndices.Add((ushort)light.lightTableIndex);

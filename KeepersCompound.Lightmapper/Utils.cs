@@ -76,6 +76,7 @@ public static class MathUtils
         return d2 < r2;
     }
 
+    // Should automagically handle max float radii
     public static bool Intersects(Sphere sphere, Sphere other)
     {
         var rsum = sphere.Radius + other.Radius;
