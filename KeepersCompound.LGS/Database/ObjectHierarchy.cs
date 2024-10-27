@@ -79,11 +79,12 @@ public class ObjectHierarchy
             foreach (var prop in chunk.properties)
             {
                 var id = prop.objectId;
-                if (!_objects.ContainsKey(id))
+                if (!_objects.TryGetValue(id, out var value))
                 {
-                    _objects.Add(id, new DarkObject(id));
+                    value = new DarkObject(id);
+                    _objects.Add(id, value);
                 }
-                _objects[id].properties.TryAdd(name, prop);
+                value.properties.TryAdd(name, prop);
             }
         }
 
