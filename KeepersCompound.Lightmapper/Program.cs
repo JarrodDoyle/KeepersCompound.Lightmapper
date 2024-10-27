@@ -554,12 +554,19 @@ class Program
 
     private static void SetCellLightIndices(WorldRep wr, Light[] lights)
     {
+        // TODO: Move this functionality to the LGS library
         // We set up light indices in separately from lighting because the actual
         // lighting phase takes a lot of shortcuts that we don't want
         Parallel.ForEach(wr.Cells, cell =>
         {
             cell.LightIndexCount = 0;
             cell.LightIndices.Clear();
+            
+            // The first element of the light indices array is used to store how many
+            // actual lights are in the list. Which is just LightIndexCount - 1...
+            // Odd choice I know
+            cell.LightIndexCount++;
+            cell.LightIndices.Add(0);
 
             // The OG lightmapper uses the cell traversal to work out all the cells that
             // are actually visited. We're a lot more coarse and just say if a cell is
@@ -573,6 +580,7 @@ class Program
                 {
                     cell.LightIndexCount++;
                     cell.LightIndices.Add((ushort)light.lightTableIndex);
+                    cell.LightIndices[0]++;
                 }
             }
         });
