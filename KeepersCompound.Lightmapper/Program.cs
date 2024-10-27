@@ -103,8 +103,8 @@ class Program
         {
             // We need to update the object property so it knows its mapping range
             // TODO: Handle nulls
-            var light = lights.Find(l => l.anim && l.lightTableIndex == lightIdx);
-            var prop = animLightChunk.properties.Find(p => p.objectId == light.objId);
+            var light = lights.Find(l => l.Anim && l.LightTableIndex == lightIdx);
+            var prop = animLightChunk.properties.Find(p => p.objectId == light.ObjId);
             prop.LightTableLightIndex = lightIdx;
             prop.LightTableMapIndex = (ushort)worldRep.LightingTable.AnimMapCount;
             prop.CellsReached = (ushort)animCellMaps.Count;
@@ -162,19 +162,19 @@ class Program
         var sz = brush.size;
         var light = new Light
         {
-            position = brush.position,
-            color = Utils.HsbToRgb(sz.Y, sz.Z, Math.Min(sz.X, 255.0f)),
-            radius = float.MaxValue,
-            r2 = float.MaxValue,
-            lightTableIndex = lightTable.LightCount,
+            Position = brush.position,
+            Color = Utils.HsbToRgb(sz.Y, sz.Z, Math.Min(sz.X, 255.0f)),
+            Radius = float.MaxValue,
+            R2 = float.MaxValue,
+            LightTableIndex = lightTable.LightCount,
         };
         
         lights.Add(light);
         lightTable.AddLight(new WorldRep.LightTable.LightData
         {
-            Location = light.position,
-            Direction = light.spotlightDir,
-            Color = light.color / 32.0f, // TODO: This is based on light_scale config var
+            Location = light.Position,
+            Direction = light.SpotlightDir,
+            Color = light.Color / 32.0f, // TODO: This is based on light_scale config var
             InnerAngle = -1.0f,
             Radius = 0,
         });
@@ -199,9 +199,9 @@ class Program
 
         var baseLight = new Light
         {
-            position = brush.position,
-            spotlightDir = -Vector3.UnitZ,
-            spotlightInnerAngle = -1.0f,
+            Position = brush.position,
+            SpotlightDir = -Vector3.UnitZ,
+            SpotlightInnerAngle = -1.0f,
         };
 
         if (propModelName != null)
@@ -214,11 +214,11 @@ class Program
                 var model = new ModelFile(modelPath);
                 if (model.TryGetVhot(ModelFile.VhotId.LightPosition, out var vhot))
                 {
-                    baseLight.position += vhot.Position;
+                    baseLight.Position += vhot.Position;
                 }
                 if (model.TryGetVhot(ModelFile.VhotId.LightDirection, out vhot))
                 {
-                    baseLight.spotlightDir = vhot.Position;
+                    baseLight.SpotlightDir = vhot.Position;
                 }
             }
 
@@ -231,31 +231,31 @@ class Program
             rot *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
             rot *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
 
-            baseLight.spotlight = true;
-            baseLight.spotlightDir = Vector3.Transform(baseLight.spotlightDir, rot);
-            baseLight.spotlightInnerAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.InnerAngle));
-            baseLight.spotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.OuterAngle));
+            baseLight.Spotlight = true;
+            baseLight.SpotlightDir = Vector3.Transform(baseLight.SpotlightDir, rot);
+            baseLight.SpotlightInnerAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.InnerAngle));
+            baseLight.SpotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.OuterAngle));
         }
 
         if (propLight != null)
         {
             var light = new Light
             {
-                position = baseLight.position + propLight.Offset,
-                color = Utils.HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propLight.Brightness),
-                innerRadius = propLight.InnerRadius,
-                radius = propLight.Radius,
-                r2 = propLight.Radius * propLight.Radius,
-                spotlight = baseLight.spotlight,
-                spotlightDir = baseLight.spotlightDir,
-                spotlightInnerAngle = baseLight.spotlightInnerAngle,
-                spotlightOuterAngle = baseLight.spotlightOuterAngle,
-                lightTableIndex = lightTable.LightCount,
+                Position = baseLight.Position + propLight.Offset,
+                Color = Utils.HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propLight.Brightness),
+                InnerRadius = propLight.InnerRadius,
+                Radius = propLight.Radius,
+                R2 = propLight.Radius * propLight.Radius,
+                Spotlight = baseLight.Spotlight,
+                SpotlightDir = baseLight.SpotlightDir,
+                SpotlightInnerAngle = baseLight.SpotlightInnerAngle,
+                SpotlightOuterAngle = baseLight.SpotlightOuterAngle,
+                LightTableIndex = lightTable.LightCount,
             };
             if (propLight.Radius == 0)
             {
-                light.radius = float.MaxValue;
-                light.r2 = float.MaxValue;
+                light.Radius = float.MaxValue;
+                light.R2 = float.MaxValue;
             }
 
             lights.Add(light);
@@ -269,23 +269,23 @@ class Program
 
             var light = new Light
             {
-                position = baseLight.position + propAnimLight.Offset,
-                color = Utils.HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propAnimLight.MaxBrightness),
-                innerRadius = propAnimLight.InnerRadius,
-                radius = propAnimLight.Radius,
-                r2 = propAnimLight.Radius * propAnimLight.Radius,
-                spotlight = baseLight.spotlight,
-                spotlightDir = baseLight.spotlightDir,
-                spotlightInnerAngle = baseLight.spotlightInnerAngle,
-                spotlightOuterAngle = baseLight.spotlightOuterAngle,
-                anim = true,
-                objId = id,
-                lightTableIndex = propAnimLight.LightTableLightIndex,
+                Position = baseLight.Position + propAnimLight.Offset,
+                Color = Utils.HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propAnimLight.MaxBrightness),
+                InnerRadius = propAnimLight.InnerRadius,
+                Radius = propAnimLight.Radius,
+                R2 = propAnimLight.Radius * propAnimLight.Radius,
+                Spotlight = baseLight.Spotlight,
+                SpotlightDir = baseLight.SpotlightDir,
+                SpotlightInnerAngle = baseLight.SpotlightInnerAngle,
+                SpotlightOuterAngle = baseLight.SpotlightOuterAngle,
+                Anim = true,
+                ObjId = id,
+                LightTableIndex = propAnimLight.LightTableLightIndex,
             };
             if (propAnimLight.Radius == 0)
             {
-                light.radius = float.MaxValue;
-                light.r2 = float.MaxValue;
+                light.Radius = float.MaxValue;
+                light.R2 = float.MaxValue;
             }
 
             lights.Add(light);
@@ -427,7 +427,7 @@ class Program
                     // Check if plane normal is facing towards the light
                     // If it's not then we're never going to be (directly) lit by this
                     // light.
-                    var centerDirection = renderPoly.Center - light.position;
+                    var centerDirection = renderPoly.Center - light.Position;
                     if (Vector3.Dot(plane.Normal, centerDirection) >= 0)
                     {
                         continue;
@@ -436,15 +436,15 @@ class Program
                     // If there aren't *any* points on the plane that are in range of the light
                     // then none of the lightmap points will be so we can discard.
                     // The more compact a map is the less effective this is
-                    var planeDist = MathUtils.DistanceFromPlane(plane, light.position);
-                    if (planeDist > light.radius)
+                    var planeDist = MathUtils.DistanceFromPlane(plane, light.Position);
+                    if (planeDist > light.Radius)
                     {
                         continue;
                     }
 
                     // If the poly of the lightmap doesn't intersect the light radius then
                     // none of the lightmap points will so we can discard.
-                    if (!MathUtils.Intersects(new MathUtils.Sphere(light.position, light.radius), aabb))
+                    if (!MathUtils.Intersects(new MathUtils.Sphere(light.Position, light.Radius), aabb))
                     {
                         continue;
                     }
@@ -472,8 +472,8 @@ class Program
                             // If we're out of range there's no point casting a ray
                             // There's probably a better way to discard the entire lightmap
                             // if we're massively out of range
-                            var direction = pos - light.position;
-                            if (direction.LengthSquared() > light.r2)
+                            var direction = pos - light.Position;
+                            if (direction.LengthSquared() > light.R2)
                             {
                                 continue;
                             }
@@ -482,7 +482,7 @@ class Program
                             // no mesh in the scene to hit
                             var hitResult = scene.Trace(new Ray
                             {
-                                Origin = light.position,
+                                Origin = light.Position,
                                 Direction = Vector3.Normalize(direction),
                             });
 
@@ -495,21 +495,21 @@ class Program
                                 // Firstly we need to add the light to the cells anim light palette
                                 // Secondly we need to set the appropriate bit of the lightmap's
                                 // bitmask. Finally we need to check if the lightmap needs another layer
-                                if (light.anim)
+                                if (light.Anim)
                                 {
                                     // TODO: Don't recalculate this for every point lol
-                                    var paletteIdx = cell.AnimLights.IndexOf((ushort)light.lightTableIndex);
+                                    var paletteIdx = cell.AnimLights.IndexOf((ushort)light.LightTableIndex);
                                     if (paletteIdx == -1)
                                     {
                                         paletteIdx = cell.AnimLightCount;
                                         cell.AnimLightCount++;
-                                        cell.AnimLights.Add((ushort)light.lightTableIndex);
+                                        cell.AnimLights.Add((ushort)light.LightTableIndex);
                                     }
                                     info.AnimLightBitmask |= 1u << paletteIdx;
                                     layer = paletteIdx + 1;
                                 }
                                 var strength = CalculateLightStrengthAtPoint(light, pos, plane);
-                                lightmap.AddLight(layer, x, y, light.color, strength, hdr);
+                                lightmap.AddLight(layer, x, y, light.Color, strength, hdr);
                             }
                         }
                     }
@@ -544,10 +544,10 @@ class Program
             var cellSphere = new MathUtils.Sphere(cell.SphereCenter, cell.SphereRadius);
             foreach (var light in lights)
             {
-                if (MathUtils.Intersects(cellSphere, new MathUtils.Sphere(light.position, light.radius)))
+                if (MathUtils.Intersects(cellSphere, new MathUtils.Sphere(light.Position, light.Radius)))
                 {
                     cell.LightIndexCount++;
-                    cell.LightIndices.Add((ushort)light.lightTableIndex);
+                    cell.LightIndices.Add((ushort)light.LightTableIndex);
                     cell.LightIndices[0]++;
                 }
             }
@@ -559,25 +559,25 @@ class Program
         // Calculate light strength at a given point. As far as I can tell
         // this is exact to Dark (I'm a genius??). It's just an inverse distance
         // falloff with diffuse angle, except we have to scale the length.
-        var dir = light.position - point;
+        var dir = light.Position - point;
         var angle = Vector3.Dot(Vector3.Normalize(dir), plane.Normal);
         var len = dir.Length();
         var slen = len / 4.0f;
         var strength = (angle + 1.0f) / slen;
 
         // Inner radius starts a linear falloff to 0 at the radius
-        if (light.innerRadius != 0 && len > light.innerRadius)
+        if (light.InnerRadius != 0 && len > light.InnerRadius)
         {
-            strength *= (light.radius - len) / (light.radius - light.innerRadius);
+            strength *= (light.Radius - len) / (light.Radius - light.InnerRadius);
         }
 
         // This is basically the same as how inner radius works. It just applies
         // a linear falloff to 0 between the inner angle and outer angle.
-        if (light.spotlight)
+        if (light.Spotlight)
         {
-            var spotAngle = Vector3.Dot(-Vector3.Normalize(dir), light.spotlightDir);
-            var inner = light.spotlightInnerAngle;
-            var outer = light.spotlightOuterAngle;
+            var spotAngle = Vector3.Dot(-Vector3.Normalize(dir), light.SpotlightDir);
+            var inner = light.SpotlightInnerAngle;
+            var outer = light.SpotlightOuterAngle;
 
             // In an improperly configured spotlight inner and outer angles might be the
             // same. So to avoid division by zero (and some clamping) we explicitly handle

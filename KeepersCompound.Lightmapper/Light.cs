@@ -5,31 +5,31 @@ namespace KeepersCompound.Lightmapper;
 
 public class Light
 {
-    public Vector3 position;
-    public Vector3 color;
-    public float innerRadius;
-    public float radius;
-    public float r2;
+    public Vector3 Position;
+    public Vector3 Color;
+    public float InnerRadius;
+    public float Radius;
+    public float R2;
 
-    public bool spotlight;
-    public Vector3 spotlightDir;
-    public float spotlightInnerAngle;
-    public float spotlightOuterAngle;
+    public bool Spotlight;
+    public Vector3 SpotlightDir;
+    public float SpotlightInnerAngle;
+    public float SpotlightOuterAngle;
 
-    public int objId;
-    public int lightTableIndex;
-    public bool anim;
+    public int ObjId;
+    public int LightTableIndex;
+    public bool Anim;
 
     public WorldRep.LightTable.LightData ToLightData(float lightScale)
     {
         return new WorldRep.LightTable.LightData
         {
-            Location = position,
-            Direction = spotlightDir,
-            Color = color / lightScale,
-            InnerAngle = spotlightInnerAngle,
-            OuterAngle = spotlightOuterAngle,
-            Radius = radius == float.MaxValue ? 0 : radius,
+            Location = Position,
+            Direction = SpotlightDir,
+            Color = Color / lightScale,
+            InnerAngle = SpotlightInnerAngle,
+            OuterAngle = SpotlightOuterAngle,
+            Radius = Radius == float.MaxValue ? 0 : Radius,
         };
     }
 }
