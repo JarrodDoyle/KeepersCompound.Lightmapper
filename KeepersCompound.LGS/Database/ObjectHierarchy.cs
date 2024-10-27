@@ -4,7 +4,7 @@ namespace KeepersCompound.LGS.Database;
 
 public class ObjectHierarchy
 {
-    public class DarkObject
+    private class DarkObject
     {
         public int objectId;
         public int parentId;
@@ -17,7 +17,7 @@ public class ObjectHierarchy
             properties = new Dictionary<string, Property>();
         }
 
-        public T GetProperty<T>(string propName) where T : Property
+        public T? GetProperty<T>(string propName) where T : Property
         {
             if (properties.TryGetValue(propName, out var prop))
             {
@@ -102,7 +102,7 @@ public class ObjectHierarchy
     }
 
     // TODO: Work out if there's some nice way to automatically decide if we inherit
-    public T GetProperty<T>(int objectId, string propName, bool inherit = true) where T : Property
+    public T? GetProperty<T>(int objectId, string propName, bool inherit = true) where T : Property
     {
         if (!_objects.ContainsKey(objectId))
         {
