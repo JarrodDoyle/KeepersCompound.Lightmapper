@@ -2,6 +2,33 @@ using System.Numerics;
 
 namespace KeepersCompound.Lightmapper;
 
+public static class Utils
+{
+    // Expects Hue and Saturation are 0-1, Brightness 0-255
+    // https://en.wikipedia.org/wiki/HSL_and_HSV#HSV_to_RGB
+    public static Vector3 HsbToRgb(float hue, float saturation, float brightness)
+    {
+        hue *= 360;
+        var hi = Convert.ToInt32(Math.Floor(hue / 60)) % 6;
+        var f = hue / 60 - Math.Floor(hue / 60);
+
+        var v = Convert.ToInt32(brightness);
+        var p = Convert.ToInt32(brightness * (1 - saturation));
+        var q = Convert.ToInt32(brightness * (1 - f * saturation));
+        var t = Convert.ToInt32(brightness * (1 - (1 - f) * saturation));
+
+        return hi switch
+        {
+            0 => new Vector3(v, t, p),
+            1 => new Vector3(q, v, p),
+            2 => new Vector3(p, v, t),
+            3 => new Vector3(p, q, v),
+            4 => new Vector3(t, p, v),
+            _ => new Vector3(v, p, q),
+        };
+    }
+}
+
 public static class MathUtils
 {
     public const float Epsilon = 0.001f;
