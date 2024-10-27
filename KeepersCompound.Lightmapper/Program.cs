@@ -508,7 +508,7 @@ class Program
                                     info.AnimLightBitmask |= 1u << paletteIdx;
                                     layer = paletteIdx + 1;
                                 }
-                                var strength = CalculateLightStrengthAtPoint(light, pos, plane);
+                                var strength = light.StrengthAtPoint(pos, plane);
                                 lightmap.AddLight(layer, x, y, light.Color, strength, hdr);
                             }
                         }
@@ -552,53 +552,5 @@ class Program
                 }
             }
         });
-    }
-
-    private static float CalculateLightStrengthAtPoint(Light light, Vector3 point, Plane plane)
-    {
-        // Calculate light strength at a given point. As far as I can tell
-        // this is exact to Dark (I'm a genius??). It's just an inverse distance
-        // falloff with diffuse angle, except we have to scale the length.
-        var dir = light.Position - point;
-        var angle = Vector3.Dot(Vector3.Normalize(dir), plane.Normal);
-        var len = dir.Length();
-        var slen = len / 4.0f;
-        var strength = (angle + 1.0f) / slen;
-
-        // Inner radius starts a linear falloff to 0 at the radius
-        if (light.InnerRadius != 0 && len > light.InnerRadius)
-        {
-            strength *= (light.Radius - len) / (light.Radius - light.InnerRadius);
-        }
-
-        // This is basically the same as how inner radius works. It just applies
-        // a linear falloff to 0 between the inner angle and outer angle.
-        if (light.Spotlight)
-        {
-            var spotAngle = Vector3.Dot(-Vector3.Normalize(dir), light.SpotlightDir);
-            var inner = light.SpotlightInnerAngle;
-            var outer = light.SpotlightOuterAngle;
-
-            // In an improperly configured spotlight inner and outer angles might be the
-            // same. So to avoid division by zero (and some clamping) we explicitly handle
-            // some cases
-            float spotlightMultiplier;
-            if (spotAngle >= inner)
-            {
-                spotlightMultiplier = 1.0f;
-            }
-            else if (spotAngle <= outer)
-            {
-                spotlightMultiplier = 0.0f;
-            }
-            else
-            {
-                spotlightMultiplier = (spotAngle - outer) / (inner - outer);
-            }
-
-            strength *= spotlightMultiplier;
-        }
-
-        return strength;
     }
 }
