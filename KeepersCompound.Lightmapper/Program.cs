@@ -170,14 +170,7 @@ class Program
         };
         
         lights.Add(light);
-        lightTable.AddLight(new WorldRep.LightTable.LightData
-        {
-            Location = light.Position,
-            Direction = light.SpotlightDir,
-            Color = light.Color / 32.0f, // TODO: This is based on light_scale config var
-            InnerAngle = -1.0f,
-            Radius = 0,
-        });
+        lightTable.AddLight(light.ToLightData(32.0f));
     }
 
     private static void ProcessObjectLight(
