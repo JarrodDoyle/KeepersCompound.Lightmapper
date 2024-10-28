@@ -449,6 +449,32 @@ class Program
                             var pos = topLeft;
                             pos += x * 0.25f * renderPoly.TextureVectors.Item1;
                             pos += y * 0.25f * renderPoly.TextureVectors.Item2;
+                            
+                            // Embree has robustness issues when hitting poly edges which
+                            // results in false misses. To alleviate this we pre-push everything
+                            // slightly towards the center of the poly.
+                            var centerOffset = renderPoly.Center - pos;
+                            if (centerOffset.LengthSquared() > MathUtils.Epsilon)
+                            {
+                                pos += Vector3.Normalize(centerOffset) * MathUtils.Epsilon;
+                            }
+                            
+                            // If we can't see our target point from the center of the poly
+                            // then it's outside the world. We need to clip the point to slightly
+                            // inside the poly and retrace to avoid three problems:
+                            // 1. Darkened spots from lightmap pixels whose center is outside
+                            //    the polygon but is partially contained in the polygon
+                            // 2. Darkened spots from linear filtering of points outside the
+                            //    polygon which have missed
+                            // 3. Darkened spots where centers are on the exact edge of a poly
+                            //    which can sometimes cause Embree to miss casts
+                            var inPoly = TraceRay(scene, pos, renderPoly.Center + plane.Normal * 0.25f);
+                            if (!inPoly)
+                            {
+                                var p2d = planeMapper.MapTo2d(pos);
+                                p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
+                                pos = planeMapper.MapTo3d(p2d);
+                            }
 
                             // If we're out of range there's no point casting a ray
                             // There's probably a better way to discard the entire lightmap
