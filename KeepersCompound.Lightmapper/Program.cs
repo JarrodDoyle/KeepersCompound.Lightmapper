@@ -232,6 +232,11 @@ class Program
 
         if (propLight != null)
         {
+            if (propLight.QuadLit)
+            {
+                Console.WriteLine("Quadlit light wowzer");
+            }
+            
             var light = new Light
             {
                 Position = baseLight.Position + propLight.Offset,
@@ -239,6 +244,7 @@ class Program
                 InnerRadius = propLight.InnerRadius,
                 Radius = propLight.Radius,
                 R2 = propLight.Radius * propLight.Radius,
+                QuadLit = propLight.QuadLit,
                 Spotlight = baseLight.Spotlight,
                 SpotlightDir = baseLight.SpotlightDir,
                 SpotlightInnerAngle = baseLight.SpotlightInnerAngle,
@@ -267,6 +273,7 @@ class Program
                 InnerRadius = propAnimLight.InnerRadius,
                 Radius = propAnimLight.Radius,
                 R2 = propAnimLight.Radius * propAnimLight.Radius,
+                QuadLit = propAnimLight.QuadLit,
                 Spotlight = baseLight.Spotlight,
                 SpotlightDir = baseLight.SpotlightDir,
                 SpotlightInnerAngle = baseLight.SpotlightInnerAngle,
@@ -449,44 +456,26 @@ class Program
                             var pos = topLeft;
                             pos += x * 0.25f * renderPoly.TextureVectors.Item1;
                             pos += y * 0.25f * renderPoly.TextureVectors.Item2;
-                            
-                            // Embree has robustness issues when hitting poly edges which
-                            // results in false misses. To alleviate this we pre-push everything
-                            // slightly towards the center of the poly.
-                            var centerOffset = renderPoly.Center - pos;
-                            if (centerOffset.LengthSquared() > MathUtils.Epsilon)
-                            {
-                                pos += Vector3.Normalize(centerOffset) * MathUtils.Epsilon;
-                            }
-                            
-                            // If we can't see our target point from the center of the poly
-                            // then it's outside the world. We need to clip the point to slightly
-                            // inside the poly and retrace to avoid three problems:
-                            // 1. Darkened spots from lightmap pixels whose center is outside
-                            //    the polygon but is partially contained in the polygon
-                            // 2. Darkened spots from linear filtering of points outside the
-                            //    polygon which have missed
-                            // 3. Darkened spots where centers are on the exact edge of a poly
-                            //    which can sometimes cause Embree to miss casts
-                            var inPoly = TraceRay(scene, renderPoly.Center + plane.Normal * 0.25f, pos);
-                            if (!inPoly)
-                            {
-                                var p2d = planeMapper.MapTo2d(pos);
-                                p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
-                                pos = planeMapper.MapTo3d(p2d);
-                            }
 
-                            // If we're out of range there's no point casting a ray
-                            // There's probably a better way to discard the entire lightmap
-                            // if we're massively out of range
-                            if ((pos - light.Position).LengthSquared() > light.R2)
-                            {
-                                continue;
-                            }
+                            var hit = false;
+                            var strength = 0f;
 
-                            // We cast from the light to the pixel because the light has
-                            // no mesh in the scene to hit
-                            var hit = TraceRay(scene, light.Position, pos);
+                            // TODO: THIS IS ACTUALLY MULTISAMPLING NOT QUAD LIGHTING
+                            if (light.QuadLit)
+                            {
+                                var xOffset = 0.25f * 0.25f * renderPoly.TextureVectors.Item1;
+                                var yOffset = 0.25f * 0.25f * renderPoly.TextureVectors.Item2;
+                                hit |= TracePixel(scene, light, pos - xOffset - yOffset, renderPoly.Center, plane, planeMapper, v2ds, ref strength);
+                                hit |= TracePixel(scene, light, pos + xOffset - yOffset, renderPoly.Center, plane, planeMapper, v2ds, ref strength);
+                                hit |= TracePixel(scene, light, pos - xOffset + yOffset, renderPoly.Center, plane, planeMapper, v2ds, ref strength);
+                                hit |= TracePixel(scene, light, pos + xOffset + yOffset, renderPoly.Center, plane, planeMapper, v2ds, ref strength);
+                                strength /= 4f;
+                            }
+                            else
+                            {
+                                hit |= TracePixel(scene, light, pos, renderPoly.Center, plane, planeMapper, v2ds, ref strength);
+                            }
+                            
                             if (hit)
                             {
                                 // If we're an anim light there's a lot of stuff we need to update
@@ -506,7 +495,6 @@ class Program
                                     info.AnimLightBitmask |= 1u << paletteIdx;
                                     layer = paletteIdx + 1;
                                 }
-                                var strength = light.StrengthAtPoint(pos, plane);
                                 lightmap.AddLight(layer, x, y, light.Color, strength, hdr);
                             }
                         }
@@ -516,6 +504,60 @@ class Program
                 cellIdxOffset += poly.VertexCount;
             }
         });
+    }
+
+    private static bool TracePixel(
+        Raytracer scene,
+        Light light,
+        Vector3 pos,
+        Vector3 polyCenter,
+        Plane plane,
+        MathUtils.PlanePointMapper planeMapper,
+        Vector2[] v2ds,
+        ref float strength)
+    {
+        // Embree has robustness issues when hitting poly edges which
+        // results in false misses. To alleviate this we pre-push everything
+        // slightly towards the center of the poly.
+        var centerOffset = polyCenter - pos;
+        if (centerOffset.LengthSquared() > MathUtils.Epsilon)
+        {
+            pos += Vector3.Normalize(centerOffset) * MathUtils.Epsilon;
+        }
+
+        // If we can't see our target point from the center of the poly
+        // then it's outside the world. We need to clip the point to slightly
+        // inside the poly and retrace to avoid three problems:
+        // 1. Darkened spots from lightmap pixels whose center is outside
+        //    the polygon but is partially contained in the polygon
+        // 2. Darkened spots from linear filtering of points outside the
+        //    polygon which have missed
+        // 3. Darkened spots where centers are on the exact edge of a poly
+        //    which can sometimes cause Embree to miss casts
+        var inPoly = TraceRay(scene, polyCenter + plane.Normal * 0.25f, pos);
+        if (!inPoly)
+        {
+            var p2d = planeMapper.MapTo2d(pos);
+            p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
+            pos = planeMapper.MapTo3d(p2d);
+        }
+
+        // If we're out of range there's no point casting a ray
+        // There's probably a better way to discard the entire lightmap
+        // if we're massively out of range
+        if ((pos - light.Position).LengthSquared() > light.R2)
+        {
+            return false;
+        }
+
+        // We cast from the light to the pixel because the light has
+        // no mesh in the scene to hit
+        var hit = TraceRay(scene, light.Position, pos);
+        if (hit)
+        {
+            strength += light.StrengthAtPoint(pos, plane);
+        }
+        return hit;
     }
     
     private static bool TraceRay(Raytracer scene, Vector3 origin, Vector3 target)

@@ -10,6 +10,7 @@ public class Light
     public float InnerRadius;
     public float Radius;
     public float R2;
+    public bool QuadLit;
 
     public bool Spotlight;
     public Vector3 SpotlightDir;
