@@ -458,7 +458,7 @@ class Program
                                 continue;
                             }
 
-                            var hit = TraceRay(scene, pos, light, false);
+                            var hit = TraceRay(scene, pos, light.Position);
                             if (!hit)
                             {
                                 // TODO: This is still wrong because it clips when a ray should
@@ -480,7 +480,7 @@ class Program
                                 p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
                                 pos = planeMapper.MapTo3d(p2d);
 
-                                hit = TraceRay(scene, pos, light, true);
+                                hit = TraceRay(scene, pos, light.Position, light.R2);
                             }
                             
                             if (hit)
@@ -514,11 +514,11 @@ class Program
         });
     }
     
-    private static bool TraceRay(Raytracer scene, Vector3 point, Light light, bool rangeCheck)
+    private static bool TraceRay(Raytracer scene, Vector3 target, Vector3 origin, float radius2 = float.MaxValue)
     {
         // If we're out of range there's no point casting a ray
-        var direction = point - light.Position;
-        if (rangeCheck && direction.LengthSquared() > light.R2)
+        var direction = target - origin;
+        if (direction.LengthSquared() > radius2)
         {
             return false;
         }
@@ -527,7 +527,7 @@ class Program
         // no mesh in the scene to hit
         var hitResult = scene.Trace(new Ray
         {
-            Origin = light.Position,
+            Origin = origin,
             Direction = Vector3.Normalize(direction),
         });
         return hitResult && Math.Abs(hitResult.Distance - direction.Length()) < MathUtils.Epsilon;
