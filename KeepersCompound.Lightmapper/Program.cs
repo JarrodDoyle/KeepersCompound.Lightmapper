@@ -1,25 +1,46 @@
+using System.CommandLine;
+
 namespace KeepersCompound.Lightmapper;
 
 class Program
 {
-    static void Main(string[] args)
+    private static void Main(string[] args)
     {
-        Timing.Reset();
+        var installPathArg = new Argument<string>(
+            "installPath",
+            "The path to the root Thief installation.");
+        var campaignNameArg = new Argument<string>(
+            "campaignName",
+            "The folder name of the fan mission. For OMs this is blank.");
+        var missionNameArg = new Argument<string>(
+            "missionName",
+            "The name of the mission file including extension.");
+        var outputFileOption = new Option<string>(
+            ["-o", "--output"],
+            () => "kc_lit",
+            "Name of output file excluding extension.");
+        var multiSamplingOption = new Option<bool>(
+            "--multiSampling",
+            () => false,
+            "Enables multi-sampled shadows. Higher quality but slower.");
+        
+        var rootCommand = new RootCommand("Compute lightmaps for a NewDark .MIS/.COW");
+        rootCommand.AddArgument(installPathArg);
+        rootCommand.AddArgument(campaignNameArg);
+        rootCommand.AddArgument(missionNameArg);
+        rootCommand.AddOption(outputFileOption);
+        rootCommand.AddOption(multiSamplingOption);
+        rootCommand.SetHandler((installPath, campaignName, missionName, outputFile, multiSampling) =>
+        {
+            Timing.Reset();
 
-        // TODO: Read this from args
-        var installPath = "/stuff/Games/thief/drive_c/GOG Games/TG ND 1.27 (MAPPING)/";
-        var campaignName = "JAYRUDE_Tests";
-        var missionName = "lm_test.cow";
+            var lightMapper = new LightMapper(installPath, campaignName, missionName);
+            lightMapper.Light(multiSampling);
+            lightMapper.Save(outputFile);
 
-        // campaignName = "JAYRUDE_1MIL_Mages";
-        // campaignName = "TDP20AC_a_burrick_in_a_room";
-        // campaignName = "AtdV";
-        // missionName = "miss20.mis";
+            Timing.LogAll();
+        }, installPathArg, campaignNameArg, missionNameArg, outputFileOption, multiSamplingOption);
 
-        var lightMapper = new LightMapper(installPath, campaignName, missionName);
-        lightMapper.Light(false);
-        lightMapper.Save("kc_lit");
-
-        Timing.LogAll();
+        rootCommand.Invoke(args);
     }
 }
