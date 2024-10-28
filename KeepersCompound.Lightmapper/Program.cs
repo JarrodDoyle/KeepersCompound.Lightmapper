@@ -450,38 +450,39 @@ class Program
                             pos += x * 0.25f * renderPoly.TextureVectors.Item1;
                             pos += y * 0.25f * renderPoly.TextureVectors.Item2;
 
-                            // We need to clip the point to slightly inside of the poly
-                            // to avoid three problems:
-                            // 1. Darkened spots from lightmap pixels who's center is outside
-                            //    of the polygon but is partially contained in the polygon
-                            // 2. Darkened spots from linear filtering of points outside of the
-                            //    polygon which have missed
-                            // 3. Darkened spots where centers are on the exact edge of a poly
-                            //    which can sometimes cause Embree to miss casts
-                            var p2d = planeMapper.MapTo2d(pos);
-                            p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
-                            pos = planeMapper.MapTo3d(p2d);
-
                             // If we're out of range there's no point casting a ray
                             // There's probably a better way to discard the entire lightmap
                             // if we're massively out of range
-                            var direction = pos - light.Position;
-                            if (direction.LengthSquared() > light.R2)
+                            if ((pos - light.Position).LengthSquared() > light.R2)
                             {
                                 continue;
                             }
 
-                            // We cast from the light to the pixel because the light has
-                            // no mesh in the scene to hit
-                            var hitResult = scene.Trace(new Ray
+                            var hit = TraceRay(scene, pos, light, false);
+                            if (!hit)
                             {
-                                Origin = light.Position,
-                                Direction = Vector3.Normalize(direction),
-                            });
+                                // TODO: This is still wrong because it clips when a ray should
+                                // be missing, potentially leading to uneven shadows along a
+                                // shadow edge
+                                
+                                // We need to clip the point to slightly inside of the poly
+                                // and retrace to avoid three problems:
+                                // 1. Darkened spots from lightmap pixels who's center is outside
+                                //    of the polygon but is partially contained in the polygon
+                                // 2. Darkened spots from linear filtering of points outside of the
+                                //    polygon which have missed
+                                // 3. Darkened spots where centers are on the exact edge of a poly
+                                //    which can sometimes cause Embree to miss casts
+                                //
+                                // The reason we don't do this before the first cast is because it can
+                                // cause incorrect shadows along cell edges on a flat plane.
+                                var p2d = planeMapper.MapTo2d(pos);
+                                p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
+                                pos = planeMapper.MapTo3d(p2d);
 
-                            // cheeky epsilon
-                            // TODO: Some pixels aren't hitting and I'm not sure why
-                            var hit = hitResult && Math.Abs(hitResult.Distance - direction.Length()) < MathUtils.Epsilon;
+                                hit = TraceRay(scene, pos, light, true);
+                            }
+                            
                             if (hit)
                             {
                                 // If we're an anim light there's a lot of stuff we need to update
@@ -511,6 +512,25 @@ class Program
                 cellIdxOffset += poly.VertexCount;
             }
         });
+    }
+    
+    private static bool TraceRay(Raytracer scene, Vector3 point, Light light, bool rangeCheck)
+    {
+        // If we're out of range there's no point casting a ray
+        var direction = point - light.Position;
+        if (rangeCheck && direction.LengthSquared() > light.R2)
+        {
+            return false;
+        }
+        
+        // We cast from the light to the pixel because the light has
+        // no mesh in the scene to hit
+        var hitResult = scene.Trace(new Ray
+        {
+            Origin = light.Position,
+            Direction = Vector3.Normalize(direction),
+        });
+        return hitResult && Math.Abs(hitResult.Distance - direction.Length()) < MathUtils.Epsilon;
     }
 
     private static void SetCellLightIndices(WorldRep wr, Light[] lights)
