@@ -468,7 +468,7 @@ class Program
                             //    polygon which have missed
                             // 3. Darkened spots where centers are on the exact edge of a poly
                             //    which can sometimes cause Embree to miss casts
-                            var inPoly = TraceRay(scene, pos, renderPoly.Center + plane.Normal * 0.25f);
+                            var inPoly = TraceRay(scene, renderPoly.Center + plane.Normal * 0.25f, pos);
                             if (!inPoly)
                             {
                                 var p2d = planeMapper.MapTo2d(pos);
@@ -484,31 +484,9 @@ class Program
                                 continue;
                             }
 
-                            var hit = TraceRay(scene, pos, light.Position);
-                            if (!hit)
-                            {
-                                // TODO: This is still wrong because it clips when a ray should
-                                // be missing, potentially leading to uneven shadows along a
-                                // shadow edge
-                                
-                                // We need to clip the point to slightly inside of the poly
-                                // and retrace to avoid three problems:
-                                // 1. Darkened spots from lightmap pixels who's center is outside
-                                //    of the polygon but is partially contained in the polygon
-                                // 2. Darkened spots from linear filtering of points outside of the
-                                //    polygon which have missed
-                                // 3. Darkened spots where centers are on the exact edge of a poly
-                                //    which can sometimes cause Embree to miss casts
-                                //
-                                // The reason we don't do this before the first cast is because it can
-                                // cause incorrect shadows along cell edges on a flat plane.
-                                var p2d = planeMapper.MapTo2d(pos);
-                                p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
-                                pos = planeMapper.MapTo3d(p2d);
-
-                                hit = TraceRay(scene, pos, light.Position, light.R2);
-                            }
-                            
+                            // We cast from the light to the pixel because the light has
+                            // no mesh in the scene to hit
+                            var hit = TraceRay(scene, light.Position, pos);
                             if (hit)
                             {
                                 // If we're an anim light there's a lot of stuff we need to update
@@ -540,17 +518,9 @@ class Program
         });
     }
     
-    private static bool TraceRay(Raytracer scene, Vector3 target, Vector3 origin, float radius2 = float.MaxValue)
+    private static bool TraceRay(Raytracer scene, Vector3 origin, Vector3 target)
     {
-        // If we're out of range there's no point casting a ray
         var direction = target - origin;
-        if (direction.LengthSquared() > radius2)
-        {
-            return false;
-        }
-        
-        // We cast from the light to the pixel because the light has
-        // no mesh in the scene to hit
         var hitResult = scene.Trace(new Ray
         {
             Origin = origin,
