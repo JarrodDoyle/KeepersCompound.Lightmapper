@@ -246,11 +246,6 @@ public class LightMapper
 
         if (propLight != null)
         {
-            if (propLight.QuadLit)
-            {
-                Console.WriteLine("Quadlit light wowzer");
-            }
-            
             var light = new Light
             {
                 Position = baseLight.Position + propLight.Offset,
