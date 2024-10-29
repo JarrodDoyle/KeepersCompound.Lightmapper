@@ -528,38 +528,17 @@ public class LightMapper
             return hit;
         }
 
-        strength = 0f;
-        var hit = false;
-        switch (mode)
-        {
-            case SoftnessMode.Standard when light.QuadLit:
-            case SoftnessMode.HighFourPoint:
-                hit = FourPoint(4f, out strength);
-                break;
-            case SoftnessMode.HighFivePoint:
-                hit = FivePoint(4f, out strength);
-                break;
-            case SoftnessMode.HighNinePoint:
-                hit = NinePoint(4f, out strength);
-                break;
-            case SoftnessMode.MediumFourPoint:
-                hit = FourPoint(8f, out strength);
-                break;
-            case SoftnessMode.MediumFivePoint:
-                hit = FivePoint(8f, out strength);
-                break;
-            case SoftnessMode.MediumNinePoint:
-                hit = NinePoint(8f, out strength);
-                break;
-            case SoftnessMode.LowFourPoint:
-                hit = FourPoint(16f, out strength);
-                break;
-            case SoftnessMode.Standard:
-                hit = TracePixel(light, pos, polyCenter, plane, planeMapper, v2ds, out strength);
-                break;
-        }
-
-        return hit;
+        return mode switch {
+            SoftnessMode.Standard when light.QuadLit => FourPoint(4f, out strength),
+            SoftnessMode.HighFourPoint => FourPoint(4f, out strength),
+            SoftnessMode.HighFivePoint => FivePoint(4f, out strength),
+            SoftnessMode.HighNinePoint => NinePoint(4f, out strength),
+            SoftnessMode.MediumFourPoint => FourPoint(8f, out strength),
+            SoftnessMode.MediumFivePoint => FivePoint(8f, out strength),
+            SoftnessMode.MediumNinePoint => NinePoint(8f, out strength),
+            SoftnessMode.LowFourPoint => FourPoint(16f, out strength),
+            _ => TracePixel(light, pos, polyCenter, plane, planeMapper, v2ds, out strength)
+        };
     }
     
     private bool TracePixel(
