@@ -150,6 +150,7 @@ public class DbFile
             "TXLIST" => new TxList(),
             "WREXT" => new WorldRep(),
             "BRLIST" => new BrList(),
+            "LM_PARAM" => new LmParams(),
             "RENDPARAMS" => new RendParams(),
             "P$ModelName" => new PropertyChunk<PropLabel>(),
             "P$Scale" => new PropertyChunk<PropVector>(),
