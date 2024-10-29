@@ -21,15 +21,13 @@ public class LightCommand : ICommand
     public required string MissionName { get; init; }
     [CommandOption("output", 'o', Description = "Name of output file excluding extension.")]
     public string OutputName { get; init; } = "kc_lit";
-    [CommandOption("multiSampling", 'm', Description = "Enables multi-sampled shadows. Higher quality but slower.")]
-    public bool MultiSampling { get; init; } = false;
 
     public ValueTask ExecuteAsync(IConsole console)
     {
         Timing.Reset();
             
         var lightMapper = new LightMapper(InstallPath, CampaignName, MissionName);
-        lightMapper.Light(MultiSampling);
+        lightMapper.Light();
         lightMapper.Save(OutputName);
             
         Timing.LogAll();

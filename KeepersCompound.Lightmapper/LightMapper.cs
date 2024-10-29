@@ -10,9 +10,10 @@ public class LightMapper
 {
     private class Settings
     {
-        public bool Hdr;
-        public bool MultiSampling;
         public Vector3 AmbientLight;
+        public bool Hdr;
+        public SoftnessMode MultiSampling;
+        public float MultiSamplingCenterWeight;
     }
 
     private ResourcePathManager.CampaignResources _campaign;
@@ -36,10 +37,11 @@ public class LightMapper
         _lights = [];
     }
     
-    public void Light(bool multiSampling)
+    public void Light()
     {
         // TODO: Throw?
         if (!_mission.TryGetChunk<RendParams>("RENDPARAMS", out var rendParams) ||
+            !_mission.TryGetChunk<LmParams>("LM_PARAM", out var lmParams) ||
             !_mission.TryGetChunk<WorldRep>("WREXT", out var worldRep))
         {
             return;
@@ -49,13 +51,16 @@ public class LightMapper
         {
             Hdr = worldRep.DataHeader.LightmapFormat == 2,
             AmbientLight = rendParams.ambientLight * 255,
-            MultiSampling = multiSampling,
+            MultiSampling = lmParams.ShadowSoftness,
+            MultiSamplingCenterWeight = lmParams.CenterWeight,
         };
 
         Timing.TimeStage("Gather Lights", BuildLightList);
         Timing.TimeStage("Set Light Indices", SetCellLightIndices);
         Timing.TimeStage("Trace Scene", () => TraceScene(settings));
         Timing.TimeStage("Update AnimLight Cell Mapping", SetAnimLightCellMaps);
+
+        // lmParams.ShadowType = LmParams.LightingMode.Raycast;
     }
 
     public void Save(string missionName)
@@ -435,26 +440,11 @@ public class LightMapper
                             var pos = topLeft;
                             pos += x * 0.25f * renderPoly.TextureVectors.Item1;
                             pos += y * 0.25f * renderPoly.TextureVectors.Item2;
-
-                            var hit = false;
-                            var strength = 0f;
-
-                            if (settings.MultiSampling)
-                            {
-                                var xOffset = 0.25f * 0.25f * renderPoly.TextureVectors.Item1;
-                                var yOffset = 0.25f * 0.25f * renderPoly.TextureVectors.Item2;
-                                hit |= TracePixel(light, pos - xOffset - yOffset, renderPoly.Center, plane, planeMapper, v2ds, ref strength);
-                                hit |= TracePixel(light, pos + xOffset - yOffset, renderPoly.Center, plane, planeMapper, v2ds, ref strength);
-                                hit |= TracePixel(light, pos - xOffset + yOffset, renderPoly.Center, plane, planeMapper, v2ds, ref strength);
-                                hit |= TracePixel(light, pos + xOffset + yOffset, renderPoly.Center, plane, planeMapper, v2ds, ref strength);
-                                strength /= 4f;
-                            }
-                            else
-                            {
-                                hit |= TracePixel(light, pos, renderPoly.Center, plane, planeMapper, v2ds, ref strength);
-                            }
                             
-                            if (hit)
+                            if (TracePixelMultisampled(
+                                    settings.MultiSampling, light, pos, renderPoly.Center, plane, planeMapper, v2ds,
+                                    renderPoly.TextureVectors.Item1, renderPoly.TextureVectors.Item2,
+                                    settings.MultiSamplingCenterWeight, out var strength))
                             {
                                 // If we're an anim light there's a lot of stuff we need to update
                                 // Firstly we need to add the light to the cells anim light palette
@@ -484,6 +474,73 @@ public class LightMapper
         });
     }
     
+    public bool TracePixelMultisampled(
+        SoftnessMode mode,
+        Light light,
+        Vector3 pos,
+        Vector3 polyCenter,
+        Plane plane,
+        MathUtils.PlanePointMapper planeMapper,
+        Vector2[] v2ds,
+        Vector3 texU,
+        Vector3 texV,
+        float centerWeight,
+        out float strength)
+    {
+        bool FourPoint(float offsetScale, out float strength)
+        {
+            var hit = false;
+            var xOffset = texU / offsetScale;
+            var yOffset = texV / offsetScale;
+            hit |= TracePixel(light, pos - xOffset - yOffset, polyCenter, plane, planeMapper, v2ds, out var strength1);
+            hit |= TracePixel(light, pos + xOffset - yOffset, polyCenter, plane, planeMapper, v2ds, out var strength2);
+            hit |= TracePixel(light, pos - xOffset + yOffset, polyCenter, plane, planeMapper, v2ds, out var strength3);
+            hit |= TracePixel(light, pos + xOffset + yOffset, polyCenter, plane, planeMapper, v2ds, out var strength4);
+            strength = (strength1 + strength2 + strength3 + strength4) / 4f;
+            return hit;
+        }
+        
+        bool FivePoint(float offsetScale, out float strength)
+        {
+            strength = 0f;
+            var hit = false;
+            hit |= TracePixel(light, pos, polyCenter, plane, planeMapper, v2ds, out var centerStrength);
+            hit |= FourPoint(offsetScale, out strength);
+            strength = (1.0f - centerWeight) * strength + centerWeight * centerStrength;
+            return hit;
+        }
+
+        strength = 0f;
+        var hit = false;
+        switch (mode)
+        {
+            case SoftnessMode.Standard when light.QuadLit:
+            case SoftnessMode.HighFourPoint:
+                hit = FourPoint(4f, out strength);
+                break;
+            case SoftnessMode.HighFivePoint:
+                hit = FivePoint(4f, out strength);
+                break;
+            case SoftnessMode.MediumFourPoint:
+                hit = FourPoint(8f, out strength);
+                break;
+            case SoftnessMode.MediumFivePoint:
+                hit = FivePoint(8f, out strength);
+                break;
+            case SoftnessMode.LowFourPoint:
+                hit = FourPoint(16f, out strength);
+                break;
+            // TODO: Work out how the 8 points are sampled hmm
+            case SoftnessMode.HighNinePoint:
+            case SoftnessMode.MediumNinePoint:
+            case SoftnessMode.Standard:
+                hit = TracePixel(light, pos, polyCenter, plane, planeMapper, v2ds, out strength);
+                break;
+        }
+
+        return hit;
+    }
+    
     private bool TracePixel(
         Light light,
         Vector3 pos,
@@ -491,8 +548,10 @@ public class LightMapper
         Plane plane,
         MathUtils.PlanePointMapper planeMapper,
         Vector2[] v2ds,
-        ref float strength)
+        out float strength)
     {
+        strength = 0f;
+        
         // Embree has robustness issues when hitting poly edges which
         // results in false misses. To alleviate this we pre-push everything
         // slightly towards the center of the poly.
