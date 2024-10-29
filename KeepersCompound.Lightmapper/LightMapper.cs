@@ -502,10 +502,28 @@ public class LightMapper
         
         bool FivePoint(float offsetScale, out float strength)
         {
-            strength = 0f;
             var hit = false;
             hit |= TracePixel(light, pos, polyCenter, plane, planeMapper, v2ds, out var centerStrength);
             hit |= FourPoint(offsetScale, out strength);
+            strength = (1.0f - centerWeight) * strength + centerWeight * centerStrength;
+            return hit;
+        }
+        
+        bool NinePoint(float offsetScale, out float strength)
+        {
+            var hit = false;
+            var xOffset = texU / offsetScale;
+            var yOffset = texV / offsetScale;
+            hit |= TracePixel(light, pos - xOffset - yOffset, polyCenter, plane, planeMapper, v2ds, out var s1);
+            hit |= TracePixel(light, pos + xOffset - yOffset, polyCenter, plane, planeMapper, v2ds, out var s2);
+            hit |= TracePixel(light, pos - xOffset + yOffset, polyCenter, plane, planeMapper, v2ds, out var s3);
+            hit |= TracePixel(light, pos + xOffset + yOffset, polyCenter, plane, planeMapper, v2ds, out var s4);
+            hit |= TracePixel(light, pos - xOffset, polyCenter, plane, planeMapper, v2ds, out var s5);
+            hit |= TracePixel(light, pos + xOffset, polyCenter, plane, planeMapper, v2ds, out var s6);
+            hit |= TracePixel(light, pos - yOffset, polyCenter, plane, planeMapper, v2ds, out var s7);
+            hit |= TracePixel(light, pos + yOffset, polyCenter, plane, planeMapper, v2ds, out var s8);
+            hit |= TracePixel(light, pos, polyCenter, plane, planeMapper, v2ds, out var centerStrength);
+            strength = (s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8) / 8f;
             strength = (1.0f - centerWeight) * strength + centerWeight * centerStrength;
             return hit;
         }
@@ -521,18 +539,21 @@ public class LightMapper
             case SoftnessMode.HighFivePoint:
                 hit = FivePoint(4f, out strength);
                 break;
+            case SoftnessMode.HighNinePoint:
+                hit = NinePoint(4f, out strength);
+                break;
             case SoftnessMode.MediumFourPoint:
                 hit = FourPoint(8f, out strength);
                 break;
             case SoftnessMode.MediumFivePoint:
                 hit = FivePoint(8f, out strength);
                 break;
+            case SoftnessMode.MediumNinePoint:
+                hit = NinePoint(8f, out strength);
+                break;
             case SoftnessMode.LowFourPoint:
                 hit = FourPoint(16f, out strength);
                 break;
-            // TODO: Work out how the 8 points are sampled hmm
-            case SoftnessMode.HighNinePoint:
-            case SoftnessMode.MediumNinePoint:
             case SoftnessMode.Standard:
                 hit = TracePixel(light, pos, polyCenter, plane, planeMapper, v2ds, out strength);
                 break;
