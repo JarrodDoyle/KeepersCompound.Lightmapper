@@ -8,6 +8,13 @@ namespace KeepersCompound.Lightmapper;
 
 public class LightMapper
 {
+    private enum SurfaceType
+    {
+        Solid,
+        Sky,
+        Water,
+    }
+    
     private class Settings
     {
         public Vector3 AmbientLight;
@@ -22,6 +29,7 @@ public class LightMapper
     private ObjectHierarchy _hierarchy;
     private Raytracer _scene;
     private List<Light> _lights;
+    private List<SurfaceType> _triangleTypeMap;
 
     public LightMapper(
         string installPath,
@@ -33,6 +41,7 @@ public class LightMapper
         _misPath = _campaign.GetResourcePath(ResourceType.Mission, missionName);
         _mission = Timing.TimeStage("Parse DB", () => new DbFile(_misPath));
         _hierarchy = Timing.TimeStage("Build Hierarchy", BuildHierarchy);
+        _triangleTypeMap = [];
         _scene = Timing.TimeStage("Build Scene", BuildRaytracingScene);
         _lights = [];
     }
@@ -132,12 +141,17 @@ public class LightMapper
                     vertices.Add(vertex);
                 }
 
+                // For now we're only differentiating between solid and sky because portal polys are skipped
+                var renderPoly = cell.RenderPolys[polyIdx];
+                var primType = renderPoly.TextureId == 249 ? SurfaceType.Sky : SurfaceType.Solid;
+                
                 // Cell polygons are n-sided, but fortunately they're convex so we can just do a fan triangulation
                 for (var j = 1; j < numPolyVertices - 1; j++)
                 {
                     indices.Add(meshIndexOffset);
                     indices.Add(meshIndexOffset + j);
                     indices.Add(meshIndexOffset + j + 1);
+                    _triangleTypeMap.Add(primType);
                 }
 
                 cellIdxOffset += cell.Polys[polyIdx].VertexCount;
