@@ -128,9 +128,9 @@ public class LightMapper
                 continue;
             }
 
-            var maxPolyIdx = Math.Min(numRenderPolys, numPolys - numPortalPolys);
+            var solidPolys = numPolys - numPortalPolys;
             var cellIdxOffset = 0;
-            for (var polyIdx = 0; polyIdx < maxPolyIdx; polyIdx++)
+            for (var polyIdx = 0; polyIdx < numRenderPolys; polyIdx++)
             {
                 var poly = cell.Polys[polyIdx];
                 var meshIndexOffset = vertices.Count;
@@ -141,9 +141,17 @@ public class LightMapper
                     vertices.Add(vertex);
                 }
 
-                // For now we're only differentiating between solid and sky because portal polys are skipped
+                // We need to know what type of surface this poly is so we can map Embree primitive IDs to surface
+                // types
                 var renderPoly = cell.RenderPolys[polyIdx];
-                var primType = renderPoly.TextureId == 249 ? SurfaceType.Sky : SurfaceType.Solid;
+                var primType = SurfaceType.Solid;
+                if (renderPoly.TextureId == 249)
+                {
+                    primType = SurfaceType.Sky;
+                } else if (polyIdx >= solidPolys)
+                {
+                    primType = SurfaceType.Water;
+                }
                 
                 // Cell polygons are n-sided, but fortunately they're convex so we can just do a fan triangulation
                 for (var j = 1; j < numPolyVertices - 1; j++)
