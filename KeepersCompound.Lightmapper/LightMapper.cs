@@ -21,6 +21,7 @@ public class LightMapper
         public bool Hdr;
         public SoftnessMode MultiSampling;
         public float MultiSamplingCenterWeight;
+        public bool LightmappedWater;
     }
 
     private ResourcePathManager.CampaignResources _campaign;
@@ -56,14 +57,16 @@ public class LightMapper
             return;
         }
 
+        // TODO: lmParams LightmappedWater doesn't mean the game will actually *use* the lightmapped water hmm
         var settings = new Settings
         {
             Hdr = worldRep.DataHeader.LightmapFormat == 2,
             AmbientLight = rendParams.ambientLight * 255,
             MultiSampling = lmParams.ShadowSoftness,
             MultiSamplingCenterWeight = lmParams.CenterWeight,
+            LightmappedWater = lmParams.LightmappedWater,
         };
-
+        
         Timing.TimeStage("Gather Lights", BuildLightList);
         Timing.TimeStage("Set Light Indices", SetCellLightIndices);
         Timing.TimeStage("Trace Scene", () => TraceScene(settings));
@@ -390,9 +393,9 @@ public class LightMapper
                 return;
             }
 
-            var maxPolyIdx = Math.Min(numRenderPolys, numPolys - numPortalPolys);
+            var solidPolys = numPolys - numPortalPolys;
             var cellIdxOffset = 0;
-            for (var polyIdx = 0; polyIdx < maxPolyIdx; polyIdx++)
+            for (var polyIdx = 0; polyIdx < numRenderPolys; polyIdx++)
             {
                 var poly = cell.Polys[polyIdx];
                 var plane = cell.Planes[poly.PlaneId];
@@ -401,6 +404,14 @@ public class LightMapper
                 var lightmap = cell.Lightmaps[polyIdx];
 
                 info.AnimLightBitmask = 0;
+                
+                // We have to reset the lightmaps for water, but we don't want to do anything else
+                var waterPoly = polyIdx >= solidPolys;
+                if (!settings.LightmappedWater && waterPoly)
+                {
+                    lightmap.Reset(Vector3.One * 255f, settings.Hdr);
+                    continue;
+                }
                 lightmap.Reset(settings.AmbientLight, settings.Hdr);
 
                 // Get world position of lightmap (0, 0) (+0.5 so we cast from the center of a pixel)
