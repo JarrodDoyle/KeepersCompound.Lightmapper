@@ -612,13 +612,23 @@ public class LightMapper
     
     private bool TraceRay(Vector3 origin, Vector3 target)
     {
-        var direction = target - origin;
-        var hitResult = _scene.Trace(new Ray
+        var hitDistanceFromTarget = float.MinValue;
+        var hitSurfaceType = SurfaceType.Water;
+        while (hitDistanceFromTarget < -MathUtils.Epsilon && hitSurfaceType == SurfaceType.Water)
         {
-            Origin = origin,
-            Direction = Vector3.Normalize(direction),
-        });
-        return hitResult && Math.Abs(hitResult.Distance - direction.Length()) < MathUtils.Epsilon;
+            var direction = target - origin;
+            var hitResult = _scene.Trace(new Ray
+            {
+                Origin = origin,
+                Direction = Vector3.Normalize(direction),
+            });
+
+            hitDistanceFromTarget = hitResult.Distance - direction.Length();
+            hitSurfaceType = _triangleTypeMap[(int)hitResult.PrimId];
+            origin = hitResult.Position += direction * MathUtils.Epsilon;
+        }
+
+        return Math.Abs(hitDistanceFromTarget) < MathUtils.Epsilon;
     }
 
     private void SetAnimLightCellMaps()
