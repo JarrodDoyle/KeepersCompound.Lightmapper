@@ -354,12 +354,14 @@ public class LightMapper
             // The OG lightmapper uses the cell traversal to work out all the cells that
             // are actually visited. We're a lot more coarse and just say if a cell is
             // in range then we potentially affect the lighting in the cell and add it 
-            // to the list. Cells already contain their sphere bounds so we just use
-            // that for now, but a tighter AABB is another option.
-            var cellSphere = new MathUtils.Sphere(cell.SphereCenter, cell.SphereRadius);
+            // to the list.
+            // There's a soft length limit here of 96 due to the runtime object shadow
+            // cache, so we want this to be as minimal as possible. Additionally large
+            // lists actually cause performance issues!
+            var cellAabb = new MathUtils.Aabb(cell.Vertices);
             foreach (var light in _lights)
             {
-                if (MathUtils.Intersects(cellSphere, new MathUtils.Sphere(light.Position, light.Radius)))
+                if (MathUtils.Intersects(new MathUtils.Sphere(light.Position, light.Radius), cellAabb))
                 {
                     cell.LightIndexCount++;
                     cell.LightIndices.Add((ushort)light.LightTableIndex);
