@@ -500,3 +500,27 @@ public class PropSpotlightAndAmbient : Property
         writer.Write(SpotBrightness);
     }
 }
+
+public class PropJointPos : Property
+{
+    public float[] Positions;
+
+    public override void Read(BinaryReader reader)
+    {
+        base.Read(reader);
+        Positions = new float[6];
+        for (var i = 0; i < 6; i++)
+        {
+            Positions[i] = reader.ReadSingle();
+        }
+    }
+
+    public override void Write(BinaryWriter writer)
+    {
+        base.Write(writer);
+        foreach (var position in Positions)
+        {
+            writer.Write(position);
+        }
+    }
+}

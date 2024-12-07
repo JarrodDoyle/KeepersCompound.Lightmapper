@@ -91,6 +91,7 @@ public class ObjectHierarchy
         AddProp<PropLabel>("P$ModelName");
         AddProp<PropVector>("P$Scale");
         AddProp<PropRenderType>("P$RenderTyp");
+        AddProp<PropJointPos>("P$JointPos");
         AddProp<PropString>("P$OTxtRepr0");
         AddProp<PropString>("P$OTxtRepr1");
         AddProp<PropString>("P$OTxtRepr2");
