@@ -156,6 +156,8 @@ public class DbFile
             "P$Scale" => new PropertyChunk<PropVector>(),
             "P$RenderTyp" => new PropertyChunk<PropRenderType>(),
             "P$JointPos" => new PropertyChunk<PropJointPos>(),
+            "P$Immobile" => new PropertyChunk<PropBool>(),
+            "P$StatShad" => new PropertyChunk<PropBool>(),
             "P$OTxtRepr0" => new PropertyChunk<PropString>(),
             "P$OTxtRepr1" => new PropertyChunk<PropString>(),
             "P$OTxtRepr2" => new PropertyChunk<PropString>(),
