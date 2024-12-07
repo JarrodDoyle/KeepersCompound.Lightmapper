@@ -92,6 +92,54 @@ public class ModelFile
         }
     }
 
+    public struct SubObject
+    {
+        public string Name;
+        public byte Type;
+        public int Joint;
+        public float MinJointValue;
+        public float MaxJointValue;
+        public Matrix4x4 Transform;
+        public short Child;
+        public short Next;
+        public ushort VhotIdx;
+        public ushort VhotCount;
+        public ushort PointIdx;
+        public ushort PointCount;
+        public ushort LightIdx;
+        public ushort LightCount;
+        public ushort NormalIdx;
+        public ushort NormalCount;
+        public ushort NodeIdx;
+        public ushort NodeCount;
+
+        public SubObject(BinaryReader reader)
+        {
+            Name = reader.ReadNullString(8);
+            Type = reader.ReadByte();
+            Joint = reader.ReadInt32();
+            MinJointValue = reader.ReadSingle();
+            MaxJointValue = reader.ReadSingle();
+            var v1 = reader.ReadVec3();
+            var v2 = reader.ReadVec3();
+            var v3 = reader.ReadVec3();
+            var v4 = reader.ReadVec3();
+            Transform = new Matrix4x4(v1.X, v1.Y, v1.Z, 0, v2.X, v2.Y, v2.Z, 0, v3.X, v3.Y, v3.Z, 0, v4.X, v4.Y, v4.Z, 1);
+            Child = reader.ReadInt16();
+            Next = reader.ReadInt16();
+            VhotIdx = reader.ReadUInt16();
+            VhotCount = reader.ReadUInt16();
+            PointIdx = reader.ReadUInt16();
+            PointCount = reader.ReadUInt16();
+            LightIdx = reader.ReadUInt16();
+            LightCount = reader.ReadUInt16();
+            NormalIdx = reader.ReadUInt16();
+            NormalCount = reader.ReadUInt16();
+            NodeIdx = reader.ReadUInt16();
+            NodeCount = reader.ReadUInt16();
+        }
+    }
+    
     public struct Polygon
     {
         public ushort Index;
@@ -183,6 +231,7 @@ public class ModelFile
     public Polygon[] Polygons { get; }
     public Material[] Materials { get; }
     public VHot[] VHots { get; }
+    public SubObject[] Objects { get; }
 
     public ModelFile(string filename)
     {
@@ -230,6 +279,12 @@ public class ModelFile
         for (var i = 0; i < VHots.Length; i++)
         {
             VHots[i] = new VHot(reader);
+        }
+        stream.Seek(Header.ObjectOffset, SeekOrigin.Begin);
+        Objects = new SubObject[Header.ObjectCount];
+        for (var i = 0; i < Objects.Length; i++)
+        {
+            Objects[i] = new SubObject(reader);
         }
     }
 
