@@ -219,10 +219,10 @@ public class LightMapper
             pos -= model.Header.Center;
             
             // for each object modify the vertices
-            // TODO: Something about the transform is fucky
+            // TODO: Almost perfect transform!
+            // TODO: Handle nested sub objects
             foreach (var subObj in model.Objects)
             {
-                Console.WriteLine($"ID: {subObj.Joint}, l: {joints.Length}");
                 var jointTrans = Matrix4x4.Identity;
                 if (subObj.Joint != -1)
                 {
@@ -232,8 +232,8 @@ public class LightMapper
                     jointTrans = jointRot * objTrans;
                 }
                 var scalePart = Matrix4x4.CreateScale(scale);
-                var rotPart = Matrix4x4.CreateFromYawPitchRoll(float.DegreesToRadians(rot.X),
-                    float.DegreesToRadians(rot.Y), float.DegreesToRadians(rot.Z));
+                var rotPart = Matrix4x4.CreateFromYawPitchRoll(float.DegreesToRadians(rot.Y), float.DegreesToRadians(rot.X),
+                    float.DegreesToRadians(rot.Z));
                 var transPart = Matrix4x4.CreateTranslation(pos);
                 var transform = jointTrans * scalePart * rotPart * transPart;
                 
@@ -243,8 +243,6 @@ public class LightMapper
                 {
                     var v = model.Vertices[i];
                     model.Vertices[i] = Vector3.Transform(v, transform);
-                    
-                    Console.WriteLine($"Raw: {v}, Pos: {model.Vertices[i]}");
                 }
             }
             
