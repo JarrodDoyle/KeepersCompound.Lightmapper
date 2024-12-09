@@ -178,8 +178,14 @@ public class LightMapper
     {
         // For some reason the light table index on brush lights is 1 indexed
         brush.brushInfo = (uint)lightTable.LightCount + 1;
-
         var sz = brush.size;
+        
+        // Ignore 0 brightness lights
+        if (sz.X == 0)
+        {
+            return;
+        }
+        
         var light = new Light
         {
             Position = brush.position,
@@ -245,7 +251,7 @@ public class LightMapper
             baseLight.SpotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.OuterAngle));
         }
 
-        if (propLight != null)
+        if (propLight != null && propLight.Brightness != 0f)
         {
             var light = new Light
             {
