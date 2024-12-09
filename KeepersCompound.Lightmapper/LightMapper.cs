@@ -129,7 +129,6 @@ public class LightMapper
 
     private void BuildLightList()
     {
-        // TODO: Doors aren't blocking lights, seems to be lighttable related
         _lights.Clear();
 
         // Get the chunks we need
@@ -287,6 +286,8 @@ public class LightMapper
 
     private void SetCellLightIndices()
     {
+        // TODO: Doors aren't blocking lights. Need to do some cell traversal to remove light indices :(
+        
         if (!_mission.TryGetChunk<WorldRep>("WREXT", out var worldRep))
             return;
         
