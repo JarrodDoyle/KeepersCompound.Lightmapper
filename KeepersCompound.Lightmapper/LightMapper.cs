@@ -8,13 +8,23 @@ namespace KeepersCompound.Lightmapper;
 
 public class LightMapper
 {
-    private class Settings
+    // The objcast element of sunlight is ignored, we just care if it's quadlit
+    private struct SunSettings
+    {
+        public bool Enabled;
+        public bool QuadLit;
+        public Vector3 Direction;
+        public Vector3 Color;
+    }
+    
+    private struct Settings
     {
         public Vector3 AmbientLight;
         public bool Hdr;
         public SoftnessMode MultiSampling;
         public float MultiSamplingCenterWeight;
         public bool LightmappedWater;
+        public SunSettings Sunlight;
     }
 
     private ResourcePathManager.CampaignResources _campaign;
@@ -58,6 +68,14 @@ public class LightMapper
             return;
         }
 
+        var sunlightSettings = new SunSettings()
+        {
+            Enabled = rendParams.useSunlight,
+            QuadLit = rendParams.sunlightMode is RendParams.SunlightMode.QuadUnshadowed or RendParams.SunlightMode.QuadObjcastShadows,
+            Direction = rendParams.sunlightDirection,
+            Color = Utils.HsbToRgb(rendParams.sunlightHue, rendParams.sunlightSaturation, rendParams.sunlightBrightness),
+        };
+
         // TODO: lmParams LightmappedWater doesn't mean the game will actually *use* the lightmapped water hmm
         var settings = new Settings
         {
@@ -66,6 +84,7 @@ public class LightMapper
             MultiSampling = lmParams.ShadowSoftness,
             MultiSamplingCenterWeight = lmParams.CenterWeight,
             LightmappedWater = lmParams.LightmappedWater,
+            Sunlight = sunlightSettings,
         };
         
         Timing.TimeStage("Gather Lights", BuildLightList);
@@ -414,6 +433,36 @@ public class LightMapper
                         var quadTracePoints = settings.MultiSampling == SoftnessMode.HighFourPoint
                             ? tracePoints
                             : GetTracePoints(pos, quadOffsets, renderPoly.Center, planeMapper, v2ds);
+                        
+                        // TODO: This isn't quite right yet. It seems to be too bright
+                        if (settings.Sunlight.Enabled) {
+                            // Check if plane normal is facing towards the light
+                            // If it's not then we're never going to be (directly) lit by this
+                            // light.
+                            var sunAngle = Vector3.Dot(-settings.Sunlight.Direction, plane.Normal);
+                            if (sunAngle > 0)
+                            {
+                                var strength = 0f;
+                                var targetPoints = settings.Sunlight.QuadLit ? quadTracePoints : tracePoints;
+                                var targetWeights = settings.Sunlight.QuadLit ? quadWeights : weights;
+                                for (var idx = 0; idx < targetPoints.Length; idx++)
+                                {
+                                    var point = targetPoints[idx];
+                                    if (TraceSunRay(point, -settings.Sunlight.Direction))
+                                    {
+                                        // Sunlight is a simpler lighting algorithm than normal lights so we can just
+                                        // do it here
+                                        strength += targetWeights[idx] * sunAngle;
+                                    }
+                                }
+
+                                if (strength != 0f)
+                                {
+                                    lightmap.AddLight(0, x, y, settings.Sunlight.Color, strength, settings.Hdr);
+                                }
+                            }
+                        }
+
                         foreach (var light in _lights)
                         {
                             var layer = 0;
@@ -594,6 +643,28 @@ public class LightMapper
         }
 
         return Math.Abs(hitDistanceFromTarget) < MathUtils.Epsilon;
+    }
+
+    // TODO: Can this be merged with the above?
+    private bool TraceSunRay(Vector3 origin, Vector3 direction)
+    {
+        // Avoid self intersection
+        origin += direction * MathUtils.Epsilon;
+        
+        var hitSurfaceType = SurfaceType.Water;
+        while (hitSurfaceType == SurfaceType.Water)
+        {
+            var hitResult = _scene.Trace(new Ray
+            {
+                Origin = origin,
+                Direction = Vector3.Normalize(direction),
+            });
+            
+            hitSurfaceType = _triangleTypeMap[(int)hitResult.PrimId];
+            origin = hitResult.Position += direction * MathUtils.Epsilon;
+        }
+        
+        return hitSurfaceType == SurfaceType.Sky;
     }
 
     private void SetAnimLightCellMaps()
