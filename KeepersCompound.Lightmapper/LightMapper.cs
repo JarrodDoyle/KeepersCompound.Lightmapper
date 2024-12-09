@@ -159,6 +159,8 @@ public class LightMapper
 
         worldRep.LightingTable.Reset();
         
+        // TODO: Calculate the actual effective radius of infinite lights
+        // potentially do the same for all lights and lower their radius if necessary?
         foreach (var brush in brList.Brushes)
         {
             switch (brush.media)
@@ -170,6 +172,12 @@ public class LightMapper
                     ProcessObjectLight(worldRep.LightingTable, brush);
                     break;
             }
+        }
+
+        var infinite = _lights.Count(light => light.Radius == float.MaxValue);
+        if (infinite > 0)
+        {
+            Console.WriteLine($"WARNING: Infinite radius lights found: {infinite}/{_lights.Count}");
         }
     }
     
@@ -361,9 +369,31 @@ public class LightMapper
 
             if (cell.LightIndexCount > 97)
             {
-                Console.WriteLine($"Too many lights in cell at ({cell.SphereCenter}): {cell.LightIndexCount - 1} / 96");
+                Console.WriteLine($"WARNING: Too many lights in cell at ({cell.SphereCenter}): {cell.LightIndexCount - 1} / 96");
             }
         });
+
+        {
+            var overLit = 0;
+            var maxLights = 0;
+            foreach (var cell in worldRep.Cells)
+            {
+                if (cell.LightIndexCount > 97)
+                {
+                    overLit++;
+                }
+
+                if (cell.LightIndexCount > maxLights)
+                {
+                    maxLights = cell.LightIndexCount - 1;
+                }
+            }
+
+            if (overLit > 0)
+            {
+                Console.WriteLine($"WARNING: Overlit cells detected: {overLit}/{worldRep.Cells.Length}, MaxLights: {maxLights} / 96");
+            }
+        }
     }
 
     private void TraceScene(Settings settings)
