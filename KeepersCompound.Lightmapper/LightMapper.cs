@@ -8,13 +8,6 @@ namespace KeepersCompound.Lightmapper;
 
 public class LightMapper
 {
-    private enum SurfaceType
-    {
-        Solid,
-        Sky,
-        Water,
-    }
-    
     private class Settings
     {
         public Vector3 AmbientLight;
@@ -30,7 +23,7 @@ public class LightMapper
     private ObjectHierarchy _hierarchy;
     private Raytracer _scene;
     private List<Light> _lights;
-    private List<SurfaceType> _triangleTypeMap;
+    private SurfaceType[] _triangleTypeMap;
 
     public LightMapper(
         string installPath,
@@ -42,9 +35,17 @@ public class LightMapper
         _misPath = _campaign.GetResourcePath(ResourceType.Mission, missionName);
         _mission = Timing.TimeStage("Parse DB", () => new DbFile(_misPath));
         _hierarchy = Timing.TimeStage("Build Hierarchy", BuildHierarchy);
-        _triangleTypeMap = [];
-        _scene = Timing.TimeStage("Build Scene", BuildRaytracingScene);
         _lights = [];
+        
+        var mesh = Timing.TimeStage("Build Mesh", BuildMesh);
+        _triangleTypeMap = mesh.TriangleSurfaceMap;
+        _scene = Timing.TimeStage("Build RT Scene", () =>
+        {
+            var rt = new Raytracer();
+            rt.AddMesh(new TriangleMesh(mesh.Vertices, mesh.Indices));
+            rt.CommitScene();
+            return rt;
+        });
     }
     
     public void Light()
@@ -109,16 +110,17 @@ public class LightMapper
         return new ObjectHierarchy(_mission);
     }
 
-    private Raytracer BuildRaytracingScene()
+    private Mesh BuildMesh()
     {
         // TODO: Should this throw?
-        if (!_mission.TryGetChunk<WorldRep>("WREXT", out var worldRep))
+        if (!_mission.TryGetChunk<WorldRep>("WREXT", out var worldRep) ||
+            !_mission.TryGetChunk<BrList>("BRLIST", out var brList))
         {
-            return null;
+            return new Mesh(0, [], [], []);
         }
 
-        var vertices = new List<Vector3>();
-        var indices = new List<int>();
+        var meshBuilder = new MeshBuilder();
+        var polyVertices = new List<Vector3>();
         
         // Worldrep mesh
         foreach (var cell in worldRep.Cells)
@@ -138,12 +140,12 @@ public class LightMapper
             for (var polyIdx = 0; polyIdx < numRenderPolys; polyIdx++)
             {
                 var poly = cell.Polys[polyIdx];
-                var meshIndexOffset = vertices.Count;
-                var numPolyVertices = poly.VertexCount;
-                for (var j = 0; j < numPolyVertices; j++)
+
+                polyVertices.Clear();
+                polyVertices.EnsureCapacity(poly.VertexCount);
+                for (var i = 0; i < poly.VertexCount; i++)
                 {
-                    var vertex = cell.Vertices[cell.Indices[cellIdxOffset + j]];
-                    vertices.Add(vertex);
+                    polyVertices.Add(cell.Vertices[cell.Indices[cellIdxOffset + i]]);
                 }
 
                 // We need to know what type of surface this poly is so we can map Embree primitive IDs to surface
@@ -158,26 +160,12 @@ public class LightMapper
                     primType = SurfaceType.Water;
                 }
                 
-                // Cell polygons are n-sided, but fortunately they're convex so we can just do a fan triangulation
-                for (var j = 1; j < numPolyVertices - 1; j++)
-                {
-                    indices.Add(meshIndexOffset);
-                    indices.Add(meshIndexOffset + j);
-                    indices.Add(meshIndexOffset + j + 1);
-                    _triangleTypeMap.Add(primType);
-                }
-
-                cellIdxOffset += cell.Polys[polyIdx].VertexCount;
+                meshBuilder.AddPolygon(polyVertices, primType);
+                cellIdxOffset += poly.VertexCount;
             }
         }
         
-        // Object meshes??
-        // TODO: Should this throw?
-        if (!_mission.TryGetChunk<BrList>("BRLIST", out var brList))
-        {
-            return null;
-        }
-
+        // Object meshes
         foreach (var brush in brList.Brushes)
         {
             if (brush.media != BrList.Brush.Media.Object)
@@ -198,7 +186,7 @@ public class LightMapper
             var renderMode = renderTypeProp?.mode ?? PropRenderType.Mode.Normal;
             
             // TODO: Check which rendermodes cast shadows :)
-            if (modelNameProp == null || !castsShadows || renderMode != PropRenderType.Mode.Normal)
+            if (modelNameProp == null || !castsShadows || renderMode == PropRenderType.Mode.CoronaOnly)
             {
                 continue;
             }
@@ -246,29 +234,21 @@ public class LightMapper
                 }
             }
             
-            // for each polygon slam it's vertices and indices :)
+            // for each polygon slam its vertices and indices :)
             foreach (var poly in model.Polygons)
             {
-                var indexOffset = vertices.Count;
+                polyVertices.Clear();
+                polyVertices.EnsureCapacity(poly.VertexCount);
                 foreach (var idx in poly.VertexIndices)
                 {
-                    vertices.Add(model.Vertices[idx]);
+                    polyVertices.Add(model.Vertices[idx]);
                 }
                 
-                for (int i = 1; i < poly.VertexCount - 1; i++)
-                {
-                    indices.Add(indexOffset);
-                    indices.Add(indexOffset + i);
-                    indices.Add(indexOffset + i + 1);
-                    _triangleTypeMap.Add(SurfaceType.Solid);
-                }
+                meshBuilder.AddPolygon(polyVertices, SurfaceType.Solid);
             }
         }
-        
-        var rt = new Raytracer();
-        rt.AddMesh(new TriangleMesh([.. vertices], [.. indices]));
-        rt.CommitScene();
-        return rt;
+
+        return meshBuilder.Build();
     }
 
     private void BuildLightList()
