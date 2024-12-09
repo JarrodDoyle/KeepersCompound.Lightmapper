@@ -72,7 +72,7 @@ public class LightMapper
         {
             Enabled = rendParams.useSunlight,
             QuadLit = rendParams.sunlightMode is RendParams.SunlightMode.QuadUnshadowed or RendParams.SunlightMode.QuadObjcastShadows,
-            Direction = rendParams.sunlightDirection,
+            Direction = Vector3.Normalize(rendParams.sunlightDirection),
             Color = Utils.HsbToRgb(rendParams.sunlightHue, rendParams.sunlightSaturation, rendParams.sunlightBrightness),
         };
 
@@ -439,7 +439,7 @@ public class LightMapper
                             ? tracePoints
                             : GetTracePoints(pos, quadOffsets, renderPoly.Center, planeMapper, v2ds);
                         
-                        // TODO: This isn't quite right yet. It seems to be too bright
+                        // This is almost perfect now. Any issues seem to be related to Dark not carrying HSB strength correctly
                         if (settings.Sunlight.Enabled) {
                             // Check if plane normal is facing towards the light
                             // If it's not then we're never going to be (directly) lit by this
