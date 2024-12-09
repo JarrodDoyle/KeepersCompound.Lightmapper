@@ -88,7 +88,7 @@ public class LightMapper
         };
         
         Timing.TimeStage("Gather Lights", BuildLightList);
-        Timing.TimeStage("Set Light Indices", SetCellLightIndices);
+        Timing.TimeStage("Set Light Indices", () => SetCellLightIndices(settings));
         Timing.TimeStage("Trace Scene", () => TraceScene(settings));
         Timing.TimeStage("Update AnimLight Cell Mapping", SetAnimLightCellMaps);
 
@@ -309,7 +309,7 @@ public class LightMapper
         }
     }
 
-    private void SetCellLightIndices()
+    private void SetCellLightIndices(Settings settings)
     {
         // TODO: Doors aren't blocking lights. Need to do some cell traversal to remove light indices :(
         
@@ -330,10 +330,15 @@ public class LightMapper
             cell.LightIndexCount++;
             cell.LightIndices.Add(0);
             
-            // Additionally we'll add the sun to everything (yucky)
-            cell.LightIndexCount++;
-            cell.LightIndices.Add(0);
-            cell.LightIndices[0]++;
+            // If we have sunlight, then we just assume the sun has the potential to reach everything (ew)
+            // The sun enabled option doesn't actually seem to do anything at runtime, it's purely about if
+            // the cell has the sunlight idx on it.
+            if (settings.Sunlight.Enabled)
+            {
+                cell.LightIndexCount++;
+                cell.LightIndices.Add(0);
+                cell.LightIndices[0]++;
+            }
 
             // The OG lightmapper uses the cell traversal to work out all the cells that
             // are actually visited. We're a lot more coarse and just say if a cell is
