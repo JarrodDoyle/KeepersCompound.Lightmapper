@@ -90,12 +90,14 @@ public static class MathUtils
 
     public record PlanePointMapper
     {
+        public Vector3 Normal { get; }
         Vector3 _origin;
         Vector3 _xAxis;
         Vector3 _yAxis;
 
         public PlanePointMapper(Vector3 normal, Vector3 p0, Vector3 p1)
         {
+            Normal = normal;
             _origin = p0;
             _xAxis = p1 - _origin;
             _yAxis = Vector3.Cross(normal, _xAxis);

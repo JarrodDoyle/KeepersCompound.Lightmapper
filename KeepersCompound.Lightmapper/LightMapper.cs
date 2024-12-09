@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using KeepersCompound.LGS;
 using KeepersCompound.LGS.Database;
@@ -429,11 +430,32 @@ public class LightMapper
                             var pos = topLeft;
                             pos += x * 0.25f * renderPoly.TextureVectors.Item1;
                             pos += y * 0.25f * renderPoly.TextureVectors.Item2;
-                            
-                            if (TracePixelMultisampled(
-                                    settings.MultiSampling, light, pos, renderPoly.Center, plane, planeMapper, v2ds,
-                                    renderPoly.TextureVectors.Item1, renderPoly.TextureVectors.Item2,
-                                    settings.MultiSamplingCenterWeight, out var strength))
+
+                            var softnessMode = light.QuadLit ? SoftnessMode.HighFourPoint : settings.MultiSampling;
+                            var (texU, texV) = renderPoly.TextureVectors;
+                            var (offsets, weights) = GetTraceOffsetsAndWeights(softnessMode, texU, texV,settings.MultiSamplingCenterWeight);
+                            var tracePoints = GetTracePoints(pos, offsets, renderPoly.Center, planeMapper, v2ds);
+
+                            var strength = 0f;
+                            for (var idx = 0; idx < tracePoints.Length; idx++)
+                            {
+                                var point = tracePoints[idx];
+                                
+                                // If we're out of range there's no point casting a ray
+                                // There's probably a better way to discard the entire lightmap
+                                // if we're massively out of range
+                                if ((point - light.Position).LengthSquared() > light.R2)
+                                {
+                                    continue;
+                                }
+                                
+                                if (TraceRay(light.Position, point))
+                                {
+                                    strength += weights[idx] * light.StrengthAtPoint(point, plane);
+                                }
+                            }
+
+                            if (strength != 0f)
                             {
                                 // If we're an anim light there's a lot of stuff we need to update
                                 // Firstly we need to add the light to the cells anim light palette
@@ -463,126 +485,85 @@ public class LightMapper
         });
     }
     
-    public bool TracePixelMultisampled(
+    private static (Vector3[], float[]) GetTraceOffsetsAndWeights(
         SoftnessMode mode,
-        Light light,
-        Vector3 pos,
-        Vector3 polyCenter,
-        Plane plane,
-        MathUtils.PlanePointMapper planeMapper,
-        Vector2[] v2ds,
         Vector3 texU,
         Vector3 texV,
-        float centerWeight,
-        out float strength)
+        float centerWeight)
     {
-        bool FourPoint(float offsetScale, out float strength)
+        var offsetScale = mode switch
         {
-            var hit = false;
-            var xOffset = texU / offsetScale;
-            var yOffset = texV / offsetScale;
-            hit |= TracePixel(light, pos - xOffset - yOffset, polyCenter, plane, planeMapper, v2ds, out var strength1);
-            hit |= TracePixel(light, pos + xOffset - yOffset, polyCenter, plane, planeMapper, v2ds, out var strength2);
-            hit |= TracePixel(light, pos - xOffset + yOffset, polyCenter, plane, planeMapper, v2ds, out var strength3);
-            hit |= TracePixel(light, pos + xOffset + yOffset, polyCenter, plane, planeMapper, v2ds, out var strength4);
-            strength = (strength1 + strength2 + strength3 + strength4) / 4f;
-            return hit;
-        }
-        
-        bool FivePoint(float offsetScale, out float strength)
-        {
-            var hit = false;
-            hit |= TracePixel(light, pos, polyCenter, plane, planeMapper, v2ds, out var centerStrength);
-            hit |= FourPoint(offsetScale, out strength);
-            strength = (1.0f - centerWeight) * strength + centerWeight * centerStrength;
-            return hit;
-        }
-        
-        bool NinePoint(float offsetScale, out float strength)
-        {
-            var hit = false;
-            var xOffset = texU / offsetScale;
-            var yOffset = texV / offsetScale;
-            hit |= TracePixel(light, pos - xOffset - yOffset, polyCenter, plane, planeMapper, v2ds, out var s1);
-            hit |= TracePixel(light, pos + xOffset - yOffset, polyCenter, plane, planeMapper, v2ds, out var s2);
-            hit |= TracePixel(light, pos - xOffset + yOffset, polyCenter, plane, planeMapper, v2ds, out var s3);
-            hit |= TracePixel(light, pos + xOffset + yOffset, polyCenter, plane, planeMapper, v2ds, out var s4);
-            hit |= TracePixel(light, pos - xOffset, polyCenter, plane, planeMapper, v2ds, out var s5);
-            hit |= TracePixel(light, pos + xOffset, polyCenter, plane, planeMapper, v2ds, out var s6);
-            hit |= TracePixel(light, pos - yOffset, polyCenter, plane, planeMapper, v2ds, out var s7);
-            hit |= TracePixel(light, pos + yOffset, polyCenter, plane, planeMapper, v2ds, out var s8);
-            hit |= TracePixel(light, pos, polyCenter, plane, planeMapper, v2ds, out var centerStrength);
-            strength = (s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8) / 8f;
-            strength = (1.0f - centerWeight) * strength + centerWeight * centerStrength;
-            return hit;
-        }
+            SoftnessMode.HighFourPoint or SoftnessMode.HighFivePoint or SoftnessMode.HighNinePoint => 4f,
+            SoftnessMode.MediumFourPoint or SoftnessMode.MediumFivePoint or SoftnessMode.MediumNinePoint => 8f,
+            SoftnessMode.LowFourPoint => 16f,
+            _ => 1f,
+        };
 
-        return mode switch {
-            SoftnessMode.Standard when light.QuadLit => FourPoint(4f, out strength),
-            SoftnessMode.HighFourPoint => FourPoint(4f, out strength),
-            SoftnessMode.HighFivePoint => FivePoint(4f, out strength),
-            SoftnessMode.HighNinePoint => NinePoint(4f, out strength),
-            SoftnessMode.MediumFourPoint => FourPoint(8f, out strength),
-            SoftnessMode.MediumFivePoint => FivePoint(8f, out strength),
-            SoftnessMode.MediumNinePoint => NinePoint(8f, out strength),
-            SoftnessMode.LowFourPoint => FourPoint(16f, out strength),
-            _ => TracePixel(light, pos, polyCenter, plane, planeMapper, v2ds, out strength)
+        var cw = centerWeight;
+        var w = 1f - cw;
+        texU /= offsetScale;
+        texV /= offsetScale;
+
+        return mode switch
+        {
+            SoftnessMode.LowFourPoint or SoftnessMode.MediumFourPoint or SoftnessMode.HighFourPoint => (
+                [-texU - texV, -texU - texV, -texU + texV, texU + texV],
+                [0.25f, 0.25f, 0.25f, 0.25f]),
+            SoftnessMode.MediumFivePoint or SoftnessMode.HighFivePoint => (
+                [Vector3.Zero, -texU - texV, texU - texV, -texU + texV, texU + texV],
+                [cw, w * 0.25f, w * 0.25f, w * 0.25f, w * 0.25f]),
+            SoftnessMode.MediumNinePoint or SoftnessMode.HighNinePoint => (
+                [Vector3.Zero, -texU - texV, texU - texV, -texU + texV, texU + texV, -texU, texU, -texV, texV],
+                [cw, w * 0.125f, w * 0.125f, w * 0.125f, w * 0.125f, w * 0.125f, w * 0.125f, w * 0.125f, w * 0.125f]),
+            _ => (
+                [Vector3.Zero],
+                [1f]),
         };
     }
-    
-    private bool TracePixel(
-        Light light,
-        Vector3 pos,
+
+    private Vector3[] GetTracePoints(
+        Vector3 basePosition,
+        Vector3[] offsets,
         Vector3 polyCenter,
-        Plane plane,
         MathUtils.PlanePointMapper planeMapper,
-        Vector2[] v2ds,
-        out float strength)
+        Vector2[] v2ds)
     {
-        strength = 0f;
+        var tracePoints = new Vector3[offsets.Length];
+        for (var i = 0; i < offsets.Length; i++)
+        {
+            var offset = offsets[i];
+            var pos = basePosition + offset;
+            
+            // Embree has robustness issues when hitting poly edges which
+            // results in false misses. To alleviate this we pre-push everything
+            // slightly towards the center of the poly.
+            var centerOffset = polyCenter - pos;
+            if (centerOffset.LengthSquared() > MathUtils.Epsilon)
+            {
+                pos += Vector3.Normalize(centerOffset) * MathUtils.Epsilon;
+            }
+            
+            // If we can't see our target point from the center of the poly
+            // then it's outside the world. We need to clip the point to slightly
+            // inside the poly and retrace to avoid three problems:
+            // 1. Darkened spots from lightmap pixels whose center is outside
+            //    the polygon but is partially contained in the polygon
+            // 2. Darkened spots from linear filtering of points outside the
+            //    polygon which have missed
+            // 3. Darkened spots where centers are on the exact edge of a poly
+            //    which can sometimes cause Embree to miss casts
+            var inPoly = TraceRay(polyCenter + planeMapper.Normal * 0.25f, pos);
+            if (!inPoly)
+            {
+                var p2d = planeMapper.MapTo2d(pos);
+                p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
+                pos = planeMapper.MapTo3d(p2d);
+            }
+
+            tracePoints[i] = pos;
+        }
         
-        // Embree has robustness issues when hitting poly edges which
-        // results in false misses. To alleviate this we pre-push everything
-        // slightly towards the center of the poly.
-        var centerOffset = polyCenter - pos;
-        if (centerOffset.LengthSquared() > MathUtils.Epsilon)
-        {
-            pos += Vector3.Normalize(centerOffset) * MathUtils.Epsilon;
-        }
-
-        // If we can't see our target point from the center of the poly
-        // then it's outside the world. We need to clip the point to slightly
-        // inside the poly and retrace to avoid three problems:
-        // 1. Darkened spots from lightmap pixels whose center is outside
-        //    the polygon but is partially contained in the polygon
-        // 2. Darkened spots from linear filtering of points outside the
-        //    polygon which have missed
-        // 3. Darkened spots where centers are on the exact edge of a poly
-        //    which can sometimes cause Embree to miss casts
-        var inPoly = TraceRay(polyCenter + plane.Normal * 0.25f, pos);
-        if (!inPoly)
-        {
-            var p2d = planeMapper.MapTo2d(pos);
-            p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
-            pos = planeMapper.MapTo3d(p2d);
-        }
-
-        // If we're out of range there's no point casting a ray
-        // There's probably a better way to discard the entire lightmap
-        // if we're massively out of range
-        if ((pos - light.Position).LengthSquared() > light.R2)
-        {
-            return false;
-        }
-
-        // We cast from the light to the pixel because the light has
-        // no mesh in the scene to hit
-        var hit = TraceRay(light.Position, pos);
-        if (hit)
-        {
-            strength += light.StrengthAtPoint(pos, plane);
-        }
-        return hit;
+        return tracePoints;
     }
     
     private bool TraceRay(Vector3 origin, Vector3 target)
