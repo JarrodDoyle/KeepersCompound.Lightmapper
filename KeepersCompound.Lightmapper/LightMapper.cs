@@ -352,6 +352,11 @@ public class LightMapper
                     cell.LightIndices[0]++;
                 }
             }
+
+            if (cell.LightIndexCount > 97)
+            {
+                Console.WriteLine($"Too many lights in cell at ({cell.SphereCenter}): {cell.LightIndexCount - 1} / 96");
+            }
         });
     }
 
