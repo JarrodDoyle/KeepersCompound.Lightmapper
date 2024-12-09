@@ -16,7 +16,7 @@ public class RendParams : IChunk
 
     public string palette;
     public Vector3 ambientLight;
-    public int useSunlight;
+    public bool useSunlight;
     public SunlightMode sunlightMode;
     public Vector3 sunlightDirection;
     public float sunlightHue;
@@ -31,7 +31,8 @@ public class RendParams : IChunk
     {
         palette = reader.ReadNullString(16);
         ambientLight = reader.ReadVec3();
-        useSunlight = reader.ReadInt32();
+        useSunlight = reader.ReadBoolean();
+        reader.ReadBytes(3);
         sunlightMode = (SunlightMode)reader.ReadUInt32();
         sunlightDirection = reader.ReadVec3();
         sunlightHue = reader.ReadSingle();
@@ -58,6 +59,7 @@ public class RendParams : IChunk
         writer.WriteNullString(palette, 16);
         writer.WriteVec3(ambientLight);
         writer.Write(useSunlight);
+        writer.Write(new byte[3]);
         writer.Write((uint)sunlightMode);
         writer.WriteVec3(sunlightDirection);
         writer.Write(sunlightHue);
