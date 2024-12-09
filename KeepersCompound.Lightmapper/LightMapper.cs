@@ -129,6 +129,7 @@ public class LightMapper
 
     private void BuildLightList()
     {
+        // TODO: Doors aren't blocking lights, seems to be lighttable related
         _lights.Clear();
 
         // Get the chunks we need

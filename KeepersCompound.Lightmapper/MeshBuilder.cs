@@ -5,11 +5,13 @@ using KeepersCompound.LGS.Database.Chunks;
 
 namespace KeepersCompound.Lightmapper;
 
+// TODO: Rename to CastSurfaceType?
 public enum SurfaceType
 {
     Solid,
     Sky,
     Water,
+    Air,
 }
 
 public class Mesh(int triangleCount, List<Vector3> vertices, List<int> indices, List<SurfaceType> triangleSurfaceMap)
@@ -35,35 +37,42 @@ public class MeshBuilder
             var numPolys = cell.PolyCount;
             var numRenderPolys = cell.RenderPolyCount;
             var numPortalPolys = cell.PortalPolyCount;
-
-            // There's nothing to render
-            if (numRenderPolys == 0 || numPortalPolys >= numPolys)
-            {
-                continue;
-            }
-
             var solidPolys = numPolys - numPortalPolys;
+            
             var cellIdxOffset = 0;
-            for (var polyIdx = 0; polyIdx < numRenderPolys; polyIdx++)
+            for (var polyIdx = 0; polyIdx < numPolys; polyIdx++)
             {
+                // There's 3 types of poly that we need to include in the mesh:
+                // - Terrain
+                // - Water surfaces
+                // - Door vision blockers
+                //
+                // Door vision blockers are the interesting one. They're not RenderPolys at all, and we only include
+                // them in the mesh if the cell only has two of them (otherwise the door is in the middle of the air)
+                SurfaceType primType;
+                if (polyIdx < solidPolys)
+                {
+                    primType = cell.RenderPolys[polyIdx].TextureId == 249 ? SurfaceType.Sky : SurfaceType.Solid;
+                }
+                else if (polyIdx < numRenderPolys)
+                {
+                    primType = SurfaceType.Water;
+                }
+                else if (cell is { Flags: 24, PortalPolyCount: 2 }) // TODO: Work out what these flags are!!
+                {
+                    primType = SurfaceType.Solid;
+                }
+                else
+                {
+                    continue;
+                }
+                
                 var poly = cell.Polys[polyIdx];
                 polyVertices.Clear();
                 polyVertices.EnsureCapacity(poly.VertexCount);
                 for (var i = 0; i < poly.VertexCount; i++)
                 {
                     polyVertices.Add(cell.Vertices[cell.Indices[cellIdxOffset + i]]);
-                }
-
-                // We need to know what type of surface this poly is so we can map Embree primitive IDs to surface
-                // types
-                var renderPoly = cell.RenderPolys[polyIdx];
-                var primType = SurfaceType.Solid;
-                if (renderPoly.TextureId == 249)
-                {
-                    primType = SurfaceType.Sky;
-                } else if (polyIdx >= solidPolys)
-                {
-                    primType = SurfaceType.Water;
                 }
                 
                 AddPolygon(polyVertices, primType);
