@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Numerics;
 using KeepersCompound.LGS;
 using KeepersCompound.LGS.Database;
@@ -393,53 +392,63 @@ public class LightMapper
                 }
                 var planeMapper = new MathUtils.PlanePointMapper(plane.Normal, vs[0], vs[1]);
                 var v2ds = planeMapper.MapTo2d(vs);
+                
+                var (texU, texV) = renderPoly.TextureVectors;
+                var (offsets, weights) =
+                    GetTraceOffsetsAndWeights(settings.MultiSampling, texU, texV, settings.MultiSamplingCenterWeight);
+                var (quadOffsets, quadWeights) = settings.MultiSampling == SoftnessMode.HighFourPoint
+                    ? (offsets, weights)
+                    : GetTraceOffsetsAndWeights(SoftnessMode.HighFourPoint, texU, texV, settings.MultiSamplingCenterWeight);
 
-                foreach (var light in _lights)
+                for (var y = 0; y < lightmap.Height; y++)
                 {
-                    var layer = 0;
-
-                    // Check if plane normal is facing towards the light
-                    // If it's not then we're never going to be (directly) lit by this
-                    // light.
-                    var centerDirection = renderPoly.Center - light.Position;
-                    if (Vector3.Dot(plane.Normal, centerDirection) >= 0)
+                    for (var x = 0; x < lightmap.Width; x++)
                     {
-                        continue;
-                    }
-
-                    // If there aren't *any* points on the plane that are in range of the light
-                    // then none of the lightmap points will be so we can discard.
-                    // The more compact a map is the less effective this is
-                    var planeDist = MathUtils.DistanceFromPlane(plane, light.Position);
-                    if (planeDist > light.Radius)
-                    {
-                        continue;
-                    }
-
-                    // If the poly of the lightmap doesn't intersect the light radius then
-                    // none of the lightmap points will so we can discard.
-                    if (!MathUtils.Intersects(new MathUtils.Sphere(light.Position, light.Radius), aabb))
-                    {
-                        continue;
-                    }
-
-                    for (var y = 0; y < lightmap.Height; y++)
-                    {
-                        for (var x = 0; x < lightmap.Width; x++)
+                        var pos = topLeft;
+                        pos += x * 0.25f * renderPoly.TextureVectors.Item1;
+                        pos += y * 0.25f * renderPoly.TextureVectors.Item2;
+                        
+                        // TODO: Handle quad lit lights better. Right now we're computing two sets of points for every
+                        // luxel. Maybe it's better to only compute if we encounter a quadlit light?
+                        var tracePoints = GetTracePoints(pos, offsets, renderPoly.Center, planeMapper, v2ds);
+                        var quadTracePoints = settings.MultiSampling == SoftnessMode.HighFourPoint
+                            ? tracePoints
+                            : GetTracePoints(pos, quadOffsets, renderPoly.Center, planeMapper, v2ds);
+                        foreach (var light in _lights)
                         {
-                            var pos = topLeft;
-                            pos += x * 0.25f * renderPoly.TextureVectors.Item1;
-                            pos += y * 0.25f * renderPoly.TextureVectors.Item2;
+                            var layer = 0;
 
-                            var softnessMode = light.QuadLit ? SoftnessMode.HighFourPoint : settings.MultiSampling;
-                            var (texU, texV) = renderPoly.TextureVectors;
-                            var (offsets, weights) = GetTraceOffsetsAndWeights(softnessMode, texU, texV,settings.MultiSamplingCenterWeight);
-                            var tracePoints = GetTracePoints(pos, offsets, renderPoly.Center, planeMapper, v2ds);
-
-                            var strength = 0f;
-                            for (var idx = 0; idx < tracePoints.Length; idx++)
+                            // Check if plane normal is facing towards the light
+                            // If it's not then we're never going to be (directly) lit by this
+                            // light.
+                            var centerDirection = renderPoly.Center - light.Position;
+                            if (Vector3.Dot(plane.Normal, centerDirection) >= 0)
                             {
-                                var point = tracePoints[idx];
+                                continue;
+                            }
+
+                            // If there aren't *any* points on the plane that are in range of the light
+                            // then none of the lightmap points will be so we can discard.
+                            // The more compact a map is the less effective this is
+                            var planeDist = MathUtils.DistanceFromPlane(plane, light.Position);
+                            if (planeDist > light.Radius)
+                            {
+                                continue;
+                            }
+
+                            // If the poly of the lightmap doesn't intersect the light radius then
+                            // none of the lightmap points will so we can discard.
+                            if (!MathUtils.Intersects(new MathUtils.Sphere(light.Position, light.Radius), aabb))
+                            {
+                                continue;
+                            }
+                            
+                            var strength = 0f;
+                            var targetPoints = light.QuadLit ? quadTracePoints : tracePoints;
+                            var targetWeights = light.QuadLit ? quadWeights : weights;
+                            for (var idx = 0; idx < targetPoints.Length; idx++)
+                            {
+                                var point = targetPoints[idx];
                                 
                                 // If we're out of range there's no point casting a ray
                                 // There's probably a better way to discard the entire lightmap
@@ -451,7 +460,7 @@ public class LightMapper
                                 
                                 if (TraceRay(light.Position, point))
                                 {
-                                    strength += weights[idx] * light.StrengthAtPoint(point, plane);
+                                    strength += targetWeights[idx] * light.StrengthAtPoint(point, plane);
                                 }
                             }
 
