@@ -217,6 +217,12 @@ public class LightMapper
             SpotlightDir = -Vector3.UnitZ,
             SpotlightInnerAngle = -1.0f,
         };
+        
+        // TODO: Also apply scale?
+        var rot = Matrix4x4.Identity;
+        rot *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.angle.X));
+        rot *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
+        rot *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
 
         if (propModelName != null)
         {
@@ -228,11 +234,12 @@ public class LightMapper
                 var model = new ModelFile(modelPath);
                 if (model.TryGetVhot(ModelFile.VhotId.LightPosition, out var vhot))
                 {
-                    baseLight.Position += vhot.Position;
+                    baseLight.Position += Vector3.Transform(vhot.Position - model.Header.Center, rot);
+                    
                 }
                 if (model.TryGetVhot(ModelFile.VhotId.LightDirection, out vhot))
                 {
-                    baseLight.SpotlightDir = vhot.Position;
+                    baseLight.SpotlightDir = Vector3.Transform(vhot.Position - model.Header.Center, rot);
                 }
             }
 
@@ -240,13 +247,7 @@ public class LightMapper
 
         if (propSpotlight != null)
         {
-            var rot = Matrix4x4.Identity;
-            rot *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.angle.X));
-            rot *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
-            rot *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
-
             baseLight.Spotlight = true;
-            baseLight.SpotlightDir = Vector3.Transform(baseLight.SpotlightDir, rot);
             baseLight.SpotlightInnerAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.InnerAngle));
             baseLight.SpotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotlight.OuterAngle));
         }
@@ -255,7 +256,7 @@ public class LightMapper
         {
             var light = new Light
             {
-                Position = baseLight.Position + propLight.Offset,
+                Position = baseLight.Position + Vector3.Transform(propLight.Offset, rot),
                 Color = Utils.HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propLight.Brightness),
                 InnerRadius = propLight.InnerRadius,
                 Radius = propLight.Radius,
@@ -284,7 +285,7 @@ public class LightMapper
 
             var light = new Light
             {
-                Position = baseLight.Position + propAnimLight.Offset,
+                Position = baseLight.Position + Vector3.Transform(propAnimLight.Offset, rot),
                 Color = Utils.HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propAnimLight.MaxBrightness),
                 InnerRadius = propAnimLight.InnerRadius,
                 Radius = propAnimLight.Radius,
