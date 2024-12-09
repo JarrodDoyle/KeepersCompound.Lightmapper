@@ -323,6 +323,11 @@ public class LightMapper
             // Odd choice I know
             cell.LightIndexCount++;
             cell.LightIndices.Add(0);
+            
+            // Additionally we'll add the sun to everything (yucky)
+            cell.LightIndexCount++;
+            cell.LightIndices.Add(0);
+            cell.LightIndices[0]++;
 
             // The OG lightmapper uses the cell traversal to work out all the cells that
             // are actually visited. We're a lot more coarse and just say if a cell is
