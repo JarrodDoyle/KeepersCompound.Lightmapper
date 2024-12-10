@@ -1,0 +1,46 @@
+name: Build
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-win-x64:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build Windows
+        run: dotnet publish KeepersCompound.Lightmapper/KeepersCompound.Lightmapper.csproj -c Release -o release/win-x64 -r win-x64 -p:PublishAot=true --nologo
+      - name: Upload Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: win_x64
+          path: ${{ github.workspace }}/release/win-x64/
+  build-linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build
+        run: dotnet publish KeepersCompound.Lightmapper/KeepersCompound.Lightmapper.csproj -c Release -o release/linux-x64 -r linux-x64 -p:PublishAot=true --nologo
+      - name: Upload Linux
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux_x64
+          path: ${{ github.workspace }}/release/linux-x64/
