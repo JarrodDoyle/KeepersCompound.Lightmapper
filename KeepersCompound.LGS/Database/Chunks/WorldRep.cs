@@ -245,10 +245,26 @@ public class WorldRep : IChunk
             {
                 var idx = (x + y * Width) * Bpp;
                 var pLayer = Pixels[layer];
-                pLayer[idx] = (byte)Math.Clamp(pLayer[idx] + r, 0, 255);
-                pLayer[idx + 1] = (byte)Math.Clamp(pLayer[idx + 1] + g, 0, 255);
-                pLayer[idx + 2] = (byte)Math.Clamp(pLayer[idx + 2] + b, 0, 255);
-                pLayer[idx + 3] = 255;
+                switch (Bpp)
+                {
+                    // 1bpp isn't really supported (does nd dromed even produce it?)
+                    // TODO: seems to be under powered (int conversions rounding down?)
+                    case 2:
+                        var raw2 = pLayer[idx] + (pLayer[idx + 1] << 8);
+                        var newR = (int)Math.Clamp((raw2 & 31) + r * 31f / 255f, 0, 31);
+                        var newG = (int)Math.Clamp(((raw2 >> 5) & 31) + g * 31f / 255f, 0, 31);
+                        var newB = (int)Math.Clamp(((raw2 >> 10) & 31) + b * 31f / 255f, 0, 31);
+                        raw2 = newR + (newG << 5) + (newB << 10);
+                        pLayer[idx] = (byte)(raw2 & 0xff);
+                        pLayer[idx + 1] = (byte)((raw2 >> 8) & 0xff);
+                        break;
+                    case 4:
+                        pLayer[idx] = (byte)Math.Clamp(pLayer[idx] + r, 0, 255);
+                        pLayer[idx + 1] = (byte)Math.Clamp(pLayer[idx + 1] + g, 0, 255);
+                        pLayer[idx + 2] = (byte)Math.Clamp(pLayer[idx + 2] + b, 0, 255);
+                        pLayer[idx + 3] = 255;
+                        break;
+                }
                 
                 _litLayers[layer] = true;
             }
