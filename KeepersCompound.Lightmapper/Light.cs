@@ -7,6 +7,7 @@ public class Light
 {
     public Vector3 Position;
     public Vector3 Color;
+    public float Brightness;
     public float InnerRadius;
     public float Radius;
     public float R2;
@@ -80,5 +81,16 @@ public class Light
         }
 
         return strength;
+    }
+    
+    public float CalculateMaxRadius(float minLightCutoff)
+    {
+        // TODO: Should it be ceiling'd? Do we need to care about hdr? (I don't think so)
+        var radius = 8 * Brightness / minLightCutoff;
+        return radius;
+        
+        // 2 / (x / 4.0f) = minLightCutoff;
+        // 2 / minLightCutOff = x / 4.0f;
+        // x = 8 * rgb / minLightCutOff;
     }
 }
