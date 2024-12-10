@@ -1,0 +1,37 @@
+name: Build
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🎉 The job was automatically triggered by a ${{ gitea.event_name }} event."
+      - run: echo "🔎 The name of your branch is ${{ gitea.ref }} and your repository is ${{ gitea.repository }}."
+      - name: Checkout repo
+        uses: RouxAntoine/checkout@v3.5.4
+        with:
+          submodules: 'recursive'
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build Windows
+        run: dotnet publish KeepersCompound.Lightmapper/KeepersCompound.Lightmapper.csproj -c Release -o release/win-x64 -r win-x64 -p:PublishSingleFile=true --nologo
+      - name: Build Linux
+        run: dotnet publish KeepersCompound.Lightmapper/KeepersCompound.Lightmapper.csproj -c Release -o release/linux-x64 -r linux-x64 -p:PublishAot=true --nologo
+      - name: Upload Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: win_x64
+          path: ${{ gitea.workspace }}/release/win-x64/
+      - name: Upload Linux
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux_x64
+          path: ${{ gitea.workspace }}/release/linux-x64/
