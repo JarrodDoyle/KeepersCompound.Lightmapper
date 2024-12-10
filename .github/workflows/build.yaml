@@ -25,7 +25,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: win_x64
-          path: ${{ github.workspace }}/release/win-x64/
+          path: |
+            ${{ github.workspace }}/release/win-x64/
+            !${{ github.workspace }}/release/win-x64/*.pdb
   build-linux-x64:
     runs-on: ubuntu-latest
     steps:
@@ -43,4 +45,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux_x64
-          path: ${{ github.workspace }}/release/linux-x64/
+          path: |
+            ${{ github.workspace }}/release/linux-x64/
+            !${{ github.workspace }}/release/linux-x64/*.dbg
