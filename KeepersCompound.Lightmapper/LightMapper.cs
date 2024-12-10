@@ -218,19 +218,19 @@ public class LightMapper
         var propModelName = _hierarchy.GetProperty<PropLabel>(id, "P$ModelName");
 
         propLightColor ??= new PropLightColor { Hue = 0, Saturation = 0 };
-
-        var baseLight = new Light
-        {
-            Position = brush.position,
-            SpotlightDir = -Vector3.UnitZ,
-            SpotlightInnerAngle = -1.0f,
-        };
         
         // TODO: Also apply scale?
         var rot = Matrix4x4.Identity;
         rot *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.angle.X));
         rot *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
         rot *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
+        
+        var baseLight = new Light
+        {
+            Position = brush.position,
+            SpotlightDir = Vector3.Transform(-Vector3.UnitZ, rot),
+            SpotlightInnerAngle = -1.0f,
+        };
 
         if (propModelName != null)
         {
