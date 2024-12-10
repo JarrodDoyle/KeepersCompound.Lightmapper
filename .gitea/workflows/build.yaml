@@ -24,12 +24,12 @@ jobs:
       - name: Build Linux
         run: dotnet publish KeepersCompound.Lightmapper/KeepersCompound.Lightmapper.csproj -c Release -o release/linux-x64 -r linux-x64 -p:PublishSingleFile=true --nologo
       - name: Upload Windows
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v2
         with:
           name: win_x64
           path: ${{ gitea.workspace }}/release/win-x64/
       - name: Upload Linux
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v2
         with:
           name: linux_x64
           path: ${{ gitea.workspace }}/release/linux-x64/
