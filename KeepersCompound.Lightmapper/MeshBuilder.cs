@@ -126,9 +126,17 @@ public class MeshBuilder
             var scale = scaleProp?.value ?? Vector3.One;
             var model = new ModelFile(modelPath);
             pos -= model.Header.Center;
+
+
+            var scalePart = Matrix4x4.CreateScale(scale);
+            var rotPart = Matrix4x4.Identity;
+            rotPart *= Matrix4x4.CreateRotationX(float.DegreesToRadians(rot.X));
+            rotPart *= Matrix4x4.CreateRotationY(float.DegreesToRadians(rot.Y));
+            rotPart *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(rot.Z));
+            var transPart = Matrix4x4.CreateTranslation(pos);
+            var modelTrans = scalePart * rotPart * transPart;
             
             // for each object modify the vertices
-            // TODO: Almost perfect transform!
             // TODO: Handle nested sub objects
             foreach (var subObj in model.Objects)
             {
@@ -140,11 +148,8 @@ public class MeshBuilder
                     var objTrans = subObj.Transform;
                     jointTrans = jointRot * objTrans;
                 }
-                var scalePart = Matrix4x4.CreateScale(scale);
-                var rotPart = Matrix4x4.CreateFromYawPitchRoll(float.DegreesToRadians(rot.Y), float.DegreesToRadians(rot.X),
-                    float.DegreesToRadians(rot.Z));
-                var transPart = Matrix4x4.CreateTranslation(pos);
-                var transform = jointTrans * scalePart * rotPart * transPart;
+                
+                var transform = jointTrans * modelTrans;
                 
                 var start = subObj.PointIdx;
                 var end = start + subObj.PointCount;
