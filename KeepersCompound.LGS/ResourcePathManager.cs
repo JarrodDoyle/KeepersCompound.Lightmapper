@@ -148,9 +148,13 @@ public class ResourcePathManager
         }
 
         // We need to know where all the texture and object resources are
-        var zipPaths = new List<string>();
         var installCfgLines = File.ReadAllLines(configPaths[(int)ConfigFile.Install]);
-        FindConfigVar(installCfgLines, "resname_base", out var resPaths);
+        if (!FindConfigVar(installCfgLines, "resname_base", out var resPaths))
+        {
+            throw new InvalidOperationException("Failed to find resnames in install config");
+        }
+        
+        var zipPaths = new List<string>();
         foreach (var resPath in resPaths.Split('+'))
         {
             var dir = Path.Join(installPath, ConvertSeparator(resPath));
