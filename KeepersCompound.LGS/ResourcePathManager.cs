@@ -155,6 +155,12 @@ public class ResourcePathManager
         foreach (var resPath in resPaths.Split('+'))
         {
             var dir = Path.Join(installPath, ConvertSeparator(resPath));
+            if (!Directory.Exists(dir))
+            {
+                continue;
+            }
+            
+            // TODO: This just finds the *first* respath that has these files... They should be merged
             foreach (var path in Directory.GetFiles(dir))
             {
                 var name = Path.GetFileName(path).ToLower();
