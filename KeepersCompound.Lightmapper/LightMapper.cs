@@ -92,7 +92,15 @@ public class LightMapper
         Timing.TimeStage("Trace Scene", () => TraceScene(settings));
         Timing.TimeStage("Update AnimLight Cell Mapping", SetAnimLightCellMaps);
 
-        // lmParams.ShadowType = LmParams.LightingMode.Raycast;
+        // We always do object casting, so it's nice to let dromed know that :)
+        lmParams.ShadowType = LmParams.LightingMode.Objcast;
+        if (rendParams is { useSunlight: true, sunlightMode: RendParams.SunlightMode.SingleUnshadowed })
+        {
+            rendParams.sunlightMode = RendParams.SunlightMode.SingleObjcastShadows;
+        } else if (rendParams is { useSunlight: true, sunlightMode: RendParams.SunlightMode.QuadUnshadowed })
+        {
+            rendParams.sunlightMode = RendParams.SunlightMode.QuadObjcastShadows;
+        }
     }
 
     public void Save(string missionName)
