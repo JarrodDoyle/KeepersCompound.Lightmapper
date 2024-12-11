@@ -147,11 +147,10 @@ public class ResourcePathManager
             throw new InvalidOperationException("Failed to find all installation config paths.");
         }
 
-        // Get the paths of the base Fam and Obj resources so we can extract them.
+        // We need to know where all the texture and object resources are
+        var zipPaths = new List<string>();
         var installCfgLines = File.ReadAllLines(configPaths[(int)ConfigFile.Install]);
         FindConfigVar(installCfgLines, "resname_base", out var resPaths);
-        var baseFamPath = "";
-        var baseObjPath = "";
         foreach (var resPath in resPaths.Split('+'))
         {
             var dir = Path.Join(installPath, ConvertSeparator(resPath));
@@ -160,31 +159,24 @@ public class ResourcePathManager
                 continue;
             }
             
-            // TODO: This just finds the *first* respath that has these files... They should be merged
             foreach (var path in Directory.GetFiles(dir))
             {
                 var name = Path.GetFileName(path).ToLower();
-                if (name == "fam.crf" && baseFamPath == "")
+                if (name is "fam.crf" or "obj.crf")
                 {
-                    baseFamPath = path;
-                }
-                else if (name == "obj.crf" && baseObjPath == "")
-                {
-                    baseObjPath = path;
+                    zipPaths.Add(path);
                 }
             }
         }
 
         // Do the extraction bro
-        (string, string)[] resources = [("fam", baseFamPath), ("obj", baseObjPath)];
-        foreach (var (extractName, zipPath) in resources)
+        // The path order is a priority order, so we don't want to overwrite any files when extracting
+        // TODO: Check if there's any problems caused by case sensitivity
+        foreach (var zipPath in zipPaths)
         {
-            var extractPath = Path.Join(_extractionPath, extractName);
-            if (Directory.Exists(extractPath))
-            {
-                Directory.Delete(extractPath, true);
-            }
-            ZipFile.OpenRead(zipPath).ExtractToDirectory(extractPath);
+            var resType = Path.GetFileNameWithoutExtension(zipPath);
+            var extractPath = Path.Join(_extractionPath, resType);
+            ZipFile.OpenRead(zipPath).ExtractToDirectory(extractPath, false);
         }
 
         FindConfigVar(installCfgLines, "load_path", out var omsPath);
