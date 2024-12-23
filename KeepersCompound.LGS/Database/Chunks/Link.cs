@@ -83,6 +83,22 @@ public class LinkChunk : IChunk, IMergable
 
     public void Merge(IMergable other)
     {
+        // !HACK: We always merge into gamesys so we can pre-trim garbage here
+        var count = links.Count;
+        for (var i = count - 1; i >= 0; i--)
+        {
+            var link = links[i];
+            if (link.linkId.IsConcrete())
+            {
+                links.RemoveAt(i);
+            }
+        }
+        
+        if (links.Count != count)
+        {
+            Console.WriteLine($"Trimmed links: {count} -> {links.Count}");
+        }
+        
         links.AddRange(((LinkChunk)other).links);
     }
 }
@@ -133,6 +149,22 @@ public class LinkDataMetaProp : IChunk, IMergable
 
     public void Merge(IMergable other)
     {
+        // !HACK: We always merge into gamesys so we can pre-trim garbage here
+        var count = linkData.Count;
+        for (var i = count - 1; i >= 0; i--)
+        {
+            var link = linkData[i];
+            if (link.linkId.IsConcrete())
+            {
+                linkData.RemoveAt(i);
+            }
+        }
+
+        if (linkData.Count != count)
+        {
+            Console.WriteLine($"Trimmed link data: {count} -> {linkData.Count}");
+        }
+        
         linkData.AddRange(((LinkDataMetaProp)other).linkData);
     }
 }
