@@ -317,7 +317,7 @@ public class ModelFile
             var objTrans = Matrix4x4.Identity;
             if (subObj.Joint != -1)
             {
-                var ang =  float.DegreesToRadians(joints[subObj.Joint]);
+                var ang = subObj.Joint >= joints.Length ? 0 : float.DegreesToRadians(joints[subObj.Joint]);
                 // TODO: Is this correct? Should I use a manual rotation matrix?
                 var jointRot = Matrix4x4.CreateFromYawPitchRoll(0, ang, 0);
                 objTrans = jointRot * subObj.Transform;
