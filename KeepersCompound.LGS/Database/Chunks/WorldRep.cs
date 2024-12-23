@@ -240,9 +240,11 @@ public class WorldRep : IChunk
                 return bytes;
             }
 
-            // TODO: This ONLY works for rgba (bpp = 4)!!!
             public void AddLight(int layer, int x, int y, float r, float g, float b)
             {
+                ArgumentOutOfRangeException.ThrowIfLessThan(layer, 0, nameof(layer));
+                ArgumentOutOfRangeException.ThrowIfGreaterThan(layer, Layers, nameof(layer));
+                
                 var idx = (x + y * Width) * Bpp;
                 var pLayer = Pixels[layer];
                 switch (Bpp)
