@@ -288,6 +288,73 @@ public class ModelFile
         }
     }
 
+    // TODO: Apply transforms to normals and stuff
+    public void ApplyJoints(float[] joints)
+    {
+        // Build map of objects to their parent id
+        var objCount = Objects.Length;
+        var parentIds = new int[objCount];
+        for (var i = 0; i < objCount; i++)
+        {
+            parentIds[i] = -1;
+        }
+        for (var i = 0; i < objCount; i++)
+        {
+            var subObj = Objects[i];
+            var childIdx = subObj.Child;
+            while (childIdx != -1)
+            {
+                parentIds[childIdx] = i;
+                childIdx = Objects[childIdx].Next;
+            }
+        }
+        
+        // Calculate base transforms for every subobj (including joint)
+        var subObjTransforms = new Matrix4x4[objCount];
+        for (var i = 0; i < objCount; i++)
+        {
+            var subObj = Objects[i];
+            var objTrans = Matrix4x4.Identity;
+            if (subObj.Joint != -1)
+            {
+                var ang =  float.DegreesToRadians(joints[subObj.Joint]);
+                // TODO: Is this correct? Should I use a manual rotation matrix?
+                var jointRot = Matrix4x4.CreateFromYawPitchRoll(0, ang, 0);
+                objTrans = jointRot * subObj.Transform;
+            }
+           
+            subObjTransforms[i] = objTrans;
+        }
+        
+        // Apply sub object transforms
+        for (var i = 0; i < objCount; i++)
+        {
+            var subObj = Objects[i];
+            var transform = subObjTransforms[i];
+        
+            // Build compound transformation
+            var parentId = parentIds[i];
+            while (parentId != -1)
+            {
+                transform *= subObjTransforms[parentId];
+                parentId = parentIds[parentId];
+            }
+
+            for (var j = 0; j < subObj.VhotCount; j++)
+            {
+                var v = VHots[subObj.VhotIdx + j];
+                v.Position = Vector3.Transform(v.Position, transform);
+                VHots[subObj.VhotIdx + j] = v;
+            }
+
+            for (var j = 0; j < subObj.PointCount; j++)
+            {
+                var v = Vertices[subObj.PointIdx + j];
+                Vertices[subObj.PointIdx + j] = Vector3.Transform(v, transform);
+            }
+        }
+    }
+
     public bool TryGetVhot(VhotId id, out VHot vhot)
     {
         foreach (var v in VHots)
