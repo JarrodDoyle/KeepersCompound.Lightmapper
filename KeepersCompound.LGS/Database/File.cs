@@ -166,6 +166,7 @@ public class DbFile
             "P$AnimLight" => new PropertyChunk<PropAnimLight>(),
             "P$LightColo" => new PropertyChunk<PropLightColor>(),
             "P$Spotlight" => new PropertyChunk<PropSpotlight>(),
+            "P$SpotAmb" => new PropertyChunk<PropSpotlightAndAmbient>(),
             "P$RenderAlp" => new PropertyChunk<PropFloat>(),
             "LD$MetaProp" => new LinkDataMetaProp(),
             _ when entryName.StartsWith("L$") => new LinkChunk(),

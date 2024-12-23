@@ -103,6 +103,7 @@ public class ObjectHierarchy
         AddProp<PropAnimLight>("P$AnimLight");
         AddProp<PropLightColor>("P$LightColo");
         AddProp<PropSpotlight>("P$Spotlight");
+        AddProp<PropSpotlightAndAmbient>("P$SpotAmb");
     }
 
     // TODO: Work out if there's some nice way to automatically decide if we inherit
