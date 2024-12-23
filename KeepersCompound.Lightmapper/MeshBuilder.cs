@@ -126,8 +126,8 @@ public class MeshBuilder
             var scale = scaleProp?.value ?? Vector3.One;
             var model = new ModelFile(modelPath);
             pos -= model.Header.Center;
-
-
+            
+            // Calculate base model transform
             var scalePart = Matrix4x4.CreateScale(scale);
             var rotPart = Matrix4x4.Identity;
             rotPart *= Matrix4x4.CreateRotationX(float.DegreesToRadians(rot.X));
@@ -136,27 +136,62 @@ public class MeshBuilder
             var transPart = Matrix4x4.CreateTranslation(pos);
             var modelTrans = scalePart * rotPart * transPart;
             
-            // for each object modify the vertices
-            // TODO: Handle nested sub objects
-            foreach (var subObj in model.Objects)
+            // Calculate base transforms for every subobj (including joint)
+            var objCount = model.Objects.Length;
+            var subObjTransforms = new Matrix4x4[objCount];
+            for (var i = 0; i < objCount; i++)
             {
-                var jointTrans = Matrix4x4.Identity;
+                var subObj = model.Objects[i];
+                var objTrans = Matrix4x4.Identity;
                 if (subObj.Joint != -1)
                 {
-                    var ang = float.DegreesToRadians(joints[subObj.Joint]);
+                    var ang =  float.DegreesToRadians(joints[subObj.Joint]);
+                    // TODO: Is this correct? Should I use a manual rotation matrix?
                     var jointRot = Matrix4x4.CreateFromYawPitchRoll(0, ang, 0);
-                    var objTrans = subObj.Transform;
-                    jointTrans = jointRot * objTrans;
+                    objTrans = jointRot * subObj.Transform;
                 }
-                
-                var transform = jointTrans * modelTrans;
+               
+                subObjTransforms[i] = objTrans;
+            }
+            
+            // Build map of objects to their parent id
+            var parentIds = new int[objCount];
+            for (var i = 0; i < objCount; i++)
+            {
+                parentIds[i] = -1;
+            }
+            for (var i = 0; i < objCount; i++)
+            {
+                var subObj = model.Objects[i];
+                var childIdx = subObj.Child;
+                while (childIdx != -1)
+                {
+                    parentIds[childIdx] = i;
+                    childIdx = model.Objects[childIdx].Next;
+                }
+            }
+            
+            // Apply sub object transforms + the base object transform to each vertex
+            for (var i = 0; i < objCount; i++)
+            {
+                var subObj = model.Objects[i];
+                var transform = subObjTransforms[i];
+            
+                var parentId = parentIds[i];
+                while (parentId != -1)
+                {
+                    transform *= subObjTransforms[parentId];
+                    parentId = parentIds[parentId];
+                }
+            
+                transform *= modelTrans;
                 
                 var start = subObj.PointIdx;
                 var end = start + subObj.PointCount;
-                for (var i = start; i < end; i++)
+                for (var j = start; j < end; j++)
                 {
-                    var v = model.Vertices[i];
-                    model.Vertices[i] = Vector3.Transform(v, transform);
+                    var v = model.Vertices[j];
+                    model.Vertices[j] = Vector3.Transform(v, transform);
                 }
             }
             
