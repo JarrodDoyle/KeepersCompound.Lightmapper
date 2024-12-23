@@ -113,6 +113,7 @@ public class MeshBuilder
             }
             
             // Let's try and place an object :)
+            // TODO: Handle failing to find model more gracefully
             var modelName = modelNameProp.value.ToLower() + ".bin";
             var modelPath = campaignResources.GetResourcePath(ResourceType.Object, modelName);
             if (modelPath == null)
@@ -123,20 +124,12 @@ public class MeshBuilder
             var model = new ModelFile(modelPath);
             model.ApplyJoints(joints);
             
-            // TODO: Handle failing to find model more gracefully
-            var pos = brush.position;
-            var rot = brush.angle;
-            var scale = scaleProp?.value ?? Vector3.One;
-            pos -= model.Header.Center;
-            
             // Calculate base model transform
-            var scalePart = Matrix4x4.CreateScale(scale);
-            var rotPart = Matrix4x4.Identity;
-            rotPart *= Matrix4x4.CreateRotationX(float.DegreesToRadians(rot.X));
-            rotPart *= Matrix4x4.CreateRotationY(float.DegreesToRadians(rot.Y));
-            rotPart *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(rot.Z));
-            var transPart = Matrix4x4.CreateTranslation(pos);
-            var modelTrans = scalePart * rotPart * transPart;
+            var transform = Matrix4x4.CreateScale(scaleProp?.value ?? Vector3.One);
+            transform *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.angle.X));
+            transform *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
+            transform *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
+            transform *= Matrix4x4.CreateTranslation(brush.position - model.Header.Center);
             
             // for each polygon slam its vertices and indices :)
             foreach (var poly in model.Polygons)
@@ -146,7 +139,7 @@ public class MeshBuilder
                 foreach (var idx in poly.VertexIndices)
                 {
                     var vertex = model.Vertices[idx];
-                    vertex = Vector3.Transform(vertex, modelTrans);
+                    vertex = Vector3.Transform(vertex, transform);
                     polyVertices.Add(vertex);
                 }
                 
