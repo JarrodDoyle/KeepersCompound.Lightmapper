@@ -35,6 +35,30 @@ public class Light
         };
     }
 
+    public void FixRadius()
+    {
+        if (Radius == 0)
+        {
+            Radius = float.MaxValue;
+            R2 = float.MaxValue;
+        }
+    }
+    
+    public void ApplyTransforms(
+        Vector3 vhotLightPos,
+        Vector3 vhotLightDir,
+        Matrix4x4 translate,
+        Matrix4x4 rotate,
+        Matrix4x4 scale)
+    {
+        var transform = scale * rotate * translate;
+        vhotLightPos = Vector3.Transform(vhotLightPos, transform);
+        vhotLightDir = Vector3.Transform(vhotLightDir, transform);
+        
+        Position = Vector3.Transform(Position, rotate) + vhotLightPos;
+        SpotlightDir = Vector3.Normalize(vhotLightDir - vhotLightPos);
+    }
+
     public float StrengthAtPoint(Vector3 point, Plane plane)
     {
         // Calculate light strength at a given point. As far as I can tell
