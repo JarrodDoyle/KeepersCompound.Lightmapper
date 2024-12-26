@@ -317,6 +317,7 @@ public class LightMapper
                 {
                     Position = light.Position,
                     Color = Utils.HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propSpotAmb.SpotBrightness),
+                    Brightness = propSpotAmb.SpotBrightness,
                     InnerRadius = light.InnerRadius,
                     Radius = light.Radius,
                     R2 = light.R2,
