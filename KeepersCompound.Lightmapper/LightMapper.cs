@@ -597,7 +597,7 @@ public class LightMapper
                                 
                                 if (TraceRay(light.Position, point))
                                 {
-                                    strength += targetWeights[idx] * light.StrengthAtPoint(point, plane);
+                                    strength += targetWeights[idx] * light.StrengthAtPoint(point, plane, settings.AnimLightCutoff);
                                 }
                             }
 

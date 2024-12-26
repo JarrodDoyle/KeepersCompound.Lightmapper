@@ -55,7 +55,7 @@ public class Light
         SpotlightDir = Vector3.Normalize(Vector3.Transform(vhotLightDir, scale * rotate));
     }
 
-    public float StrengthAtPoint(Vector3 point, Plane plane)
+    public float StrengthAtPoint(Vector3 point, Plane plane, uint lightCutoff)
     {
         // Calculate light strength at a given point. As far as I can tell
         // this is exact to Dark (I'm a genius??). It's just an inverse distance
@@ -70,6 +70,13 @@ public class Light
         if (InnerRadius != 0 && len > InnerRadius)
         {
             strength *= (Radius - len) / (Radius - InnerRadius);
+        }
+
+        // Anim lights have a (configurable) minimum light cutoff. This is checked before
+        // spotlight multipliers are applied so we don't cutoff the spot radius falloff.
+        if (Anim && strength * Brightness < lightCutoff)
+        {
+            return 0f;
         }
 
         // This is basically the same as how inner radius works. It just applies
