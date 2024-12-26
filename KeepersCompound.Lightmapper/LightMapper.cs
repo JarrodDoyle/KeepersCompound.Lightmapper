@@ -25,6 +25,7 @@ public class LightMapper
         public float MultiSamplingCenterWeight;
         public bool LightmappedWater;
         public SunSettings Sunlight;
+        public uint AnimLightCutoff;
     }
 
     private ResourcePathManager.CampaignResources _campaign;
@@ -85,6 +86,7 @@ public class LightMapper
             MultiSamplingCenterWeight = lmParams.CenterWeight,
             LightmappedWater = lmParams.LightmappedWater,
             Sunlight = sunlightSettings,
+            AnimLightCutoff = lmParams.AnimLightCutoff,
         };
         
         Timing.TimeStage("Gather Lights", BuildLightList);
