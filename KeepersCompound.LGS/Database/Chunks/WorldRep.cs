@@ -351,6 +351,9 @@ public class WorldRep : IChunk
         public Lightmap[] Lightmaps { get; set; }
         public int LightIndexCount { get; set; }
         public List<ushort> LightIndices { get; set; }
+        
+        // Bonus data to make parallel iteration of cells easier
+        public CellZone ZoneInfo { get; set; } = new();
 
         public Cell(BinaryReader reader, int bpp)
         {
@@ -471,6 +474,37 @@ public class WorldRep : IChunk
         }
     }
 
+    // Readonly for now
+    public record CellZone
+    {
+        private readonly byte _data;
+
+        public CellZone()
+        {
+            _data = 0;
+        }
+
+        public CellZone(BinaryReader reader)
+        {
+            _data = reader.ReadByte();
+        }
+
+        public int GetAmbientLightZoneIndex()
+        {
+            return _data >> 4;
+        }
+
+        public int GetFogZoneIndex()
+        {
+            return _data & 0x0F;
+        }
+
+        public void Write(BinaryWriter writer)
+        {
+            writer.Write(_data);
+        }
+    }
+    
     public struct BspTree
     {
         public struct Node
@@ -670,8 +704,8 @@ public class WorldRep : IChunk
     public WrHeader DataHeader { get; set; }
     public Cell[] Cells { get; set; }
     public BspTree Bsp { get; set; }
+    public CellZone[] CellZones { get; set; }
     public LightTable LightingTable { get; set; }
-    private byte[] _unknown;
     private byte[] _unreadData;
 
     public void ReadData(BinaryReader reader, DbFile.TableOfContents.Entry entry)
@@ -686,9 +720,14 @@ public class WorldRep : IChunk
         }
 
         Bsp = new BspTree(reader);
-
-        // TODO: Work out what this is
-        _unknown = reader.ReadBytes(Cells.Length);
+        CellZones = new CellZone[Cells.Length];
+        for (var i = 0; i < Cells.Length; i++)
+        {
+            var zone = new CellZone(reader);
+            CellZones[i] = zone;
+            Cells[i].ZoneInfo = zone;
+        }
+        
         LightingTable = new LightTable(reader);
 
         // TODO: All the other info lol
@@ -704,7 +743,10 @@ public class WorldRep : IChunk
             cell.Write(writer);
         }
         Bsp.Write(writer);
-        writer.Write(_unknown);
+        foreach (var cellZone in CellZones)
+        {
+            cellZone.Write(writer);
+        }
         LightingTable.Write(writer);
         writer.Write(_unreadData);
     }
