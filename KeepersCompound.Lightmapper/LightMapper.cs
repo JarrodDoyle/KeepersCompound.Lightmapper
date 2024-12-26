@@ -272,7 +272,7 @@ public class LightMapper
             {
                 Position = propAnimLight.Offset,
                 Color = Utils.HsbToRgb(propLightColor.Hue, propLightColor.Saturation, propAnimLight.MaxBrightness),
-                Brightness = propAnimLight.Brightness,
+                Brightness = propAnimLight.MaxBrightness,
                 InnerRadius = propAnimLight.InnerRadius,
                 Radius = propAnimLight.Radius,
                 R2 = propAnimLight.Radius * propAnimLight.Radius,
