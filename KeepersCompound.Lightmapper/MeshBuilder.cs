@@ -47,8 +47,7 @@ public class MeshBuilder
                 // - Water surfaces
                 // - Door vision blockers
                 //
-                // Door vision blockers are the interesting one. They're not RenderPolys at all, and we only include
-                // them in the mesh if the cell only has two of them (otherwise the door is in the middle of the air)
+                // Door vision blockers are the interesting one. They're not RenderPolys at all, just flagged Polys.
                 SurfaceType primType;
                 if (polyIdx < solidPolys)
                 {
@@ -58,7 +57,7 @@ public class MeshBuilder
                 {
                     primType = SurfaceType.Water;
                 }
-                else if (cell is { Flags: 24, PortalPolyCount: 2 }) // TODO: Work out what these flags are!!
+                else if ((cell.Flags & 8) != 0)
                 {
                     primType = SurfaceType.Solid;
                 }

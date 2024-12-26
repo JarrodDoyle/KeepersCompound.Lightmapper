@@ -333,7 +333,7 @@ public class WorldRep : IChunk
         public byte PortalPolyCount { get; set; }
         public byte PlaneCount { get; set; }
         public byte Medium { get; set; }
-        public byte Flags { get; set; }
+        public byte Flags { get; set; } // TODO: Make these a [Flags] enum
         public int PortalVertices { get; set; }
         public ushort NumVList { get; set; }
         public byte AnimLightCount { get; set; }
