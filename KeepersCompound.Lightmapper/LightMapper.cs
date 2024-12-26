@@ -19,7 +19,7 @@ public class LightMapper
     
     private struct Settings
     {
-        public Vector3 AmbientLight;
+        public Vector3[] AmbientLight;
         public bool Hdr;
         public SoftnessMode MultiSampling;
         public float MultiSamplingCenterWeight;
@@ -76,12 +76,19 @@ public class LightMapper
             Direction = Vector3.Normalize(rendParams.sunlightDirection),
             Color = Utils.HsbToRgb(rendParams.sunlightHue, rendParams.sunlightSaturation, rendParams.sunlightBrightness),
         };
+        
+        var ambientLight = rendParams.ambientLightZones.ToList();
+        ambientLight.Insert(0, rendParams.ambientLight);
+        for (var i = 0; i < ambientLight.Count; i++)
+        {
+            ambientLight[i] *= 255;
+        }
 
         // TODO: lmParams LightmappedWater doesn't mean the game will actually *use* the lightmapped water hmm
         var settings = new Settings
         {
             Hdr = worldRep.DataHeader.LightmapFormat == 2,
-            AmbientLight = rendParams.ambientLight * 255,
+            AmbientLight = [..ambientLight],
             MultiSampling = lmParams.ShadowSoftness,
             MultiSamplingCenterWeight = lmParams.CenterWeight,
             LightmappedWater = lmParams.LightmappedWater,
@@ -475,7 +482,9 @@ public class LightMapper
                     lightmap.Reset(Vector3.One * 255f, settings.Hdr);
                     continue;
                 }
-                lightmap.Reset(settings.AmbientLight, settings.Hdr);
+
+                var ambientLight = settings.AmbientLight[cell.ZoneInfo.GetAmbientLightZoneIndex()];
+                lightmap.Reset(ambientLight, settings.Hdr);
 
                 // Get world position of lightmap (0, 0) (+0.5 so we cast from the center of a pixel)
                 var topLeft = cell.Vertices[cell.Indices[cellIdxOffset]];
