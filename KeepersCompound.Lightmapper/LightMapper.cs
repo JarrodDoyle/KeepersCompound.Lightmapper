@@ -220,6 +220,7 @@ public class LightMapper
             Radius = float.MaxValue,
             R2 = float.MaxValue,
             LightTableIndex = lightTable.LightCount,
+            SpotlightInnerAngle = -1f,
         };
         
         _lights.Add(light);
@@ -288,7 +289,8 @@ public class LightMapper
                 QuadLit = propAnimLight.QuadLit,
                 ObjId = id,
                 LightTableIndex = propAnimLight.LightTableLightIndex,
-                Anim = true
+                Anim = true,
+                SpotlightInnerAngle = -1f,
             };
             
             if (propSpotlight != null)
@@ -318,6 +320,7 @@ public class LightMapper
                 QuadLit = propLight.QuadLit,
                 ObjId = id,
                 LightTableIndex = lightTable.LightCount,
+                SpotlightInnerAngle = -1f,
             };
             
             if (propSpotAmb != null)
