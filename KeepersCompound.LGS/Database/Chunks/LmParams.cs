@@ -37,9 +37,9 @@ public class LmParams : IChunk
     public DepthMode ShadowDepth { get; set; }
     public bool LightmappedWater { get; set; }
     public int LightmapScale { get; set; }
+    public uint AnimLightCutoff { get; set; }
     
     private int _dataSize;
-    private uint _unknown;
     
     public void ReadData(BinaryReader reader, DbFile.TableOfContents.Entry entry)
     {
@@ -53,7 +53,7 @@ public class LmParams : IChunk
         LightmappedWater = reader.ReadBoolean();
         reader.ReadBytes(3);
         LightmapScale = reader.ReadInt32();
-        _unknown = reader.ReadUInt32();
+        AnimLightCutoff = reader.ReadUInt32();
     }
 
     public void WriteData(BinaryWriter writer)
@@ -68,6 +68,6 @@ public class LmParams : IChunk
         writer.Write(LightmappedWater);
         writer.Write(new byte[3]);
         writer.Write(LightmapScale);
-        writer.Write(_unknown);
+        writer.Write(AnimLightCutoff);
     }
 }
