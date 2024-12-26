@@ -258,7 +258,7 @@ public class LightMapper
                 }
                 if (model.TryGetVhot(ModelFile.VhotId.LightDirection, out vhot))
                 {
-                    vhotLightDir = vhot.Position - model.Header.Center;
+                    vhotLightDir = (vhot.Position - model.Header.Center) - vhotLightPos;
                 }
             }
         }

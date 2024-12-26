@@ -51,12 +51,8 @@ public class Light
         Matrix4x4 rotate,
         Matrix4x4 scale)
     {
-        var transform = scale * rotate * translate;
-        vhotLightPos = Vector3.Transform(vhotLightPos, transform);
-        vhotLightDir = Vector3.Transform(vhotLightDir, transform);
-        
-        Position = Vector3.Transform(Position, rotate) + vhotLightPos;
-        SpotlightDir = Vector3.Normalize(vhotLightDir - vhotLightPos);
+        Position = Vector3.Transform(Position, rotate) + Vector3.Transform(vhotLightPos, scale * rotate * translate);
+        SpotlightDir = Vector3.Normalize(Vector3.Transform(vhotLightDir, scale * rotate));
     }
 
     public float StrengthAtPoint(Vector3 point, Plane plane)
