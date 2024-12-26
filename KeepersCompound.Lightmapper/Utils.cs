@@ -14,8 +14,8 @@ public static class Utils
         var color = hue switch
         {
             < 1 => new Vector3(1f - hue, hue, 0),
-            < 2 => new Vector3(2f - hue, hue - 1f, 0),
-            _ => new Vector3(3f - hue, hue - 2, 0),
+            < 2 => new Vector3(0, 2f - hue, hue - 1f),
+            _ => new Vector3(hue - 2f, 0, 3f - hue),
         };
         
         color *= saturation;
