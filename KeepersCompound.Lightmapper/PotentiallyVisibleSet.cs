@@ -271,8 +271,8 @@ public class PotentiallyVisibleSet
             var distance = MathUtils.DistanceFromPlane(plane, poly.Vertices[i]);
             distances[i] = distance;
             sides[i] = distance switch {
-                > MathUtils.Epsilon => Side.Front,
-                <-MathUtils.Epsilon => Side.Back,
+                > MathUtils.Epsilon => Side.Back,
+                <-MathUtils.Epsilon => Side.Front,
                 _ => Side.On,
             };
             counts[(int)sides[i]]++;
