@@ -641,9 +641,13 @@ public class LightMapper
                             }
                         }
 
-                        foreach (var light in _lights)
+                        foreach (var lightIdx in cell.LightIndices)
                         {
-                            var layer = 0;
+                            if (lightIdx == 0)
+                            {
+                                continue;
+                            }
+                            var light = _lights[lightIdx - 1];
 
                             // Check if plane normal is facing towards the light
                             // If it's not then we're never going to be (directly) lit by this
@@ -693,6 +697,8 @@ public class LightMapper
 
                             if (strength != 0f)
                             {
+                                var layer = 0;
+
                                 // If we're an anim light there's a lot of stuff we need to update
                                 // Firstly we need to add the light to the cells anim light palette
                                 // Secondly we need to set the appropriate bit of the lightmap's
