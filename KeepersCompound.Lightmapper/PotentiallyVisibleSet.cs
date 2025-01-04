@@ -179,18 +179,19 @@ public class PotentiallyVisibleSet
         foreach (var edgeIndex in _portalGraph[currentCellIdx])
         {
             var edge = _edges[edgeIndex];
-            var destination = edge.Left == previousCellIdx ? edge.Right : edge.Left;
-            if (destination == previousCellIdx || previousPoly.IsCoplanar(edge.Poly))
+            var loopsBack = edge.Left == previousCellIdx || edge.Right == previousCellIdx;
+            if (loopsBack || previousPoly.IsCoplanar(edge.Poly))
             {
                 continue;
             }
-
+            
             var poly = separators.Aggregate(edge.Poly, ClipPolygonByPlane);
             if (poly.Vertices.Length == 0)
             {
                 continue;
             }
             
+            var destination = edge.Left == currentCellIdx ? edge.Right : edge.Left;
             ComputeClippedVisibility(visible, sourcePoly, poly, currentCellIdx, destination, depth + 1);
         }
     }
