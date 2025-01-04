@@ -7,8 +7,7 @@ public class PotentiallyVisibleSet
 {
     private class Edge
     {
-        public int Left;
-        public int Right;
+        public int Destination;
         public Poly Poly;
     }
 
@@ -49,7 +48,6 @@ public class PotentiallyVisibleSet
         _edges = [];
         _visibilitySet = new Dictionary<int, HashSet<int>>();
         
-        // TODO: Ignore blocksvision portals
         _portalGraph = new List<int>[cells.Length];
         for (var i = 0; i < cells.Length; i++)
         {
@@ -87,8 +85,7 @@ public class PotentiallyVisibleSet
                     
                 var edge = new Edge
                 {
-                    Left = i,
-                    Right = other,
+                    Destination = other,
                     Poly = new Poly(vs, cell.Planes[poly.PlaneId]),
                 };
                 _edges.Add(edge);
@@ -125,22 +122,20 @@ public class PotentiallyVisibleSet
         foreach (var edgeIndex in _portalGraph[cellIdx])
         {
             var edge = _edges[edgeIndex];
-            var neighbourIdx = edge.Left == cellIdx ? edge.Right : edge.Left;
+            var neighbourIdx = edge.Destination;
             visible.Add(neighbourIdx);
             
             // Neighbours of our direct neighbour are always visible, unless they're coplanar
             foreach (var innerEdgeIndex in _portalGraph[neighbourIdx])
             {
                 var innerEdge = _edges[innerEdgeIndex];
-                var leadsBack = innerEdge.Left == cellIdx || innerEdge.Right == cellIdx;
-                if (leadsBack || edge.Poly.IsCoplanar(innerEdge.Poly))
+                if (innerEdge.Destination == cellIdx || edge.Poly.IsCoplanar(innerEdge.Poly))
                 {
                     continue;
                 }
 
                 // Now we get to the recursive section
-                var destination = innerEdge.Left == neighbourIdx ? innerEdge.Right : innerEdge.Left;
-                ComputeClippedVisibility(visible, edge.Poly, innerEdge.Poly, neighbourIdx, destination, 0);
+                ComputeClippedVisibility(visible, edge.Poly, innerEdge.Poly, neighbourIdx, innerEdge.Destination, 0);
             }
         }
         
@@ -173,8 +168,7 @@ public class PotentiallyVisibleSet
         foreach (var edgeIndex in _portalGraph[currentCellIdx])
         {
             var edge = _edges[edgeIndex];
-            var loopsBack = edge.Left == previousCellIdx || edge.Right == previousCellIdx;
-            if (loopsBack || previousPoly.IsCoplanar(edge.Poly))
+            if (edge.Destination == previousCellIdx || previousPoly.IsCoplanar(edge.Poly))
             {
                 continue;
             }
@@ -185,8 +179,7 @@ public class PotentiallyVisibleSet
                 continue;
             }
             
-            var destination = edge.Left == currentCellIdx ? edge.Right : edge.Left;
-            ComputeClippedVisibility(visible, sourcePoly, poly, currentCellIdx, destination, depth + 1);
+            ComputeClippedVisibility(visible, sourcePoly, poly, currentCellIdx, edge.Destination, depth + 1);
         }
     }
 
