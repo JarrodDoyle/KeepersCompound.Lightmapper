@@ -371,11 +371,79 @@ public class LightMapper
         if (!_mission.TryGetChunk<WorldRep>("WREXT", out var worldRep))
             return;
         
+        
+        var lightVisibleCells = Timing.TimeStage("Light PVS", () =>
+        {
+            var cellCount = worldRep.Cells.Length;
+            var aabbs = new MathUtils.Aabb[worldRep.Cells.Length];
+            Parallel.For(0, cellCount, i => aabbs[i] = new MathUtils.Aabb(worldRep.Cells[i].Vertices));
+
+            var lightCellMap = new int[_lights.Count];
+            Parallel.For(0, _lights.Count, i =>
+            {
+                lightCellMap[i] = -1;
+                var light = _lights[i];
+                for (var j = 0; j < cellCount; j++)
+                {
+                    if (!MathUtils.Intersects(aabbs[j], light.Position))
+                    {
+                        continue;
+                    }
+                    
+                    // Half-space contained
+                    var cell = worldRep.Cells[j];
+                    var contained = true;
+                    for (var k = 0; k < cell.PlaneCount; k++)
+                    {
+                        var plane = cell.Planes[k];
+                        if (MathUtils.DistanceFromPlane(plane, light.Position) < -MathUtils.Epsilon)
+                        {
+                            contained = false;
+                            break;
+                        }
+                    }
+
+                    if (contained)
+                    {
+                        lightCellMap[i] = j;
+                        break;
+                    }
+                }
+            });
+
+            var lightVisibleCells = new List<int[]>(_lights.Count);
+            var pvs = new PotentiallyVisibleSet(worldRep.Cells);
+            for (var i = 0; i < _lights.Count; i++)
+            {
+                var cellIdx = lightCellMap[i];
+                if (cellIdx == -1)
+                {
+                    lightVisibleCells.Add([]);
+                    continue;
+                }
+                var visibleSet = pvs.GetVisible(lightCellMap[i]);
+                lightVisibleCells.Add(visibleSet);
+            }
+
+            return lightVisibleCells;
+
+            // TODO: This isn't actually thread safe :)
+            // Parallel.For(0, worldRep.Cells.Length, i => pvs.GetVisible(i));
+            // for (var i = 0; i < worldRep.Cells.Length; i++)
+            // {
+            //     pvs.GetVisible(i);
+            //     // var visible = pvs.GetVisible(i);
+            //     // Console.WriteLine($"Cell {i}: Count({visible.Length}), Visible[{string.Join(" ", visible)}]");
+            // }
+        });
+        
         // TODO: Move this functionality to the LGS library
         // We set up light indices in separately from lighting because the actual
         // lighting phase takes a lot of shortcuts that we don't want
-        Parallel.ForEach(worldRep.Cells, cell =>
+        // Parallel.ForEach(worldRep.Cells, cell =>
+        Parallel.For(0, worldRep.Cells.Length, i =>
         {
+            var cell = worldRep.Cells[i];
             cell.LightIndexCount = 0;
             cell.LightIndices.Clear();
             
@@ -403,14 +471,22 @@ public class LightMapper
             // cache, so we want this to be as minimal as possible. Additionally large
             // lists actually cause performance issues!
             var cellAabb = new MathUtils.Aabb(cell.Vertices);
-            foreach (var light in _lights)
+            for (var j = 0; j < _lights.Count; j++)
             {
-                if (MathUtils.Intersects(new MathUtils.Sphere(light.Position, light.Radius), cellAabb))
+                var light = _lights[j];
+                if (!MathUtils.Intersects(new MathUtils.Sphere(light.Position, light.Radius), cellAabb))
                 {
-                    cell.LightIndexCount++;
-                    cell.LightIndices.Add((ushort)light.LightTableIndex);
-                    cell.LightIndices[0]++;
+                    continue;
                 }
+
+                if (!lightVisibleCells[j].Contains(i))
+                {
+                    continue;
+                }
+                
+                cell.LightIndexCount++;
+                cell.LightIndices.Add((ushort)light.LightTableIndex);
+                cell.LightIndices[0]++;
             }
 
             if (cell.LightIndexCount > 97)
@@ -437,8 +513,10 @@ public class LightMapper
 
             if (overLit > 0)
             {
-                Console.WriteLine($"WARNING: Overlit cells detected: {overLit}/{worldRep.Cells.Length}, MaxLights: {maxLights} / 96");
+                Console.WriteLine($"WARNING: Overlit cells detected: {overLit}/{worldRep.Cells.Length}");
             }
+
+            Console.WriteLine($"MaxLights: {maxLights} / 96");
         }
     }
 
@@ -619,6 +697,7 @@ public class LightMapper
                                 // Firstly we need to add the light to the cells anim light palette
                                 // Secondly we need to set the appropriate bit of the lightmap's
                                 // bitmask. Finally we need to check if the lightmap needs another layer
+                                // TODO: Handle too many lights for a layer
                                 if (light.Anim)
                                 {
                                     // TODO: Don't recalculate this for every point lol

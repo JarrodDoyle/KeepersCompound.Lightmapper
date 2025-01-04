@@ -80,6 +80,14 @@ public static class MathUtils
         return (sphere.Position - other.Position).Length() <= rsum;
     }
 
+    public static bool Intersects(Aabb aabb, Vector3 point)
+    {
+        var min = aabb.Min;
+        var max = aabb.Max;
+        return point.X >= min.X && point.Y >= min.Y && point.Z >= min.Z &&
+               point.X <= max.X && point.Y <= max.Y && point.Z <= max.Z;
+    }
+
     public static float DistanceFromPlane(Plane plane, Vector3 point)
     {
         return Math.Abs(Vector3.Dot(plane.Normal, point) + plane.D) / plane.Normal.Length();
