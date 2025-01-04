@@ -77,28 +77,22 @@ public class PotentiallyVisibleSet
                 
                 var other = poly.Destination;
                 
-                // If there's already an existing edge between the two cells then we just need to add a reference to it
-                // otherwise we need to actually build the edge
-                var edgeIndex = _edges.FindIndex(e => (e.Left == i && e.Right == other) || (e.Left == other && e.Right == i));
-                if (edgeIndex == -1)
+                // Checking if there's already an edge is super slow. It's much faster to just add a new edge, even with
+                // the duplicated poly
+                var vs = new Vector3[poly.VertexCount];
+                for (var vIdx = 0; vIdx < poly.VertexCount; vIdx++)
                 {
-                    var vs = new Vector3[poly.VertexCount];
-                    for (var vIdx = 0; vIdx < poly.VertexCount; vIdx++)
-                    {
-                        vs[vIdx] = cell.Vertices[cell.Indices[indicesOffset + vIdx]];
-                    }
-                    
-                    var edge = new Edge
-                    {
-                        Left = i,
-                        Right = other,
-                        Poly = new Poly(vs, cell.Planes[poly.PlaneId]),
-                    };
-                    _edges.Add(edge);
-                    edgeIndex = _edges.Count - 1;
+                    vs[vIdx] = cell.Vertices[cell.Indices[indicesOffset + vIdx]];
                 }
-
-                _portalGraph[i].Add(edgeIndex);
+                    
+                var edge = new Edge
+                {
+                    Left = i,
+                    Right = other,
+                    Poly = new Poly(vs, cell.Planes[poly.PlaneId]),
+                };
+                _edges.Add(edge);
+                _portalGraph[i].Add(_edges.Count - 1);
                 indicesOffset += poly.VertexCount;
             }
         }
