@@ -371,71 +371,63 @@ public class LightMapper
         if (!_mission.TryGetChunk<WorldRep>("WREXT", out var worldRep))
             return;
         
-        
-        var lightVisibleCells = Timing.TimeStage("Light PVS", () =>
-        {
-            var cellCount = worldRep.Cells.Length;
-            var aabbs = new MathUtils.Aabb[worldRep.Cells.Length];
-            Parallel.For(0, cellCount, i => aabbs[i] = new MathUtils.Aabb(worldRep.Cells[i].Vertices));
-
-            var lightCellMap = new int[_lights.Count];
-            Parallel.For(0, _lights.Count, i =>
-            {
-                lightCellMap[i] = -1;
-                var light = _lights[i];
-                for (var j = 0; j < cellCount; j++)
-                {
-                    if (!MathUtils.Intersects(aabbs[j], light.Position))
-                    {
-                        continue;
-                    }
-                    
-                    // Half-space contained
-                    var cell = worldRep.Cells[j];
-                    var contained = true;
-                    for (var k = 0; k < cell.PlaneCount; k++)
-                    {
-                        var plane = cell.Planes[k];
-                        if (MathUtils.DistanceFromPlane(plane, light.Position) < -MathUtils.Epsilon)
-                        {
-                            contained = false;
-                            break;
-                        }
-                    }
-
-                    if (contained)
-                    {
-                        lightCellMap[i] = j;
-                        break;
-                    }
-                }
-            });
-
-            var lightVisibleCells = new List<int[]>(_lights.Count);
-            var pvs = new PotentiallyVisibleSet(worldRep.Cells);
-            for (var i = 0; i < _lights.Count; i++)
-            {
-                var cellIdx = lightCellMap[i];
-                if (cellIdx == -1)
-                {
-                    lightVisibleCells.Add([]);
-                    continue;
-                }
-                var visibleSet = pvs.GetVisible(lightCellMap[i]);
-                lightVisibleCells.Add(visibleSet);
-            }
-
-            return lightVisibleCells;
-
-            // TODO: This isn't actually thread safe :)
-            // Parallel.For(0, worldRep.Cells.Length, i => pvs.GetVisible(i));
-            // for (var i = 0; i < worldRep.Cells.Length; i++)
-            // {
-            //     pvs.GetVisible(i);
-            //     // var visible = pvs.GetVisible(i);
-            //     // Console.WriteLine($"Cell {i}: Count({visible.Length}), Visible[{string.Join(" ", visible)}]");
-            // }
-        });
+        // var lightVisibleCells = Timing.TimeStage("Light PVS", () =>
+        // {
+        //     var cellCount = worldRep.Cells.Length;
+        //     var aabbs = new MathUtils.Aabb[worldRep.Cells.Length];
+        //     Parallel.For(0, cellCount, i => aabbs[i] = new MathUtils.Aabb(worldRep.Cells[i].Vertices));
+        //
+        //     var lightCellMap = new int[_lights.Count];
+        //     Parallel.For(0, _lights.Count, i =>
+        //     {
+        //         lightCellMap[i] = -1;
+        //         var light = _lights[i];
+        //         for (var j = 0; j < cellCount; j++)
+        //         {
+        //             if (!MathUtils.Intersects(aabbs[j], light.Position))
+        //             {
+        //                 continue;
+        //             }
+        //             
+        //             // Half-space contained
+        //             var cell = worldRep.Cells[j];
+        //             var contained = true;
+        //             for (var k = 0; k < cell.PlaneCount; k++)
+        //             {
+        //                 var plane = cell.Planes[k];
+        //                 if (MathUtils.DistanceFromPlane(plane, light.Position) < -MathUtils.Epsilon)
+        //                 {
+        //                     contained = false;
+        //                     break;
+        //                 }
+        //             }
+        //         
+        //             if (contained)
+        //             {
+        //                 lightCellMap[i] = j;
+        //                 break;
+        //             }
+        //         }
+        //     });
+        //
+        //     var lightVisibleCells = new List<int[]>(_lights.Count);
+        //     var pvs = new PotentiallyVisibleSet(worldRep.Cells);
+        //     for (var i = 0; i < _lights.Count; i++)
+        //     {
+        //         var cellIdx = lightCellMap[i];
+        //         if (cellIdx == -1)
+        //         {
+        //             lightVisibleCells.Add([]);
+        //             continue;
+        //         }
+        //         var visibleSet = pvs.GetVisible(lightCellMap[i]);
+        //         lightVisibleCells.Add(visibleSet);
+        //     }
+        //
+        //     Console.WriteLine($"17: [{string.Join(", ", pvs.GetVisible(17))}]");
+        //
+        //     return lightVisibleCells;
+        // });
         
         // TODO: Move this functionality to the LGS library
         // We set up light indices in separately from lighting because the actual
@@ -479,10 +471,10 @@ public class LightMapper
                     continue;
                 }
 
-                if (!lightVisibleCells[j].Contains(i))
-                {
-                    continue;
-                }
+                // if (!lightVisibleCells[j].Contains(i))
+                // {
+                //     continue;
+                // }
                 
                 cell.LightIndexCount++;
                 cell.LightIndices.Add((ushort)light.LightTableIndex);
@@ -491,7 +483,7 @@ public class LightMapper
 
             if (cell.LightIndexCount > 97)
             {
-                Console.WriteLine($"WARNING: Too many lights in cell at ({cell.SphereCenter}): {cell.LightIndexCount - 1} / 96");
+                // Console.WriteLine($"WARNING: Too many lights in cell at ({cell.SphereCenter}): {cell.LightIndexCount - 1} / 96");
             }
         });
 
@@ -641,12 +633,15 @@ public class LightMapper
                             }
                         }
 
-                        foreach (var lightIdx in cell.LightIndices)
+                        // foreach (var lightIdx in cell.LightIndices)
+                        for (var i = 0; i < cell.LightIndexCount; i++)
                         {
-                            if (lightIdx == 0)
+                            var lightIdx = cell.LightIndices[i];
+                            if (i == 0 || lightIdx == 0)
                             {
                                 continue;
                             }
+                            
                             var light = _lights[lightIdx - 1];
 
                             // Check if plane normal is facing towards the light
@@ -661,7 +656,7 @@ public class LightMapper
                             // If there aren't *any* points on the plane that are in range of the light
                             // then none of the lightmap points will be so we can discard.
                             // The more compact a map is the less effective this is
-                            var planeDist = MathUtils.DistanceFromPlane(plane, light.Position);
+                            var planeDist = Math.Abs(MathUtils.DistanceFromPlane(plane, light.Position));
                             if (planeDist > light.Radius)
                             {
                                 continue;

@@ -90,7 +90,15 @@ public static class MathUtils
 
     public static float DistanceFromPlane(Plane plane, Vector3 point)
     {
-        return Math.Abs(Vector3.Dot(plane.Normal, point) + plane.D) / plane.Normal.Length();
+        return (Vector3.Dot(plane.Normal, point) + plane.D) / plane.Normal.Length();
+    }
+    
+    public static bool IsCoplanar(Plane p0, Plane p1)
+    {
+        var m = p0.D / p1.D;
+        var n0 = p0.Normal;
+        var n1 = p1.Normal * m;
+        return Math.Abs(n0.X - n1.X) < Epsilon && Math.Abs(n0.Y - n1.Y) < Epsilon && Math.Abs(n0.Z - n1.Z) < Epsilon;
     }
 
     public record PlanePointMapper
