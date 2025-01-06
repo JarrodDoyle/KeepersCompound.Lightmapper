@@ -18,10 +18,10 @@ public class PotentiallyVisibleSet
 
     private struct Poly
     {
-        public Vector3[] Vertices;
+        public List<Vector3> Vertices;
         public readonly Plane Plane;
 
-        public Poly(Vector3[] vertices, Plane plane)
+        public Poly(List<Vector3> vertices, Plane plane)
         {
             Vertices = vertices;
             Plane = plane;
@@ -29,14 +29,8 @@ public class PotentiallyVisibleSet
 
         public Poly(Poly other)
         {
-            // TODO: Can this be reverted?
-            var vs = new Vector3[other.Vertices.Length];
-            for (var i = 0; i < vs.Length; i++)
-            {
-                vs[i] = other.Vertices[i];
-            }
-            Vertices = vs;
-            Plane = new Plane(other.Plane.Normal, other.Plane.D);
+            Vertices = [..other.Vertices];
+            Plane = other.Plane;
         }
         
         public bool IsCoplanar(Poly other)
@@ -55,6 +49,11 @@ public class PotentiallyVisibleSet
     private readonly Dictionary<int, HashSet<int>> _visibilitySet;
 
     private const float Epsilon = 0.1f;
+    
+    // This is yucky and means we're not thread safe
+    private readonly List<float> _clipDistances = new(32);
+    private readonly List<Side> _clipSides = new(32);
+    private readonly int[] _clipCounts = [0, 0, 0];
 
     // TODO:
     // - This is a conservative algorithm based on Matt's Ramblings Quake PVS video
@@ -101,10 +100,10 @@ public class PotentiallyVisibleSet
                 
                 // Checking if there's already an edge is super slow. It's much faster to just add a new edge, even with
                 // the duplicated poly
-                var vs = new Vector3[poly.VertexCount];
+                var vs = new List<Vector3>(poly.VertexCount);
                 for (var vIdx = 0; vIdx < poly.VertexCount; vIdx++)
                 {
-                    vs[vIdx] = cell.Vertices[cell.Indices[indicesOffset + vIdx]];
+                    vs.Add(cell.Vertices[cell.Indices[indicesOffset + vIdx]]);
                 }
                     
                 var edge = new Edge
@@ -211,10 +210,10 @@ public class PotentiallyVisibleSet
             var poly = new Poly(edge.Poly);
             foreach (var separator in separators)
             {
-                poly = ClipPolygonByPlane(poly, separator);
+                ClipPolygonByPlane(ref poly, separator);
             }
             
-            if (poly.Vertices.Length == 0)
+            if (poly.Vertices.Count == 0)
             {
                 continue;
             }
@@ -226,13 +225,13 @@ public class PotentiallyVisibleSet
     // TODO: We're getting multiple separating planes that are the same, let's not somehow?
     private static void GetSeparatingPlanes(List<Plane> separators, Poly p0, Poly p1, bool flip)
     {
-        for (var i = 0; i < p0.Vertices.Length; i++)
+        for (var i = 0; i < p0.Vertices.Count; i++)
         {
             // brute force all combinations
             // there's probably some analytical way to choose the "correct" v2 but I couldn't find anything online
             var v0 = p0.Vertices[i];
-            var v1 = p0.Vertices[(i + 1) % p0.Vertices.Length];
-            for (var j = 0; j < p1.Vertices.Length; j++)
+            var v1 = p0.Vertices[(i + 1) % p0.Vertices.Count];
+            for (var j = 0; j < p1.Vertices.Count; j++)
             {
                 var v2 = p1.Vertices[j];
                 
@@ -264,7 +263,7 @@ public class PotentiallyVisibleSet
                 // All points should be in front of the plane (except for the point used to create it)
                 var invalid = false;
                 var count = 0;
-                for (var k = 0; k < p1.Vertices.Length; k++)
+                for (var k = 0; k < p1.Vertices.Count; k++)
                 {
                     if (k == j)
                     {
@@ -308,42 +307,47 @@ public class PotentiallyVisibleSet
     
     // TODO: is this reference type poly going to fuck me?
     // TODO: Should this and Poly be in MathUtils?
-    private static Poly ClipPolygonByPlane(Poly poly, Plane plane)
+    private void ClipPolygonByPlane(ref Poly poly, Plane plane)
     {
-        var vertexCount = poly.Vertices.Length;
+        var vertexCount = poly.Vertices.Count;
         if (vertexCount == 0)
         {
-            return poly;
+            return;
         }
         
         // Firstly we want to tally up what side of the plane each point of the poly is on
         // This is used both to early out if nothing/everything is clipped, and to aid the clipping
-        var distances = new float[vertexCount];
-        var sides = new Side[vertexCount];
-        var counts = new int[3];
+        // var distances = new float[vertexCount];
+        // var sides = new Side[vertexCount];
+        // var counts = new int[3];
+        _clipDistances.Clear();
+        _clipSides.Clear();
+        _clipCounts[0] = 0;
+        _clipCounts[1] = 0;
+        _clipCounts[2] = 0;
         for (var i = 0; i < vertexCount; i++)
         {
             var distance = MathUtils.DistanceFromPlane(plane, poly.Vertices[i]);
-            distances[i] = distance;
-            sides[i] = distance switch {
+            _clipDistances.Add(distance);
+            _clipSides.Add(distance switch {
                 > Epsilon => Side.Front,
                 <-Epsilon => Side.Back,
                 _ => Side.On,
-            };
-            counts[(int)sides[i]]++;
+            });
+            _clipCounts[(int)_clipSides[i]]++;
         }
 
         // Everything is within the half-space, so we don't need to clip anything
-        if (counts[(int)Side.Back] == 0 && counts[(int)Side.On] != vertexCount)
+        if (_clipCounts[(int)Side.Back] == 0 && _clipCounts[(int)Side.On] != vertexCount)
         {
-            return poly;
+            return;
         }
         
         // Everything is outside the half-space, so we clip everything
-        if (counts[(int)Side.Front] == 0)
+        if (_clipCounts[(int)Side.Front] == 0)
         {
-            poly.Vertices = [];
-            return poly;
+            poly.Vertices.Clear();
+            return;
         }
         
         var vertices = new List<Vector3>();
@@ -352,11 +356,11 @@ public class PotentiallyVisibleSet
             var i1 = (i + 1) % vertexCount;
             var v0 = poly.Vertices[i];
             var v1 = poly.Vertices[i1];
-            var side = sides[i];
-            var nextSide = sides[i1];
+            var side = _clipSides[i];
+            var nextSide = _clipSides[i1];
             
             // Vertices that are inside/on the half-space don't get clipped
-            if (sides[i] != Side.Back)
+            if (_clipSides[i] != Side.Back)
             {
                 vertices.Add(v0);
             }
@@ -370,12 +374,11 @@ public class PotentiallyVisibleSet
             }
 
             // This is how far along the vector v0 -> v1 the front/back crossover occurs
-            var frac = distances[i] / (distances[i] - distances[i1]);
+            var frac = _clipDistances[i] / (_clipDistances[i] - _clipDistances[i1]);
             var splitVertex = v0 + frac * (v1 - v0);
             vertices.Add(splitVertex);
         }
 
-        poly.Vertices = [..vertices];
-        return poly;
+        poly.Vertices = vertices;
     }
 }
