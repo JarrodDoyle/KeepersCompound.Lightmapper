@@ -17,7 +17,7 @@ internal static class Program
         
         Log.Logger = config
             .WriteTo.Console(theme: AnsiConsoleTheme.Sixteen, outputTemplate: outputTemplate)
-            .WriteTo.File(logPath, outputTemplate: outputTemplate)
+            .WriteTo.File(logPath, outputTemplate: outputTemplate, buffered: true)
             .CreateLogger();
     }
     
