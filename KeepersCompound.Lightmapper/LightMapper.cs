@@ -293,7 +293,7 @@ public class LightMapper
             }
         }
         
-        if (propAnimLight != null && !propAnimLight.Dynamic)
+        if (propAnimLight != null)
         {
             var lightIndex = lightTable.LightCount;
             propAnimLight.LightTableLightIndex = (ushort)lightIndex;
@@ -310,6 +310,7 @@ public class LightMapper
                 ObjId = id,
                 LightTableIndex = propAnimLight.LightTableLightIndex,
                 Anim = true,
+                Dynamic = propAnimLight.Dynamic,
                 SpotlightInnerAngle = -1f,
             };
             
@@ -324,7 +325,7 @@ public class LightMapper
             light.ApplyTransforms(vhotLightPos, vhotLightDir, translate, rotate, scale);
 
             _lights.Add(light);
-            lightTable.AddLight(light.ToLightData(32.0f));
+            lightTable.AddLight(light.ToLightData(32.0f), propAnimLight.Dynamic);
         }
 
         if (propLight != null && propLight.Brightness != 0)
@@ -486,7 +487,7 @@ public class LightMapper
             for (var j = 0; j < _lights.Count; j++)
             {
                 var light = _lights[j];
-                if (!MathUtils.Intersects(new MathUtils.Sphere(light.Position, light.Radius), cellAabb))
+                if (light.Dynamic || !MathUtils.Intersects(new MathUtils.Sphere(light.Position, light.Radius), cellAabb))
                 {
                     continue;
                 }

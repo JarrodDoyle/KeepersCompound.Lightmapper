@@ -690,13 +690,13 @@ public class WorldRep : IChunk
             if (dynamicLight)
             {
                 DynamicLightCount++;
+                Lights.Add(data);
             }
             else
             {
+                Lights.Insert(LightCount, data);
                 LightCount++;
             }
-
-            Lights.Add(data);
         }
     }
 

@@ -21,6 +21,7 @@ public class Light
     public int ObjId;
     public int LightTableIndex;
     public bool Anim;
+    public bool Dynamic;
 
     public WorldRep.LightTable.LightData ToLightData(float lightScale)
     {
