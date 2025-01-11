@@ -293,7 +293,7 @@ public class LightMapper
             }
         }
         
-        if (propAnimLight != null)
+        if (propAnimLight != null && !propAnimLight.Dynamic)
         {
             var lightIndex = lightTable.LightCount;
             propAnimLight.LightTableLightIndex = (ushort)lightIndex;
@@ -327,7 +327,7 @@ public class LightMapper
             lightTable.AddLight(light.ToLightData(32.0f));
         }
 
-        if (propLight != null)
+        if (propLight != null && propLight.Brightness != 0)
         {
             var light = new Light
             {
