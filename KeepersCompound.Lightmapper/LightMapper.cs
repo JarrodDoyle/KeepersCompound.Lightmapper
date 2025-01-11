@@ -2,6 +2,7 @@ using System.Numerics;
 using KeepersCompound.LGS;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
+using Serilog;
 using TinyEmbree;
 
 namespace KeepersCompound.Lightmapper;
@@ -191,10 +192,28 @@ public class LightMapper
             }
         }
 
-        var infinite = _lights.Count(light => light.Radius == float.MaxValue);
+        var infinite = 0;
+        foreach (var light in _lights)
+        {
+            if (light.Radius != float.MaxValue)
+            {
+                continue;
+            }
+
+            if (light.ObjId != -1)
+            {
+                Log.Warning("Infinite light from object {Id}", light.ObjId);
+            }
+            else
+            {
+                Log.Warning("Infinite light from brush near {Position}", light.Position);
+            }
+            infinite++;
+        }
+        
         if (infinite > 0)
         {
-            Console.WriteLine($"WARNING: Infinite radius lights found: {infinite}/{_lights.Count}");
+            Log.Warning("Mission contains {Count} infinite lights", infinite);
         }
     }
     
@@ -221,6 +240,7 @@ public class LightMapper
             R2 = float.MaxValue,
             LightTableIndex = lightTable.LightCount,
             SpotlightInnerAngle = -1f,
+            ObjId = -1,
         };
         
         _lights.Add(light);
@@ -483,7 +503,7 @@ public class LightMapper
 
             if (cell.LightIndexCount > 97)
             {
-                // Console.WriteLine($"WARNING: Too many lights in cell at ({cell.SphereCenter}): {cell.LightIndexCount - 1} / 96");
+                Log.Warning("Cell {Id} sees too many lights ({Count})", i, cell.LightIndices[0]);
             }
         });
 
@@ -505,10 +525,10 @@ public class LightMapper
 
             if (overLit > 0)
             {
-                Console.WriteLine($"WARNING: Overlit cells detected: {overLit}/{worldRep.Cells.Length}");
+                Log.Warning("{Count}/{CellCount} cells are overlit. Overlit cells can cause Object/Light Gem lighting issues.", overLit, worldRep.Cells.Length);
             }
 
-            Console.WriteLine($"MaxLights: {maxLights} / 96");
+            Log.Information("Max cell lights found ({Count}/96)", maxLights);
         }
     }
 

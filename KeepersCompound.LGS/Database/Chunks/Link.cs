@@ -1,3 +1,5 @@
+using Serilog;
+
 namespace KeepersCompound.LGS.Database.Chunks;
 
 public record LinkId
@@ -96,7 +98,7 @@ public class LinkChunk : IChunk, IMergable
         
         if (links.Count != count)
         {
-            Console.WriteLine($"Trimmed links: {count} -> {links.Count}");
+            Log.Information("Trimming excess Links in GAM: {StartCount} -> {EndCount}", count, links.Count);
         }
         
         links.AddRange(((LinkChunk)other).links);
@@ -162,7 +164,7 @@ public class LinkDataMetaProp : IChunk, IMergable
 
         if (linkData.Count != count)
         {
-            Console.WriteLine($"Trimmed link data: {count} -> {linkData.Count}");
+            Log.Information("Trimming excess LinkData in GAM: {StartCount} -> {EndCount}", count, linkData.Count);
         }
         
         linkData.AddRange(((LinkDataMetaProp)other).linkData);

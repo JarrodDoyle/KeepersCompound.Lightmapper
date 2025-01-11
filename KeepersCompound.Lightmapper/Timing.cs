@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Serilog;
 
 namespace KeepersCompound.Lightmapper;
 
@@ -32,7 +33,7 @@ public static class Timing
     {
         foreach (var (stagename, time) in _stages)
         {
-            Console.WriteLine($"[{stagename}]: {time:g}");
+            Log.Information("Timing {StageName}: {Time:g}", stagename, time);
         }
     }
 
