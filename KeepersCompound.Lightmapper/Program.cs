@@ -1,11 +1,31 @@
 using DotMake.CommandLine;
+using Serilog;
+using Serilog.Sinks.SystemConsole.Themes;
 
 namespace KeepersCompound.Lightmapper;
 
 internal static class Program
 {
-    public static async Task<int> Main(string[] args) =>
-        await Cli.RunAsync<LightCommand>(args);
+    private static void ConfigureLogger()
+    {
+        const string outputTemplate = "{Timestamp:HH:mm:ss.fff} [{Level}] {Message:lj}{NewLine}{Exception}";
+        var logPath = $"{AppDomain.CurrentDomain.BaseDirectory}/logs/{DateTime.Now:yyyyMMdd_HHmmss}.log";
+        var config = new LoggerConfiguration();
+#if DEBUG
+        config.MinimumLevel.Debug();
+#endif
+        
+        Log.Logger = config
+            .WriteTo.Console(theme: AnsiConsoleTheme.Sixteen, outputTemplate: outputTemplate)
+            .WriteTo.File(logPath, outputTemplate: outputTemplate)
+            .CreateLogger();
+    }
+    
+    public static async Task<int> Main(string[] args)
+    {
+        ConfigureLogger();
+        return await Cli.RunAsync<LightCommand>(args);
+    }
 }
 
 [CliCommand(Description = "Compute lightmaps for a NewDark .MIS/.COW")]
