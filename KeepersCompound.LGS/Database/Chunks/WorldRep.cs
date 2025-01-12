@@ -243,7 +243,12 @@ public class WorldRep : IChunk
             public void AddLight(int layer, int x, int y, float r, float g, float b)
             {
                 ArgumentOutOfRangeException.ThrowIfLessThan(layer, 0, nameof(layer));
-                ArgumentOutOfRangeException.ThrowIfGreaterThan(layer, Layers, nameof(layer));
+                ArgumentOutOfRangeException.ThrowIfGreaterThan(layer, 32, nameof(layer));
+
+                while (layer >= Layers)
+                {
+                    AddLayer();
+                }
                 
                 var idx = (x + y * Width) * Bpp;
                 var pLayer = Pixels[layer];
@@ -293,16 +298,12 @@ public class WorldRep : IChunk
 
             public void Reset(Vector3 ambientLight, bool hdr)
             {
-                Layers = 33;
+                Layers = 0;
                 Pixels.Clear();
-                var bytesPerLayer = Width * Height * Bpp;
-                for (var i = 0; i < Layers; i++)
+                AddLayer();
+
+                for (var i = 0; i < _litLayers.Length; i++)
                 {
-                    Pixels.Add(new byte[bytesPerLayer]);
-                    for (var j = 0; j < bytesPerLayer; j++)
-                    {
-                        Pixels[i][j] = 0;
-                    }
                     _litLayers[i] = false;
                 }
 
@@ -324,6 +325,18 @@ public class WorldRep : IChunk
                         writer.Write(Pixels[i]);
                     }
                 }
+            }
+
+            private void AddLayer()
+            {
+                var bytesPerLayer = Width * Height * Bpp;
+                var bytes = new byte[bytesPerLayer];
+                for (var i = 0; i < bytesPerLayer; i++)
+                {
+                    bytes[i] = 0;
+                }
+                Pixels.Add(bytes);
+                Layers++;
             }
         }
 
