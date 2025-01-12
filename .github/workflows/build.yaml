@@ -18,7 +18,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '9.0.x'
       - name: Build Windows
         run: dotnet publish KeepersCompound.Lightmapper/KeepersCompound.Lightmapper.csproj -c Release -o release/win-x64 -r win-x64 -p:PublishAot=true --nologo
       - name: Upload Windows
@@ -38,7 +38,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '9.0.x'
       - name: Build
         run: dotnet publish KeepersCompound.Lightmapper/KeepersCompound.Lightmapper.csproj -c Release -o release/linux-x64 -r linux-x64 -p:PublishAot=true --nologo
       - name: Upload Linux
