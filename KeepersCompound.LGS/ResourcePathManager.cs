@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using Serilog;
 
 namespace KeepersCompound.LGS;
 
@@ -77,33 +78,41 @@ public class ResourcePathManager
                 }
             }
 
-            foreach (var (name, path) in GetTexturePaths(resPath))
+            var texPaths = GetTexturePaths(resPath);
+            var objPaths = GetObjectPaths(resPath);
+            var objTexPaths = GetObjectTexturePaths(resPath);
+            Log.Information("Found {TexCount} textures, {ObjCount} objects, {ObjTexCount} object textures for campaign: {CampaignName}",
+                texPaths.Count, objPaths.Count, objTexPaths.Count, name);
+
+            foreach (var (resName, path) in texPaths)
             {
-                _texturePathMap[name] = path;
+                _texturePathMap[resName] = path;
             }
-            foreach (var (name, path) in GetObjectPaths(resPath))
+            foreach (var (resName, path) in objPaths)
             {
-                _objectPathMap[name] = path;
+                _objectPathMap[resName] = path;
             }
-            foreach (var (name, path) in GetObjectTexturePaths(resPath))
+            foreach (var (resName, path) in objTexPaths)
             {
-                _objectTexturePathMap[name] = path;
+                _objectTexturePathMap[resName] = path;
             }
+            
+            initialised = true;
         }
 
         public void Initialise(string misPath, string resPath, CampaignResources parent)
         {
-            foreach (var (name, path) in parent._texturePathMap)
+            foreach (var (resName, path) in parent._texturePathMap)
             {
-                _texturePathMap[name] = path;
+                _texturePathMap[resName] = path;
             }
-            foreach (var (name, path) in parent._objectPathMap)
+            foreach (var (resName, path) in parent._objectPathMap)
             {
-                _objectPathMap[name] = path;
+                _objectPathMap[resName] = path;
             }
-            foreach (var (name, path) in parent._objectTexturePathMap)
+            foreach (var (resName, path) in parent._objectTexturePathMap)
             {
-                _objectTexturePathMap[name] = path;
+                _objectTexturePathMap[resName] = path;
             }
 
             Initialise(misPath, resPath);
@@ -126,7 +135,7 @@ public class ResourcePathManager
         return path.Replace('\\', '/');
     }
 
-    public void Init(string installPath)
+    public bool TryInit(string installPath)
     {
         // TODO:
         // - Determine if folder is a thief install
@@ -136,22 +145,25 @@ public class ResourcePathManager
         // - Initialise OM campaign resource paths
         // - Lazy load FM campaign resource paths (that inherit OM resources)
 
+        Log.Information("Initialising path manager");
+
         if (!DirContainsThiefExe(installPath))
         {
-            throw new ArgumentException($"No Thief installation found at {installPath}", nameof(installPath));
+            return false;
         }
 
         // TODO: Should these paths be stored?
         if (!TryGetConfigPaths(installPath, out var configPaths))
         {
-            throw new InvalidOperationException("Failed to find all installation config paths.");
+            return false;
         }
 
         // We need to know where all the texture and object resources are
         var installCfgLines = File.ReadAllLines(configPaths[(int)ConfigFile.Install]);
         if (!FindConfigVar(installCfgLines, "resname_base", out var resPaths))
         {
-            throw new InvalidOperationException("Failed to find resnames in install config");
+            Log.Error("Failed to find `resname_base` in install config");
+            return false;
         }
         
         var zipPaths = new List<string>();
@@ -160,6 +172,7 @@ public class ResourcePathManager
             var dir = Path.Join(installPath, ConvertSeparator(resPath));
             if (!Directory.Exists(dir))
             {
+                Log.Warning("Install config references non-existent `resname_base`: {Path}", dir);
                 continue;
             }
             
@@ -183,7 +196,12 @@ public class ResourcePathManager
             ZipFile.OpenRead(zipPath).ExtractToDirectory(extractPath, false);
         }
 
-        FindConfigVar(installCfgLines, "load_path", out var omsPath);
+        if (!FindConfigVar(installCfgLines, "load_path", out var omsPath))
+        {
+            Log.Error("Failed to find `load_path` in install config");
+            return false;
+        }
+        
         omsPath = Path.Join(installPath, ConvertSeparator(omsPath));
         _omResources = new CampaignResources();
         _omResources.name = "";
@@ -192,6 +210,7 @@ public class ResourcePathManager
         var camModLines = File.ReadAllLines(configPaths[(int)ConfigFile.CamMod]);
         FindConfigVar(camModLines, "fm_path", out var fmsPath, "FMs");
         _fmsDir = Path.Join(installPath, fmsPath);
+        Log.Information("Searching for FMS at: {FmsPath}", _fmsDir);
 
         // Build up the map of FM campaigns. These are uninitialised, we just want
         // to have their name
@@ -205,6 +224,7 @@ public class ResourcePathManager
         }
 
         _initialised = true;
+        return true;
     }
 
     public List<string> GetCampaignNames()
@@ -222,17 +242,19 @@ public class ResourcePathManager
         {
             return _omResources;
         }
-        else if (_fmResources.TryGetValue(campaignName, out var campaign))
-        {
-            if (!campaign.initialised)
-            {
-                var fmPath = Path.Join(_fmsDir, campaignName);
-                campaign.Initialise(fmPath, fmPath, _omResources);
-            }
-            return campaign;
-        }
 
-        throw new ArgumentException("No campaign found with given name", nameof(campaignName));
+        if (!_fmResources.TryGetValue(campaignName, out var campaign))
+        {
+            Log.Error("Failed to find campaign: {CampaignName}", campaignName);
+            throw new ArgumentException("No campaign found with given name", nameof(campaignName));
+        }
+        
+        if (!campaign.initialised)
+        {
+            var fmPath = Path.Join(_fmsDir, campaignName);
+            campaign.Initialise(fmPath, fmPath, _omResources);
+        }
+        return campaign;
     }
 
     private static Dictionary<string, string> GetObjectTexturePaths(string root)
@@ -337,11 +359,12 @@ public class ResourcePathManager
             }
         }
 
+        Log.Error("No Thief executable found in {InstallPath}. Is this the right directory?", dir);
         return false;
     }
 
     /// <summary>
-    /// Get an array of of all the Dark config file paths.
+    /// Get an array of all the Dark config file paths.
     /// </summary>
     /// <param name="installPath">Root directory of the Thief installation.</param>
     /// <param name="configPaths">Output array of config file paths</param>
@@ -362,20 +385,21 @@ public class ResourcePathManager
         foreach (var path in Directory.GetFiles(installPath, "cam*", searchOptions))
         {
             var name = Path.GetFileName(path).ToLower();
-            if (name == "cam.cfg")
+            switch (name)
             {
-                configPaths[(int)ConfigFile.Cam] = path;
-            }
-            else if (name == "cam_ext.cfg")
-            {
-                configPaths[(int)ConfigFile.CamExt] = path;
-            }
-            else if (name == "cam_mod.ini")
-            {
-                configPaths[(int)ConfigFile.CamMod] = path;
+                case "cam.cfg":
+                    configPaths[(int)ConfigFile.Cam] = path;
+                    break;
+                case "cam_ext.cfg":
+                    configPaths[(int)ConfigFile.CamExt] = path;
+                    break;
+                case "cam_mod.ini":
+                    configPaths[(int)ConfigFile.CamMod] = path;
+                    break;
             }
         }
-
+        
+        // TODO: Verify we found cam/cam_ext/cam_mod
         var camExtLines = File.ReadAllLines(configPaths[(int)ConfigFile.CamExt]);
         var camLines = File.ReadAllLines(configPaths[(int)ConfigFile.Cam]);
 
@@ -386,9 +410,24 @@ public class ResourcePathManager
         }
 
         FindCamVar("include_path", out var includePath, "./");
-        FindCamVar("game", out var gameName);
-        FindCamVar($"{gameName}_include_install_cfg", out var installCfgName);
-        FindCamVar("include_user_cfg", out var userCfgName);
+        
+        if (!FindCamVar("game", out var gameName))
+        {
+            Log.Error("`game` not specified in Cam/CamExt");
+            return false;
+        }
+
+        if (!FindCamVar($"{gameName}_include_install_cfg", out var installCfgName))
+        {
+            Log.Error("Install config file path not specified in Cam/CamExt");
+            return false;
+        }
+
+        if (!FindCamVar("include_user_cfg", out var userCfgName))
+        {
+            Log.Error("User config file path not specified in Cam/CamExt");
+            return false;
+        }
 
         // TODO: How to handle case-insensitive absolute paths?
         // Fixup the include path to "work" cross-platform
@@ -396,6 +435,7 @@ public class ResourcePathManager
         includePath = Path.Join(installPath, includePath);
         if (!Directory.Exists(includePath))
         {
+            Log.Error("Include path specified in Cam/CamExt does not exist: {IncludePath}", includePath);
             return false;
         }
 
@@ -417,15 +457,25 @@ public class ResourcePathManager
         }
 
         // Check we found everything
-        var i = 0;
-        foreach (var path in configPaths)
+        var found = 0;
+        for (var i = 0; i < (int)ConfigFile.ConfigFileCount; i++)
         {
+            var path = configPaths[i];
             if (path == null || path == "")
             {
-                return false;
+                Log.Error("Failed to find {ConfigFile} config file", (ConfigFile)i);
+                continue;
             }
-            i++;
+
+            found++;
         }
+
+        if (found != (int)ConfigFile.ConfigFileCount)
+        {
+            Log.Error("Failed to find all required config files in Thief installation directory");
+            return false;
+        }
+        
         return true;
     }
 

@@ -42,12 +42,19 @@ public class LightMapper
         string campaignName,
         string missionName)
     {
-        var pathManager = SetupPathManager(installPath);
+        if (!SetupPathManager(installPath, out var pathManager))
+        {
+            Log.Error("Failed to configure path manager");
+            throw new Exception("Failed to configure path manager");
+        }
+        
         _campaign = pathManager.GetCampaign(campaignName);
         _misPath = _campaign.GetResourcePath(ResourceType.Mission, missionName);
         _mission = Timing.TimeStage("Parse DB", () => new DbFile(_misPath));
         _hierarchy = Timing.TimeStage("Build Hierarchy", BuildHierarchy);
         _lights = [];
+
+        VerifyRequiredChunksExist();
         
         var mesh = Timing.TimeStage("Build Mesh", BuildMesh);
         _triangleTypeMap = mesh.TriangleSurfaceMap;
@@ -121,12 +128,36 @@ public class LightMapper
         Timing.TimeStage("Save DB", () => _mission.Save(savePath));
     }
 
-    private static ResourcePathManager SetupPathManager(string installPath)
+    private bool VerifyRequiredChunksExist()
+    {
+        var requiredChunkNames = new []
+        {
+            "RENDPARAMS",
+            "LM_PARAM",
+            "WREXT",
+            "BRLIST",
+            "P$AnimLight",
+        };
+
+        var allFound = true;
+        foreach (var name in requiredChunkNames)
+        {
+            if (!_mission.Chunks.ContainsKey(name))
+            {
+                Log.Warning("Failed to find required chunk: {ChunkName}", name);
+                allFound = false;
+            }
+        }
+
+        return allFound;
+    }
+
+    private static bool SetupPathManager(string installPath, out ResourcePathManager pathManager)
     {
         var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
-        var resPathManager = new ResourcePathManager(tmpDir.FullName);
-        resPathManager.Init(installPath);
-        return resPathManager;
+        
+        pathManager = new ResourcePathManager(tmpDir.FullName);
+        return pathManager.TryInit(installPath);
     }
 
     private ObjectHierarchy BuildHierarchy()
@@ -144,6 +175,8 @@ public class LightMapper
         {
             return new ObjectHierarchy(_mission, new DbFile(paths[0]));
         }
+        
+        Log.Warning("Failed to find GameSys");
         return new ObjectHierarchy(_mission);
     }
 

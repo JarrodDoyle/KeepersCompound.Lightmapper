@@ -2,6 +2,7 @@ using System.Numerics;
 using KeepersCompound.LGS;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
+using Serilog;
 
 namespace KeepersCompound.Lightmapper;
 
@@ -117,6 +118,7 @@ public class MeshBuilder
             var modelPath = campaignResources.GetResourcePath(ResourceType.Object, modelName);
             if (modelPath == null)
             {
+                Log.Warning("Failed to find model file: {Path}", modelPath);
                 continue;
             }
             

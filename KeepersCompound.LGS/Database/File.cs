@@ -1,5 +1,6 @@
 using System.Text;
 using KeepersCompound.LGS.Database.Chunks;
+using Serilog;
 
 namespace KeepersCompound.LGS.Database;
 
@@ -84,8 +85,13 @@ public class DbFile
 
     public DbFile(string filename)
     {
-        // TODO: Throw rather than return
-        if (!File.Exists(filename)) return;
+        Log.Information("Loading DbFile: {Path}", filename);
+        
+        if (!File.Exists(filename))
+        {
+            Log.Error("Failed to load DbFile. File does not exist.");
+            throw new FileNotFoundException();
+        }
 
         using MemoryStream stream = new(File.ReadAllBytes(filename));
         using BinaryReader reader = new(stream, Encoding.UTF8, false);
@@ -105,6 +111,8 @@ public class DbFile
 
     public void Save(string filename)
     {
+        Log.Information("Saving DbFile: {Path}", filename);
+
         using var stream = File.Open(filename, FileMode.Create);
         using var writer = new BinaryWriter(stream, Encoding.UTF8, false);
 
