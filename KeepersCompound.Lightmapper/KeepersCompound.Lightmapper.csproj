@@ -8,8 +8,7 @@
     <Nullable>enable</Nullable>
     <SelfContained>true</SelfContained>
     <PublishTrimmed>true</PublishTrimmed>
-<!--    <PublishSingleFile>true</PublishSingleFile>-->
-<!--    <PublishAot>true</PublishAot>-->
+    <PublishAot>true</PublishAot>
   </PropertyGroup>
 
   <ItemGroup>
