@@ -636,10 +636,11 @@ public class LightMapper
                 var planeMapper = new MathUtils.PlanePointMapper(plane.Normal, vs[0], vs[1]);
                 var v2ds = planeMapper.MapTo2d(vs);
                 
+                // TODO: Only need to generate quadweights if there's any quadlights in the mission
                 var (texU, texV) = renderPoly.TextureVectors;
                 var (offsets, weights) =
                     GetTraceOffsetsAndWeights(settings.MultiSampling, texU, texV, settings.MultiSamplingCenterWeight);
-                var (quadOffsets, quadWeights) = settings.MultiSampling == SoftnessMode.HighFourPoint
+                var (quadOffsets, quadWeights) = settings.MultiSampling != SoftnessMode.Standard
                     ? (offsets, weights)
                     : GetTraceOffsetsAndWeights(SoftnessMode.HighFourPoint, texU, texV, settings.MultiSamplingCenterWeight);
 
@@ -654,7 +655,7 @@ public class LightMapper
                         // TODO: Handle quad lit lights better. Right now we're computing two sets of points for every
                         // luxel. Maybe it's better to only compute if we encounter a quadlit light?
                         var tracePoints = GetTracePoints(pos, offsets, renderPoly.Center, planeMapper, v2ds);
-                        var quadTracePoints = settings.MultiSampling == SoftnessMode.HighFourPoint
+                        var quadTracePoints = settings.MultiSampling != SoftnessMode.Standard
                             ? tracePoints
                             : GetTracePoints(pos, quadOffsets, renderPoly.Center, planeMapper, v2ds);
                         
