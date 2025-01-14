@@ -118,7 +118,7 @@ public class MeshBuilder
             var modelPath = campaignResources.GetResourcePath(ResourceType.Object, modelName);
             if (modelPath == null)
             {
-                Log.Warning("Failed to find model file: {Path}", modelPath);
+                Log.Warning("Failed to find model file: {Name}", modelName);
                 continue;
             }
             
