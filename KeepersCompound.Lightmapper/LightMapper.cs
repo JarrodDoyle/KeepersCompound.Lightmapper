@@ -699,20 +699,11 @@ public class LightMapper
                             
                             var light = _lights[lightIdx - 1];
 
-                            // Check if plane normal is facing towards the light
-                            // If it's not then we're never going to be (directly) lit by this
-                            // light.
-                            var centerDirection = renderPoly.Center - light.Position;
-                            if (Vector3.Dot(plane.Normal, centerDirection) >= 0)
-                            {
-                                continue;
-                            }
-
-                            // If there aren't *any* points on the plane that are in range of the light
-                            // then none of the lightmap points will be so we can discard.
-                            // The more compact a map is the less effective this is
-                            var planeDist = Math.Abs(MathUtils.DistanceFromPlane(plane, light.Position));
-                            if (planeDist > light.Radius)
+                            // If the light is behind the plane we'll never be directly lit by this light.
+                            // Additionally, if the distance from the plane is more than the light's radius
+                            // we know no points on the plane will be lit.
+                            var planeDist = MathUtils.DistanceFromPlane(plane, light.Position);
+                            if (planeDist <= MathUtils.Epsilon || planeDist > light.Radius)
                             {
                                 continue;
                             }
