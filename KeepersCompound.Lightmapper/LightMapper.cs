@@ -799,7 +799,7 @@ public class LightMapper
         return mode switch
         {
             SoftnessMode.LowFourPoint or SoftnessMode.MediumFourPoint or SoftnessMode.HighFourPoint => (
-                [-texU - texV, -texU - texV, -texU + texV, texU + texV],
+                [-texU - texV, texU - texV, -texU + texV, texU + texV],
                 [0.25f, 0.25f, 0.25f, 0.25f]),
             SoftnessMode.MediumFivePoint or SoftnessMode.HighFivePoint => (
                 [Vector3.Zero, -texU - texV, texU - texV, -texU + texV, texU + texV],
