@@ -876,7 +876,8 @@ public class LightMapper
             origin = hitResult.Position += direction * MathUtils.Epsilon;
         }
 
-        return Math.Abs(hitDistanceFromTarget) < MathUtils.Epsilon;
+        // A large epsilon is used here to fix shadow acne on sloped surfaces :)
+        return Math.Abs(hitDistanceFromTarget) < 10 * MathUtils.Epsilon;
     }
 
     // TODO: Can this be merged with the above?
