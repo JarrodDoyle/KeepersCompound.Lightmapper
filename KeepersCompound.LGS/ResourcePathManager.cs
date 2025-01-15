@@ -189,11 +189,12 @@ public class ResourcePathManager
         // Do the extraction bro
         // The path order is a priority order, so we don't want to overwrite any files when extracting
         // TODO: Check if there's any problems caused by case sensitivity
-        foreach (var zipPath in zipPaths)
+        for (var i = 0; i < zipPaths.Count; i++)
         {
+            var zipPath = zipPaths[^(i + 1)];
             var resType = Path.GetFileNameWithoutExtension(zipPath);
             var extractPath = Path.Join(_extractionPath, resType);
-            ZipFile.OpenRead(zipPath).ExtractToDirectory(extractPath, false);
+            ZipFile.OpenRead(zipPath).ExtractToDirectory(extractPath, true);
         }
 
         if (!FindConfigVar(installCfgLines, "load_path", out var omsPath))
