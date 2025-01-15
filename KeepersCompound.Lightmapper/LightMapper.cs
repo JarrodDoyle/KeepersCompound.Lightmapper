@@ -730,7 +730,7 @@ public class LightMapper
                                     continue;
                                 }
                                 
-                                if (TraceRay(light.Position, point))
+                                if (!TraceOcclusion(light.Position, point))
                                 {
                                     strength += targetWeights[idx] * light.StrengthAtPoint(point, plane, settings.AnimLightCutoff);
                                 }
@@ -817,81 +817,58 @@ public class LightMapper
         {
             var offset = offsets[i];
             var pos = basePosition + offset;
-            
-            // Embree has robustness issues when hitting poly edges which
-            // results in false misses. To alleviate this we pre-push everything
-            // slightly towards the center of the poly.
-            var centerOffset = polyCenter - pos;
-            if (centerOffset.LengthSquared() > MathUtils.Epsilon)
-            {
-                pos += Vector3.Normalize(centerOffset) * MathUtils.Epsilon;
-            }
-            
+
             // If we can't see our target point from the center of the poly
-            // then it's outside the world. We need to clip the point to slightly
-            // inside the poly and retrace to avoid three problems:
+            // then we need to clip the point to slightly inside the poly
+            // and retrace to avoid two problems:
             // 1. Darkened spots from lightmap pixels whose center is outside
             //    the polygon but is partially contained in the polygon
             // 2. Darkened spots from linear filtering of points outside the
             //    polygon which have missed
-            // 3. Darkened spots where centers are on the exact edge of a poly
-            //    which can sometimes cause Embree to miss casts
-            var inPoly = TraceRay(polyCenter + planeMapper.Normal * 0.25f, pos);
-            if (!inPoly)
+            var occluded = TraceOcclusion(polyCenter + planeMapper.Normal * 0.25f, pos);
+            if (occluded)
             {
                 var p2d = planeMapper.MapTo2d(pos);
                 p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
                 pos = planeMapper.MapTo3d(p2d);
             }
-
+            
             tracePoints[i] = pos;
         }
         
         return tracePoints;
     }
     
-    private bool TraceRay(Vector3 origin, Vector3 target)
+    private bool TraceOcclusion(Vector3 origin, Vector3 target)
     {
-        var hitDistanceFromTarget = float.MinValue;
-        var hitSurfaceType = SurfaceType.Water;
-        while (hitDistanceFromTarget < -MathUtils.Epsilon && hitSurfaceType == SurfaceType.Water)
+        var direction = target - origin;
+        var ray = new Ray
         {
-            var direction = target - origin;
-            var hitResult = _scene.Trace(new Ray
-            {
-                Origin = origin,
-                Direction = Vector3.Normalize(direction),
-            });
-
-            hitDistanceFromTarget = hitResult.Distance - direction.Length();
-            hitSurfaceType = _triangleTypeMap[(int)hitResult.PrimId];
-            origin = hitResult.Position += direction * MathUtils.Epsilon;
-        }
-
-        // A large epsilon is used here to fix shadow acne on sloped surfaces :)
-        return Math.Abs(hitDistanceFromTarget) < 10 * MathUtils.Epsilon;
+            Origin = origin,
+            Direction = Vector3.Normalize(direction),
+        };
+        
+        // Epsilon is used here to avoid occlusion when origin lies exactly on a poly
+        return _scene.IsOccluded(new ShadowRay(ray, direction.Length() - MathUtils.Epsilon));
     }
 
-    // TODO: Can this be merged with the above?
+    // TODO: direction should already be normalised here
     private bool TraceSunRay(Vector3 origin, Vector3 direction)
     {
         // Avoid self intersection
         origin += direction * MathUtils.Epsilon;
         
-        var hitSurfaceType = SurfaceType.Water;
-        while (hitSurfaceType == SurfaceType.Water)
+        var hitResult = _scene.Trace(new Ray
         {
-            var hitResult = _scene.Trace(new Ray
-            {
-                Origin = origin,
-                Direction = Vector3.Normalize(direction),
-            });
-            
-            hitSurfaceType = _triangleTypeMap[(int)hitResult.PrimId];
-            origin = hitResult.Position += direction * MathUtils.Epsilon;
+            Origin = origin,
+            Direction = Vector3.Normalize(direction),
+        });
+
+        if (hitResult)
+        {
+            return _triangleTypeMap[(int)hitResult.PrimId] == SurfaceType.Sky;
         }
-        
-        return hitSurfaceType == SurfaceType.Sky;
+        return false;
     }
 
     private void SetAnimLightCellMaps()

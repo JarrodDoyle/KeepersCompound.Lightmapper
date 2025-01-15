@@ -43,9 +43,8 @@ public class MeshBuilder
             var cellIdxOffset = 0;
             for (var polyIdx = 0; polyIdx < numPolys; polyIdx++)
             {
-                // There's 3 types of poly that we need to include in the mesh:
+                // There's 2 types of poly that we need to include in the mesh:
                 // - Terrain
-                // - Water surfaces
                 // - Door vision blockers
                 //
                 // Door vision blockers are the interesting one. They're not RenderPolys at all, just flagged Polys.
@@ -56,7 +55,8 @@ public class MeshBuilder
                 }
                 else if (polyIdx < numRenderPolys)
                 {
-                    primType = SurfaceType.Water;
+                    // we no longer want water polys :)
+                    continue;
                 }
                 else if ((cell.Flags & 8) != 0)
                 {
