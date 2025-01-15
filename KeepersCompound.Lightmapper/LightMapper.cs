@@ -831,6 +831,25 @@ public class LightMapper
                 var p2d = planeMapper.MapTo2d(pos);
                 p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
                 pos = planeMapper.MapTo3d(p2d);
+                
+                // If the clipping fails, just say screw it and cast :(
+                // TODO: This fails if there's an immovable object blocking the poly center. Need give object polys a different type and do a filtered cast/loop cast ignoring immobile hits
+                occluded = TraceOcclusion(polyCenter + planeMapper.Normal * 0.25f, pos);
+                if (occluded)
+                {
+                    var origin = polyCenter + planeMapper.Normal * 0.25f;
+                    var direction = pos - origin;
+                    var hitResult = _scene.Trace(new Ray
+                    {
+                        Origin = polyCenter + planeMapper.Normal * 0.25f,
+                        Direction = Vector3.Normalize(direction),
+                    });
+                    
+                    if (hitResult)
+                    {
+                        pos = hitResult.Position;
+                    }
+                }
             }
             
             tracePoints[i] = pos;
