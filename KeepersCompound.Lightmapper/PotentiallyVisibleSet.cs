@@ -5,10 +5,18 @@ namespace KeepersCompound.Lightmapper;
 
 public class PotentiallyVisibleSet
 {
-    private struct Edge
+    private struct Node(List<int> edgeIndices)
     {
-        public int Destination;
-        public Poly Poly;
+        public bool VisibilityComputed = false;
+        public HashSet<int> VisibleNodes = [];
+        public readonly List<int> EdgeIndices = edgeIndices;
+    }
+    
+    private readonly struct Edge(int destination, Poly poly)
+    {
+        public readonly HashSet<int> MightSee = [];
+        public readonly int Destination = destination;
+        public readonly Poly Poly = poly;
 
         public override string ToString()
         {
@@ -43,10 +51,9 @@ public class PotentiallyVisibleSet
             return $"<Plane: {Plane}, Vertices: [{string.Join(", ", Vertices)}]";
         }
     }
-    
-    private readonly List<int>[] _portalGraph;
+
+    private readonly Node[] _graph;
     private readonly List<Edge> _edges;
-    private readonly Dictionary<int, HashSet<int>> _visibilitySet;
 
     private const float Epsilon = 0.1f;
     
@@ -68,19 +75,19 @@ public class PotentiallyVisibleSet
 
     public PotentiallyVisibleSet(WorldRep.Cell[] cells)
     {
+        _graph = new Node[cells.Length];
         _edges = [];
-        _visibilitySet = new Dictionary<int, HashSet<int>>();
         
-        _portalGraph = new List<int>[cells.Length];
         for (var i = 0; i < cells.Length; i++)
         {
-            _portalGraph[i] = [];
             var cell = cells[i];
+            var edgeIndices = new List<int>(cell.PortalPolyCount);
 
             // If a cell is "blocks vision" flagged, we can never see out of it
             // We can see into it though, so we still want the edges coming in
             if ((cell.Flags & 8) != 0)
             {
+                _graph[i] = new Node(edgeIndices);
                 continue;
             }
             
@@ -96,8 +103,6 @@ public class PotentiallyVisibleSet
                     continue;
                 }
                 
-                var other = poly.Destination;
-                
                 // Checking if there's already an edge is super slow. It's much faster to just add a new edge, even with
                 // the duplicated poly
                 var vs = new List<Vector3>(poly.VertexCount);
@@ -105,34 +110,97 @@ public class PotentiallyVisibleSet
                 {
                     vs.Add(cell.Vertices[cell.Indices[indicesOffset + vIdx]]);
                 }
-                    
-                var edge = new Edge
-                {
-                    Destination = other,
-                    Poly = new Poly(vs, cell.Planes[poly.PlaneId]),
-                };
+
+                var edge = new Edge(poly.Destination, new Poly(vs, cell.Planes[poly.PlaneId]));
+                edgeIndices.Add(_edges.Count);
                 _edges.Add(edge);
-                _portalGraph[i].Add(_edges.Count - 1);
                 indicesOffset += poly.VertexCount;
             }
+
+            _graph[i] = new Node(edgeIndices);
         }
+
+        Parallel.For(0, _edges.Count, ComputeEdgeMightSee);
     }
 
     public int[] GetVisible(int cellIdx)
     {
-        if (_visibilitySet.TryGetValue(cellIdx, out var value))
+        // TODO: Handle out of range indices
+        var node = _graph[cellIdx];
+        if (node.VisibilityComputed)
         {
-            return [..value];
+            return [..node.VisibleNodes];
         }
 
         var visibleCells = ComputeVisibility(cellIdx);
-        _visibilitySet.Add(cellIdx, visibleCells);
+        node.VisibilityComputed = true;
+        node.VisibleNodes = visibleCells;
+        _graph[cellIdx] = node;
         return [..visibleCells];
+    }
+
+    
+    private void ComputeEdgeMightSee(int edgeIdx)
+    {
+        var source = _edges[edgeIdx];
+        var sourcePlane = source.Poly.Plane;
+        Flood(source.Destination);
+        return;
+
+        void Flood(int cellIdx)
+        {
+            if (!source.MightSee.Add(cellIdx))
+            {
+                return; // target is already explored
+            }
+            
+            // Target must be partly behind source, source must be partly in front of target, and source and target cannot face each other
+            foreach (var targetEdgeIdx in _graph[cellIdx].EdgeIndices)
+            {
+                var target = _edges[targetEdgeIdx];
+                var targetPlane = target.Poly.Plane;
+
+                var validTarget = false;
+                foreach (var v in target.Poly.Vertices)
+                {
+                    if (MathUtils.DistanceFromPlane(sourcePlane, v) < -MathUtils.Epsilon)
+                    {
+                        validTarget = true;
+                        break;
+                    }
+                }
+                
+                if (!validTarget)
+                {
+                    continue;
+                }
+                
+                validTarget = false;
+                foreach (var v in source.Poly.Vertices)
+                {
+                    if (MathUtils.DistanceFromPlane(targetPlane, v) > MathUtils.Epsilon)
+                    {
+                        validTarget = true;
+                        break;
+                    }
+                }
+                
+                if (!validTarget)
+                {
+                    continue;
+                }
+                
+                if (Vector3.Dot(sourcePlane.Normal, targetPlane.Normal) > MathUtils.Epsilon - 1)
+                {
+                    Flood(target.Destination);
+                }
+            }
+        }
     }
     
     private HashSet<int> ComputeVisibility(int cellIdx)
     {
-        if (cellIdx >= _portalGraph.Length)
+        if (cellIdx >= _graph.Length)
         {
             return [];
         }
@@ -141,86 +209,102 @@ public class PotentiallyVisibleSet
         var visible = new HashSet<int>();
         visible.Add(cellIdx);
 
-        // Additionally a cell can always see it's direct neighbours (obviously)
-        foreach (var edgeIndex in _portalGraph[cellIdx])
+        foreach (var edgeIdx in _graph[cellIdx].EdgeIndices)
         {
-            var edge = _edges[edgeIndex];
-            var neighbourIdx = edge.Destination;
-            visible.Add(neighbourIdx);
-            
-            // Neighbours of our direct neighbour are always visible, unless they're coplanar
-            foreach (var innerEdgeIndex in _portalGraph[neighbourIdx])
+            var edge = _edges[edgeIdx];
+            foreach (var mightSee in edge.MightSee)
             {
-                var innerEdge = _edges[innerEdgeIndex];
-                if (innerEdge.Destination == cellIdx || edge.Poly.IsCoplanar(innerEdge.Poly))
-                {
-                    continue;
-                }
-
-                ExplorePortalRecursive(visible, edge.Poly, new Poly(innerEdge.Poly), neighbourIdx, innerEdge.Destination, 0);
+                visible.Add(mightSee);
             }
         }
         
         return visible;
+        
+        // if (cellIdx >= _portalGraph.Length)
+        // {
+        //     return [];
+        // }
+
+        // Additionally a cell can always see it's direct neighbours (obviously)
+        // foreach (var edgeIndex in _portalGraph[cellIdx])
+        // {
+        //     var edge = _edges[edgeIndex];
+        //     var neighbourIdx = edge.Destination;
+        //     visible.Add(neighbourIdx);
+        //     
+        //     // Neighbours of our direct neighbour are always visible, unless they're coplanar
+        //     foreach (var innerEdgeIndex in _portalGraph[neighbourIdx])
+        //     {
+        //         var innerEdge = _edges[innerEdgeIndex];
+        //         if (innerEdge.Destination == cellIdx || edge.Poly.IsCoplanar(innerEdge.Poly))
+        //         {
+        //             continue;
+        //         }
+        //
+        //         ExplorePortalRecursive(visible, edge.Poly, new Poly(innerEdge.Poly), neighbourIdx, innerEdge.Destination, 0);
+        //     }
+        // }
+        
+        // return visible;
     }
     
-    private void ExplorePortalRecursive(
-        HashSet<int> visible,
-        Poly sourcePoly,
-        Poly previousPoly,
-        int previousCellIdx,
-        int currentCellIdx,
-        int depth)
-    {
-        // TODO: Might need to lose this
-        if (depth > 1024)
-        {
-            return;
-        }
-        
-        visible.Add(currentCellIdx);
-        
-        // Only one edge out of the cell means we'd be going back on ourselves
-        if (_portalGraph[currentCellIdx].Count <= 1)
-        {
-            return;
-        }
-        
-        // TODO: If all neighbours are already in `visible` skip exploring?
-        
-        var separators = new List<Plane>();
-        GetSeparatingPlanes(separators, sourcePoly, previousPoly, false);
-        GetSeparatingPlanes(separators, previousPoly, sourcePoly, true);
-
-        // The case for this occuring is... interesting ( idk )
-        if (separators.Count == 0)
-        {
-            return;
-        }
-        
-        // Clip all new polys and recurse
-        foreach (var edgeIndex in _portalGraph[currentCellIdx])
-        {
-            var edge = _edges[edgeIndex];
-            if (edge.Destination == previousCellIdx || previousPoly.IsCoplanar(edge.Poly) || sourcePoly.IsCoplanar(edge.Poly))
-            {
-                continue;
-            }
-
-            var poly = new Poly(edge.Poly);
-            foreach (var separator in separators)
-            {
-                ClipPolygonByPlane(ref poly, separator);
-            }
-            
-            if (poly.Vertices.Count == 0)
-            {
-                continue;
-            }
-            
-            ExplorePortalRecursive(visible, sourcePoly, poly, currentCellIdx, edge.Destination, depth + 1);
-        }
-    }
+    // private void ExplorePortalRecursive(
+    //     HashSet<int> visible,
+    //     Poly sourcePoly,
+    //     Poly previousPoly,
+    //     int previousCellIdx,
+    //     int currentCellIdx,
+    //     int depth)
+    // {
+    //     // TODO: Might need to lose this
+    //     if (depth > 1024)
+    //     {
+    //         return;
+    //     }
+    //     
+    //     visible.Add(currentCellIdx);
+    //     
+    //     // Only one edge out of the cell means we'd be going back on ourselves
+    //     if (_portalGraph[currentCellIdx].Count <= 1)
+    //     {
+    //         return;
+    //     }
+    //     
+    //     // TODO: If all neighbours are already in `visible` skip exploring?
+    //     
+    //     var separators = new List<Plane>();
+    //     GetSeparatingPlanes(separators, sourcePoly, previousPoly, false);
+    //     GetSeparatingPlanes(separators, previousPoly, sourcePoly, true);
+    //
+    //     // The case for this occuring is... interesting ( idk )
+    //     if (separators.Count == 0)
+    //     {
+    //         return;
+    //     }
+    //     
+    //     // Clip all new polys and recurse
+    //     foreach (var edgeIndex in _portalGraph[currentCellIdx])
+    //     {
+    //         var edge = _edges[edgeIndex];
+    //         if (edge.Destination == previousCellIdx || previousPoly.IsCoplanar(edge.Poly) || sourcePoly.IsCoplanar(edge.Poly))
+    //         {
+    //             continue;
+    //         }
+    //
+    //         var poly = new Poly(edge.Poly);
+    //         foreach (var separator in separators)
+    //         {
+    //             ClipPolygonByPlane(ref poly, separator);
+    //         }
+    //         
+    //         if (poly.Vertices.Count == 0)
+    //         {
+    //             continue;
+    //         }
+    //         
+    //         ExplorePortalRecursive(visible, sourcePoly, poly, currentCellIdx, edge.Destination, depth + 1);
+    //     }
+    // }
 
     // TODO: We're getting multiple separating planes that are the same, let's not somehow?
     private static void GetSeparatingPlanes(List<Plane> separators, Poly p0, Poly p1, bool flip)
