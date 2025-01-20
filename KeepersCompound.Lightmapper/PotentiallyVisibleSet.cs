@@ -120,7 +120,7 @@ public class PotentiallyVisibleSet
             _graph[i] = new Node(edgeIndices);
         }
 
-        Parallel.For(0, _edges.Count, ComputeEdgeMightSee);
+        Parallel.ForEach(_edges, ComputeEdgeMightSee);
     }
 
     public int[] GetVisible(int cellIdx)
@@ -140,9 +140,8 @@ public class PotentiallyVisibleSet
     }
 
     
-    private void ComputeEdgeMightSee(int edgeIdx)
+    private void ComputeEdgeMightSee(Edge source)
     {
-        var source = _edges[edgeIdx];
         var sourcePlane = source.Poly.Plane;
         Flood(source.Destination);
         return;
