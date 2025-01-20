@@ -139,18 +139,19 @@ public class PotentiallyVisibleSet
         return [..visibleCells];
     }
 
-    
     private void ComputeEdgeMightSee(Edge source)
     {
         var sourcePlane = source.Poly.Plane;
-        Flood(source.Destination);
-        return;
-
-        void Flood(int cellIdx)
+        
+        var unexploredCells = new Stack<int>();
+        unexploredCells.Push(source.Destination);
+        while (unexploredCells.Count > 0)
         {
+            var cellIdx = unexploredCells.Pop();
+            
             if (!source.MightSee.Add(cellIdx))
             {
-                return; // target is already explored
+                continue; // target is already explored
             }
             
             // Target must be partly behind source, source must be partly in front of target, and source and target cannot face each other
@@ -191,7 +192,7 @@ public class PotentiallyVisibleSet
                 
                 if (Vector3.Dot(sourcePlane.Normal, targetPlane.Normal) > MathUtils.Epsilon - 1)
                 {
-                    Flood(target.Destination);
+                    unexploredCells.Push(target.Destination);
                 }
             }
         }
