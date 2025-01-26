@@ -34,6 +34,7 @@ public class LightMapper
     private DbFile _mission;
     private ObjectHierarchy _hierarchy;
     private Raytracer _scene;
+    private Raytracer _sceneNoObj;
     private List<Light> _lights;
     private SurfaceType[] _triangleTypeMap;
 
@@ -56,12 +57,19 @@ public class LightMapper
 
         VerifyRequiredChunksExist();
         
-        var mesh = Timing.TimeStage("Build Mesh", BuildMesh);
-        _triangleTypeMap = mesh.TriangleSurfaceMap;
+        var (noObjMesh, fullMesh) = Timing.TimeStage("Build Meshes", BuildMeshes);
+        _triangleTypeMap = fullMesh.TriangleSurfaceMap;
+        _sceneNoObj = Timing.TimeStage("Build RT NoObj Scene", () =>
+        {
+            var rt = new Raytracer();
+            rt.AddMesh(new TriangleMesh(noObjMesh.Vertices, noObjMesh.Indices));
+            rt.CommitScene();
+            return rt;
+        });
         _scene = Timing.TimeStage("Build RT Scene", () =>
         {
             var rt = new Raytracer();
-            rt.AddMesh(new TriangleMesh(mesh.Vertices, mesh.Indices));
+            rt.AddMesh(new TriangleMesh(fullMesh.Vertices, fullMesh.Indices));
             rt.CommitScene();
             return rt;
         });
@@ -180,7 +188,7 @@ public class LightMapper
         return new ObjectHierarchy(_mission);
     }
 
-    private Mesh BuildMesh()
+    private (Mesh, Mesh) BuildMeshes()
     {
         var meshBuilder = new MeshBuilder();
 
@@ -189,12 +197,16 @@ public class LightMapper
         if (!_mission.TryGetChunk<WorldRep>("WREXT", out var worldRep) ||
             !_mission.TryGetChunk<BrList>("BRLIST", out var brList))
         {
-            return meshBuilder.Build();
+            return (meshBuilder.Build(), meshBuilder.Build());
         }
 
         meshBuilder.AddWorldRepPolys(worldRep);
+        var noObjMesh = meshBuilder.Build();
+        
         meshBuilder.AddObjectPolys(brList, _hierarchy, _campaign);
-        return meshBuilder.Build();
+        var fullMesh = meshBuilder.Build();
+        
+        return (noObjMesh, fullMesh);
     }
 
     private void BuildLightList()
