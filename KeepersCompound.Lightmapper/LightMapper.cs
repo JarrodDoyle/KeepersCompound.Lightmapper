@@ -824,12 +824,22 @@ public class LightMapper
         MathUtils.PlanePointMapper planeMapper,
         Vector2[] v2ds)
     {
+        polyCenter += planeMapper.Normal * 0.25f;
+        
         var tracePoints = new Vector3[offsets.Length];
         for (var i = 0; i < offsets.Length; i++)
         {
             var offset = offsets[i];
             var pos = basePosition + offset;
 
+            // If the target lightmap point is in view of the center
+            // then we can use it as-is. Using it straight fixes seams and such.
+            if (!TraceOcclusion(polyCenter, pos))
+            {
+                tracePoints[i] = pos;
+                continue;
+            }
+            
             // If we can't see our target point from the center of the poly
             // then we need to clip the point to slightly inside the poly
             // and retrace to avoid two problems:
@@ -837,30 +847,22 @@ public class LightMapper
             //    the polygon but is partially contained in the polygon
             // 2. Darkened spots from linear filtering of points outside the
             //    polygon which have missed
-            var occluded = TraceOcclusion(polyCenter + planeMapper.Normal * 0.25f, pos);
-            if (occluded)
+            var p2d = planeMapper.MapTo2d(pos);
+            p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
+            pos = planeMapper.MapTo3d(p2d);
+            
+            // If the clipping fails, just say screw it and cast :(
+            if (TraceOcclusion(polyCenter, pos))
             {
-                var p2d = planeMapper.MapTo2d(pos);
-                p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
-                pos = planeMapper.MapTo3d(p2d);
-                
-                // If the clipping fails, just say screw it and cast :(
-                // TODO: This fails if there's an immovable object blocking the poly center. Need give object polys a different type and do a filtered cast/loop cast ignoring immobile hits
-                occluded = TraceOcclusion(polyCenter + planeMapper.Normal * 0.25f, pos);
-                if (occluded)
+                var hitResult = _scene.Trace(new Ray
                 {
-                    var origin = polyCenter + planeMapper.Normal * 0.25f;
-                    var direction = pos - origin;
-                    var hitResult = _scene.Trace(new Ray
-                    {
-                        Origin = polyCenter + planeMapper.Normal * 0.25f,
-                        Direction = Vector3.Normalize(direction),
-                    });
-                    
-                    if (hitResult)
-                    {
-                        pos = hitResult.Position;
-                    }
+                    Origin = polyCenter,
+                    Direction = Vector3.Normalize(pos - polyCenter),
+                });
+                
+                if (hitResult)
+                {
+                    pos = hitResult.Position;
                 }
             }
             
