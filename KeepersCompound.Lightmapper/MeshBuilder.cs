@@ -155,12 +155,13 @@ public class MeshBuilder
         var indexOffset = _vertices.Count;
 
         // Polygons are n-sided, but fortunately they're convex so we can just do a fan triangulation
+        // Embree triangle winding order is reverse of LGS winding order, so we go (0, i+1, i) instead of (0, i+1, i)
         _vertices.AddRange(vertices);
         for (var i = 1; i < vertexCount - 1; i++)
         {
             _indices.Add(indexOffset);
-            _indices.Add(indexOffset + i);
             _indices.Add(indexOffset + i + 1);
+            _indices.Add(indexOffset + i);
             _primSurfaceMap.Add(surfaceType);
             _triangleCount++;
         }
