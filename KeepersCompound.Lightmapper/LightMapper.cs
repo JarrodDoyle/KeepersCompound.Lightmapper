@@ -832,7 +832,7 @@ public class LightMapper
         for (var i = 0; i < offsets.Length; i++)
         {
             var offset = offsets[i];
-            var pos = basePosition + offset;
+            var pos = basePosition + offset + planeMapper.Normal * MathUtils.Epsilon;
 
             // If the target lightmap point is in view of the center
             // then we can use it as-is. Using it straight fixes seams and such.
@@ -852,6 +852,7 @@ public class LightMapper
             var p2d = planeMapper.MapTo2d(pos);
             p2d = MathUtils.ClipPointToPoly2d(p2d, v2ds);
             pos = planeMapper.MapTo3d(p2d);
+            pos += planeMapper.Normal * MathUtils.Epsilon;
             
             // If the clipping fails, just say screw it and cast :(
             if (TraceOcclusion(_sceneNoObj, polyCenter, pos))
