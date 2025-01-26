@@ -11,7 +11,7 @@ public enum SurfaceType
 {
     Solid,
     Sky,
-    Water,
+    Object,
     Air,
 }
 
@@ -144,7 +144,7 @@ public class MeshBuilder
                     polyVertices.Add(vertex);
                 }
                 
-                AddPolygon(polyVertices, SurfaceType.Solid);
+                AddPolygon(polyVertices, SurfaceType.Object);
             }
         }
     }
