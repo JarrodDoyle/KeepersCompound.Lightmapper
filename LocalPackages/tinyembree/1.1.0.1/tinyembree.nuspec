@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>TinyEmbree</id>
+    <version>1.1.0.1</version>
+    <title>TinyEmbree</title>
+    <authors>Pascal Grittmann</authors>
+    <license type="file">LICENSE</license>
+    <licenseUrl>https://aka.ms/deprecateLicenseUrl</licenseUrl>
+    <description>A very simple C# wrapper around the Embree ray tracing kernels.</description>
+    <copyright>(c) Pascal Grittmann</copyright>
+    <tags>ray tracing Embree</tags>
+    <repository type="git" url="https://github.com/pgrit/TinyEmbree" commit="66e46513777d3046b684f4d6fe796e9f3558b6b0" />
+    <dependencies>
+      <group targetFramework="net9.0" />
+    </dependencies>
+  </metadata>
+</package>

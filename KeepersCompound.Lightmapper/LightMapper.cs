@@ -489,9 +489,7 @@ public class LightMapper
         //         var visibleSet = pvs.GetVisible(lightCellMap[i]);
         //         lightVisibleCells.Add(visibleSet);
         //     }
-        //
-        //     Console.WriteLine($"17: [{string.Join(", ", pvs.GetVisible(17))}]");
-        //
+        //     
         //     return lightVisibleCells;
         // });
         
@@ -536,7 +534,7 @@ public class LightMapper
                 {
                     continue;
                 }
-
+                
                 // if (!lightVisibleCells[j].Contains(i))
                 // {
                 //     continue;
@@ -638,6 +636,21 @@ public class LightMapper
                     topLeft + yDir,
                     topLeft + xDir + yDir,
                 ]);
+                
+                // Log.Information("Poly plane: {X}x + {Y}y + {Z}z + {D} = 0", plane.Normal.X, plane.Normal.Y, plane.Normal.Z, plane.D);
+                var edgePlanes = new Plane[poly.VertexCount];
+                for (var i = 0; i < poly.VertexCount; i++)
+                {
+                    var v0 = cell.Vertices[cell.Indices[cellIdxOffset + i]];
+                    var v1 = cell.Vertices[cell.Indices[cellIdxOffset + (i + 1) % poly.VertexCount]];
+                
+                    var dir = Vector3.Normalize(v1 - v0);
+                    var edgePlaneNormal = Vector3.Cross(dir, plane.Normal);
+                    var edgePlaneDistance = -Vector3.Dot(edgePlaneNormal, v0);
+                    var edgePlane = new Plane(edgePlaneNormal, edgePlaneDistance);
+                    edgePlanes[i] = edgePlane;
+                    // Log.Information("Edge plane: {X}x + {Y}y + {Z}z + {D} = 0", edgePlane.Normal.X, edgePlane.Normal.Y, edgePlane.Normal.Z, edgePlane.D);
+                }
 
                 // Used for clipping points to poly
                 var vs = new Vector3[poly.VertexCount];
@@ -666,6 +679,10 @@ public class LightMapper
                         
                         // TODO: Handle quad lit lights better. Right now we're computing two sets of points for every
                         // luxel. Maybe it's better to only compute if we encounter a quadlit light?
+                        // var tracePoints = GetTracePoints(pos, offsets, renderPoly.Center, plane, edgePlanes);
+                        // var quadTracePoints = settings.MultiSampling != SoftnessMode.Standard
+                        //     ? tracePoints
+                        //     : GetTracePoints(pos, quadOffsets, renderPoly.Center, plane, edgePlanes);
                         var tracePoints = GetTracePoints(pos, offsets, renderPoly.Center, planeMapper, v2ds);
                         var quadTracePoints = settings.MultiSampling != SoftnessMode.Standard
                             ? tracePoints
@@ -817,6 +834,80 @@ public class LightMapper
         };
     }
 
+    private Vector3[] GetTracePoints(
+        Vector3 basePosition,
+        Vector3[] offsets,
+        Vector3 polyCenter,
+        Plane polyPlane,
+        Plane[] edgePlanes)
+    {
+        polyCenter += polyPlane.Normal * 0.25f;
+        
+        var tracePoints = new Vector3[offsets.Length];
+        for (var i = 0; i < offsets.Length; i++)
+        {
+            var offset = offsets[i];
+            var pos = basePosition + offset;
+
+            // If the center can see the target lightmap point then we can just straight use it.
+            // Note that the target may actually be on another poly, or floating in space over a ledge.
+            if (!TraceOcclusion(_sceneNoObj, polyCenter, pos))
+            {
+                tracePoints[i] = pos;
+                continue;
+            }
+            
+            // If we can't see our target point from the center of the poly
+            // then we need to clip the point to slightly inside the poly
+            // and retrace to avoid two problems:
+            // 1. Darkened spots from lightmap pixels whose center is outside
+            //    the polygon but is partially contained in the polygon
+            // 2. Darkened spots from linear filtering of points outside the
+            //    polygon which have missed
+            //
+            // TODO: This can cause seams. The ideal solution here is to check if it lies on any other poly, or maybe check if it's "within" any cells.
+            foreach (var plane in edgePlanes)
+            {
+                var distFromPlane = MathUtils.DistanceFromPlane(plane, pos);
+                if (distFromPlane >= -MathUtils.Epsilon)
+                {
+                    // we're inside the plane :)
+                    continue;
+                }
+            
+                var u = polyCenter - pos;
+                var w = pos - (plane.Normal * -plane.D);
+            
+                var d = Vector3.Dot(plane.Normal, u);
+                var n = -Vector3.Dot(plane.Normal, w);
+                var t = n / d;
+                
+                pos += u * (t + MathUtils.Epsilon);
+            }
+            
+            // After clipping, we can still be in a weird spot. So to fully resolve it we do a cast
+            if (TraceOcclusion(_sceneNoObj, polyCenter + polyPlane.Normal * 0.25f, pos))
+            {
+                var origin = polyCenter + polyPlane.Normal * 0.25f;
+                var direction = pos - origin;
+                var hitResult = _sceneNoObj.Trace(new Ray
+                {
+                    Origin = origin,
+                    Direction = Vector3.Normalize(direction),
+                });
+                    
+                if (hitResult)
+                {
+                    pos = hitResult.Position;
+                }
+            }
+            
+            tracePoints[i] = pos;
+        }
+        
+        return tracePoints;
+    }
+    
     private Vector3[] GetTracePoints(
         Vector3 basePosition,
         Vector3[] offsets,
