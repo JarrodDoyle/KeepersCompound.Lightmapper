@@ -742,7 +742,7 @@ public class LightMapper
                                     continue;
                                 }
                                 
-                                if (!TraceOcclusion(light.Position, point))
+                                if (!TraceOcclusion(_scene, light.Position, point))
                                 {
                                     strength += targetWeights[idx] * light.StrengthAtPoint(point, plane, settings.AnimLightCutoff);
                                 }
@@ -826,6 +826,8 @@ public class LightMapper
     {
         polyCenter += planeMapper.Normal * 0.25f;
         
+        // All of the traces here are done using the no object scene. We just want to find a point in-world, we don't
+        // care about if an object is in the way
         var tracePoints = new Vector3[offsets.Length];
         for (var i = 0; i < offsets.Length; i++)
         {
@@ -834,7 +836,7 @@ public class LightMapper
 
             // If the target lightmap point is in view of the center
             // then we can use it as-is. Using it straight fixes seams and such.
-            if (!TraceOcclusion(polyCenter, pos))
+            if (!TraceOcclusion(_sceneNoObj, polyCenter, pos))
             {
                 tracePoints[i] = pos;
                 continue;
@@ -852,9 +854,9 @@ public class LightMapper
             pos = planeMapper.MapTo3d(p2d);
             
             // If the clipping fails, just say screw it and cast :(
-            if (TraceOcclusion(polyCenter, pos))
+            if (TraceOcclusion(_sceneNoObj, polyCenter, pos))
             {
-                var hitResult = _scene.Trace(new Ray
+                var hitResult = _sceneNoObj.Trace(new Ray
                 {
                     Origin = polyCenter,
                     Direction = Vector3.Normalize(pos - polyCenter),
@@ -872,7 +874,7 @@ public class LightMapper
         return tracePoints;
     }
     
-    private bool TraceOcclusion(Vector3 origin, Vector3 target)
+    private static bool TraceOcclusion(Raytracer scene, Vector3 origin, Vector3 target, float epsilon = MathUtils.Epsilon)
     {
         var direction = target - origin;
         var ray = new Ray
@@ -882,7 +884,7 @@ public class LightMapper
         };
         
         // Epsilon is used here to avoid occlusion when origin lies exactly on a poly
-        return _scene.IsOccluded(new ShadowRay(ray, direction.Length() - MathUtils.Epsilon));
+        return scene.IsOccluded(new ShadowRay(ray, direction.Length() - epsilon));
     }
 
     // TODO: direction should already be normalised here
