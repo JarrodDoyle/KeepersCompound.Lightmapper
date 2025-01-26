@@ -40,6 +40,9 @@ public class LightCommand
     [CliArgument(Description = "The name of the mission file including extension.")]
     public required string MissionName { get; set; }
     
+    [CliOption(Description = "Use a coarse PVS for tighter cell light indices.")]
+    public bool Pvs { get; set; } = false;
+    
     [CliOption(Description = "Name of output file excluding extension.")]
     public string OutputName { get; set; } = "kc_lit";
 
@@ -48,7 +51,7 @@ public class LightCommand
         Timing.Reset();
              
         var lightMapper = new LightMapper(InstallPath, CampaignName, MissionName);
-        lightMapper.Light();
+        lightMapper.Light(Pvs);
         lightMapper.Save(OutputName);
          
         Timing.LogAll();

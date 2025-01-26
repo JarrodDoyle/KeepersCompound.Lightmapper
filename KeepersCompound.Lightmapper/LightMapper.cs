@@ -27,6 +27,7 @@ public class LightMapper
         public bool LightmappedWater;
         public SunSettings Sunlight;
         public uint AnimLightCutoff;
+        public bool UsePvs;
     }
 
     private ResourcePathManager.CampaignResources _campaign;
@@ -75,7 +76,7 @@ public class LightMapper
         });
     }
     
-    public void Light()
+    public void Light(bool pvs)
     {
         // TODO: Throw?
         if (!_mission.TryGetChunk<RendParams>("RENDPARAMS", out var rendParams) ||
@@ -110,6 +111,7 @@ public class LightMapper
             LightmappedWater = lmParams.LightmappedWater,
             Sunlight = sunlightSettings,
             AnimLightCutoff = lmParams.AnimLightCutoff,
+            UsePvs = pvs,
         };
         
         Timing.TimeStage("Gather Lights", BuildLightList);
@@ -437,62 +439,68 @@ public class LightMapper
         if (!_mission.TryGetChunk<WorldRep>("WREXT", out var worldRep))
             return;
         
-        // var lightVisibleCells = Timing.TimeStage("Light PVS", () =>
-        // {
-        //     var cellCount = worldRep.Cells.Length;
-        //     var aabbs = new MathUtils.Aabb[worldRep.Cells.Length];
-        //     Parallel.For(0, cellCount, i => aabbs[i] = new MathUtils.Aabb(worldRep.Cells[i].Vertices));
-        //
-        //     var lightCellMap = new int[_lights.Count];
-        //     Parallel.For(0, _lights.Count, i =>
-        //     {
-        //         lightCellMap[i] = -1;
-        //         var light = _lights[i];
-        //         for (var j = 0; j < cellCount; j++)
-        //         {
-        //             if (!MathUtils.Intersects(aabbs[j], light.Position))
-        //             {
-        //                 continue;
-        //             }
-        //             
-        //             // Half-space contained
-        //             var cell = worldRep.Cells[j];
-        //             var contained = true;
-        //             for (var k = 0; k < cell.PlaneCount; k++)
-        //             {
-        //                 var plane = cell.Planes[k];
-        //                 if (MathUtils.DistanceFromPlane(plane, light.Position) < -MathUtils.Epsilon)
-        //                 {
-        //                     contained = false;
-        //                     break;
-        //                 }
-        //             }
-        //         
-        //             if (contained)
-        //             {
-        //                 lightCellMap[i] = j;
-        //                 break;
-        //             }
-        //         }
-        //     });
-        //
-        //     var lightVisibleCells = new List<int[]>(_lights.Count);
-        //     var pvs = new PotentiallyVisibleSet(worldRep.Cells);
-        //     for (var i = 0; i < _lights.Count; i++)
-        //     {
-        //         var cellIdx = lightCellMap[i];
-        //         if (cellIdx == -1)
-        //         {
-        //             lightVisibleCells.Add([]);
-        //             continue;
-        //         }
-        //         var visibleSet = pvs.GetVisible(lightCellMap[i]);
-        //         lightVisibleCells.Add(visibleSet);
-        //     }
-        //     
-        //     return lightVisibleCells;
-        // });
         
+        var lightVisibleCells = new List<int[]>();
+        if (settings.UsePvs)
+        {
+            lightVisibleCells = Timing.TimeStage("Light PVS", () =>
+            {
+                var cellCount = worldRep.Cells.Length;
+                var aabbs = new MathUtils.Aabb[worldRep.Cells.Length];
+                Parallel.For(0, cellCount, i => aabbs[i] = new MathUtils.Aabb(worldRep.Cells[i].Vertices));
+
+                var lightCellMap = new int[_lights.Count];
+                Parallel.For(0, _lights.Count, i =>
+                {
+                    lightCellMap[i] = -1;
+                    var light = _lights[i];
+                    for (var j = 0; j < cellCount; j++)
+                    {
+                        if (!MathUtils.Intersects(aabbs[j], light.Position))
+                        {
+                            continue;
+                        }
+
+                        // Half-space contained
+                        var cell = worldRep.Cells[j];
+                        var contained = true;
+                        for (var k = 0; k < cell.PlaneCount; k++)
+                        {
+                            var plane = cell.Planes[k];
+                            if (MathUtils.DistanceFromPlane(plane, light.Position) < -MathUtils.Epsilon)
+                            {
+                                contained = false;
+                                break;
+                            }
+                        }
+
+                        if (contained)
+                        {
+                            lightCellMap[i] = j;
+                            break;
+                        }
+                    }
+                });
+
+                var visibleCellMap = new List<int[]>(_lights.Count);
+                var pvs = new PotentiallyVisibleSet(worldRep.Cells);
+                for (var i = 0; i < _lights.Count; i++)
+                {
+                    var cellIdx = lightCellMap[i];
+                    if (cellIdx == -1)
+                    {
+                        visibleCellMap.Add([]);
+                        continue;
+                    }
+
+                    var visibleSet = pvs.GetVisible(lightCellMap[i]);
+                    visibleCellMap.Add(visibleSet);
+                }
+
+                return visibleCellMap;
+            });
+        }
+
         // TODO: Move this functionality to the LGS library
         // We set up light indices in separately from lighting because the actual
         // lighting phase takes a lot of shortcuts that we don't want
@@ -535,10 +543,10 @@ public class LightMapper
                     continue;
                 }
                 
-                // if (!lightVisibleCells[j].Contains(i))
-                // {
-                //     continue;
-                // }
+                if (settings.UsePvs && !lightVisibleCells[j].Contains(i))
+                {
+                    continue;
+                }
                 
                 cell.LightIndexCount++;
                 cell.LightIndices.Add((ushort)light.LightTableIndex);
@@ -569,7 +577,7 @@ public class LightMapper
 
             if (overLit > 0)
             {
-                Log.Warning("{Count}/{CellCount} cells are overlit. Overlit cells can cause Object/Light Gem lighting issues.", overLit, worldRep.Cells.Length);
+                Log.Warning("{Count}/{CellCount} cells are overlit. Overlit cells can cause Object/Light Gem lighting issues. Try running with the --pvs flag.", overLit, worldRep.Cells.Length);
             }
 
             Log.Information("Max cell lights found ({Count}/96)", maxLights);
