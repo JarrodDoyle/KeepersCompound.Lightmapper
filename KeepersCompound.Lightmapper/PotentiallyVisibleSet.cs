@@ -166,6 +166,11 @@ public class PotentiallyVisibleSet
             {
                 var target = _edges[targetEdgeIdx];
                 var targetPlane = target.Poly.Plane;
+                
+                if (source.MightSee[target.Destination])
+                {
+                    continue; // target is already explored
+                }
 
                 var validTarget = false;
                 foreach (var v in target.Poly.Vertices)
