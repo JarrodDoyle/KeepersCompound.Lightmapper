@@ -12,9 +12,9 @@ public class PotentiallyVisibleSet
         public readonly List<int> EdgeIndices = edgeIndices;
     }
     
-    private readonly struct Edge(int destination, Poly poly)
+    private readonly struct Edge(int mightSeeLength, int destination, Poly poly)
     {
-        public readonly HashSet<int> MightSee = [];
+        public readonly bool[] MightSee = new bool[mightSeeLength];
         public readonly int Destination = destination;
         public readonly Poly Poly = poly;
 
@@ -77,6 +77,12 @@ public class PotentiallyVisibleSet
     {
         _graph = new Node[cells.Length];
         _edges = [];
+
+        var portalCount = 0;
+        foreach (var cell in cells)
+        {
+            portalCount += cell.PortalPolyCount;
+        }
         
         for (var i = 0; i < cells.Length; i++)
         {
@@ -111,7 +117,7 @@ public class PotentiallyVisibleSet
                     vs.Add(cell.Vertices[cell.Indices[indicesOffset + vIdx]]);
                 }
 
-                var edge = new Edge(poly.Destination, new Poly(vs, cell.Planes[poly.PlaneId]));
+                var edge = new Edge(portalCount, poly.Destination, new Poly(vs, cell.Planes[poly.PlaneId]));
                 edgeIndices.Add(_edges.Count);
                 _edges.Add(edge);
                 indicesOffset += poly.VertexCount;
@@ -148,11 +154,12 @@ public class PotentiallyVisibleSet
         while (unexploredCells.Count > 0)
         {
             var cellIdx = unexploredCells.Pop();
-            
-            if (!source.MightSee.Add(cellIdx))
+            if (source.MightSee[cellIdx])
             {
                 continue; // target is already explored
             }
+
+            source.MightSee[cellIdx] = true;
             
             // Target must be partly behind source, source must be partly in front of target, and source and target cannot face each other
             foreach (var targetEdgeIdx in _graph[cellIdx].EdgeIndices)
@@ -212,9 +219,12 @@ public class PotentiallyVisibleSet
         foreach (var edgeIdx in _graph[cellIdx].EdgeIndices)
         {
             var edge = _edges[edgeIdx];
-            foreach (var mightSee in edge.MightSee)
+            for (var i = 0; i < edge.MightSee.Length; i++)
             {
-                visible.Add(mightSee);
+                if (edge.MightSee[i])
+                {
+                    visible.Add(i);
+                }
             }
         }
         
