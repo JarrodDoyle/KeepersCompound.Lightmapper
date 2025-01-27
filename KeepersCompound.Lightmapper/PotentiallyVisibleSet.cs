@@ -26,6 +26,8 @@ public class PotentiallyVisibleSet
 
     private struct Poly
     {
+        public readonly Vector3 Center;
+        public readonly float Radius;
         public List<Vector3> Vertices;
         public readonly Plane Plane;
 
@@ -33,6 +35,25 @@ public class PotentiallyVisibleSet
         {
             Vertices = vertices;
             Plane = plane;
+
+            // Center is just taken to be the "average" of the vertices
+            Center = Vector3.Zero;
+            foreach (var v in vertices)
+            {
+                Center += v;
+            }
+            
+            Center /= vertices.Count;
+            
+            // Radius is the max vertex distance from the center
+            // We're actually calculating radius squared to begin with because it's faster :)
+            Radius = 0;
+            foreach (var v in vertices)
+            {
+                Radius = float.Max(Radius, (v - Center).LengthSquared());
+            }
+            
+            Radius = MathF.Sqrt(Radius);
         }
 
         public Poly(Poly other)
@@ -167,9 +188,13 @@ public class PotentiallyVisibleSet
                 var target = _edges[targetEdgeIdx];
                 var targetPlane = target.Poly.Plane;
                 
-                if (source.MightSee[target.Destination])
+                // If we're already visited the target, target is fully behind source, or source is fully behind target
+                // then we can quickly discard this portal
+                if (source.MightSee[target.Destination] ||
+                    MathUtils.DistanceFromNormalizedPlane(sourcePlane, target.Poly.Center) > target.Poly.Radius ||
+                    MathUtils.DistanceFromNormalizedPlane(targetPlane, source.Poly.Center) < -source.Poly.Radius)
                 {
-                    continue; // target is already explored
+                    continue;
                 }
 
                 var validTarget = false;
