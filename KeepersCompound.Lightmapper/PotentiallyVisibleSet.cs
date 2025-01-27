@@ -163,7 +163,7 @@ public class PotentiallyVisibleSet
                 var validTarget = false;
                 foreach (var v in target.Poly.Vertices)
                 {
-                    if (MathUtils.DistanceFromPlane(sourcePlane, v) < -MathUtils.Epsilon)
+                    if (MathUtils.DistanceFromNormalizedPlane(sourcePlane, v) < -MathUtils.Epsilon)
                     {
                         validTarget = true;
                         break;
@@ -178,7 +178,7 @@ public class PotentiallyVisibleSet
                 validTarget = false;
                 foreach (var v in source.Poly.Vertices)
                 {
-                    if (MathUtils.DistanceFromPlane(targetPlane, v) > MathUtils.Epsilon)
+                    if (MathUtils.DistanceFromNormalizedPlane(targetPlane, v) > MathUtils.Epsilon)
                     {
                         validTarget = true;
                         break;

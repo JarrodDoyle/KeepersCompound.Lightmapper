@@ -93,6 +93,11 @@ public static class MathUtils
         return (Vector3.Dot(plane.Normal, point) + plane.D) / plane.Normal.Length();
     }
     
+    public static float DistanceFromNormalizedPlane(Plane plane, Vector3 point)
+    {
+        return Vector3.Dot(plane.Normal, point) + plane.D;
+    }
+    
     public static bool IsCoplanar(Plane p0, Plane p1)
     {
         var m = p0.D / p1.D;
