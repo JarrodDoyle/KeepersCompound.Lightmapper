@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Numerics;
 using KeepersCompound.LGS.Database.Chunks;
 
@@ -14,7 +15,7 @@ public class PotentiallyVisibleSet
     
     private readonly struct Edge(int mightSeeLength, int destination, Poly poly)
     {
-        public readonly bool[] MightSee = new bool[mightSeeLength];
+        public readonly BitArray MightSee = new(mightSeeLength);
         public readonly int Destination = destination;
         public readonly Poly Poly = poly;
 
