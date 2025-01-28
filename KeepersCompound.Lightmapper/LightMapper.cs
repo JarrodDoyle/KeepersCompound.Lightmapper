@@ -485,7 +485,7 @@ public class LightMapper
                 var pvs = new PotentiallyVisibleSet(worldRep.Cells);
                 Parallel.ForEach(lightCellMap, i =>
                 {
-                    pvs.ComputeVisibility(i);
+                    if (i != -1) pvs.ComputeVisibility(i);
                 });
 
                 var visibleCellMap = new List<int[]>(_lights.Count);
