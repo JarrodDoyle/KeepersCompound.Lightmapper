@@ -139,7 +139,7 @@ public class PotentiallyVisibleSet
                     vs.Add(cell.Vertices[cell.Indices[indicesOffset + vIdx]]);
                 }
 
-                var edge = new Edge(portalCount, poly.Destination, new Poly(vs, cell.Planes[poly.PlaneId]));
+                var edge = new Edge(cells.Length, poly.Destination, new Poly(vs, cell.Planes[poly.PlaneId]));
                 edgeIndices.Add(_edges.Count);
                 _edges.Add(edge);
                 indicesOffset += poly.VertexCount;
