@@ -151,7 +151,7 @@ public class PotentiallyVisibleSet
             _graph[i] = new Node(edgeIndices);
         }
 
-        Parallel.ForEach(_edges, ComputeEdgeMightSee);
+        // Parallel.ForEach(_edges, ComputeEdgeMightSee);
     }
 
     public int[] GetVisible(int cellIdx)
@@ -253,6 +253,7 @@ public class PotentiallyVisibleSet
         foreach (var edgeIdx in _graph[cellIdx].EdgeIndices)
         {
             var edge = _edges[edgeIdx];
+            ComputeEdgeMightSee(edge);
             for (var i = 0; i < edge.MightSee.Length; i++)
             {
                 if (edge.MightSee[i])
