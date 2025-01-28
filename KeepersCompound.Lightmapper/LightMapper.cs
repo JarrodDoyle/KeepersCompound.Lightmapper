@@ -481,9 +481,14 @@ public class LightMapper
                         }
                     }
                 });
+                
+                var pvs = new PotentiallyVisibleSet(worldRep.Cells);
+                Parallel.ForEach(lightCellMap, i =>
+                {
+                    pvs.ComputeVisibility(i);
+                });
 
                 var visibleCellMap = new List<int[]>(_lights.Count);
-                var pvs = new PotentiallyVisibleSet(worldRep.Cells);
                 for (var i = 0; i < _lights.Count; i++)
                 {
                     var cellIdx = lightCellMap[i];
