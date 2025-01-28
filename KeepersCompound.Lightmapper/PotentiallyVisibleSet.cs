@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Numerics;
 using KeepersCompound.LGS.Database.Chunks;
+using Serilog;
 
 namespace KeepersCompound.Lightmapper;
 
@@ -98,13 +99,15 @@ public class PotentiallyVisibleSet
     public PotentiallyVisibleSet(WorldRep.Cell[] cells)
     {
         _graph = new Node[cells.Length];
-        _edges = [];
 
         var portalCount = 0;
         foreach (var cell in cells)
         {
             portalCount += cell.PortalPolyCount;
         }
+        
+        _edges = new List<Edge>(portalCount);
+        Log.Information("Mission contains {PortalCount} portals.", portalCount);
         
         for (var i = 0; i < cells.Length; i++)
         {
