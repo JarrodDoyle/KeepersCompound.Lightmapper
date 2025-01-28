@@ -7,10 +7,9 @@ namespace KeepersCompound.Lightmapper;
 
 public class PotentiallyVisibleSet
 {
-    private struct Node(List<int> edgeIndices)
+    private readonly struct Node(List<int> edgeIndices)
     {
-        public bool VisibilityComputed = false;
-        public HashSet<int> VisibleNodes = [];
+        public readonly HashSet<int> VisibleNodes = [];
         public readonly List<int> EdgeIndices = edgeIndices;
     }
     
@@ -76,6 +75,7 @@ public class PotentiallyVisibleSet
     }
 
     private readonly Node[] _graph;
+    private readonly bool[] _computedMap;
     private readonly List<Edge> _edges;
 
     private const float Epsilon = 0.1f;
@@ -99,11 +99,13 @@ public class PotentiallyVisibleSet
     public PotentiallyVisibleSet(WorldRep.Cell[] cells)
     {
         _graph = new Node[cells.Length];
+        _computedMap = new bool[cells.Length]; 
 
         var portalCount = 0;
-        foreach (var cell in cells)
+        for (var i = 0; i < cells.Length; i++)
         {
-            portalCount += cell.PortalPolyCount;
+            _computedMap[i] = false;
+            portalCount += cells[i].PortalPolyCount;
         }
         
         _edges = new List<Edge>(portalCount);
@@ -158,16 +160,14 @@ public class PotentiallyVisibleSet
     {
         // TODO: Handle out of range indices
         var node = _graph[cellIdx];
-        if (node.VisibilityComputed)
+        if (_computedMap[cellIdx])
         {
             return [..node.VisibleNodes];
         }
 
-        var visibleCells = ComputeVisibility(cellIdx);
-        node.VisibilityComputed = true;
-        node.VisibleNodes = visibleCells;
+        ComputeVisibility(cellIdx);
         _graph[cellIdx] = node;
-        return [..visibleCells];
+        return [.._graph[cellIdx].VisibleNodes];
     }
 
     private void ComputeEdgeMightSee(Edge source)
@@ -239,17 +239,15 @@ public class PotentiallyVisibleSet
         }
     }
     
-    private HashSet<int> ComputeVisibility(int cellIdx)
+    public void ComputeVisibility(int cellIdx)
     {
         if (cellIdx >= _graph.Length)
         {
-            return [];
+            return;
         }
 
         // A cell can always see itself, so we'll add that now
-        var visible = new HashSet<int>();
-        visible.Add(cellIdx);
-
+        _graph[cellIdx].VisibleNodes.Add(cellIdx);
         foreach (var edgeIdx in _graph[cellIdx].EdgeIndices)
         {
             var edge = _edges[edgeIdx];
@@ -258,13 +256,13 @@ public class PotentiallyVisibleSet
             {
                 if (edge.MightSee[i])
                 {
-                    visible.Add(i);
+                    _graph[cellIdx].VisibleNodes.Add(i);
                 }
             }
         }
-        
-        return visible;
-        
+
+        _computedMap[cellIdx] = true;
+
         // if (cellIdx >= _portalGraph.Length)
         // {
         //     return [];
