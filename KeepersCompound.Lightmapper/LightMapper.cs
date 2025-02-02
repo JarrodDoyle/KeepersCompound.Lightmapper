@@ -238,24 +238,41 @@ public class LightMapper
                     break;
             }
         }
+        
+        CheckLightConfigurations();
+    }
 
+    private void CheckLightConfigurations()
+    {
         var infinite = 0;
         foreach (var light in _lights)
         {
-            if (light.Radius != float.MaxValue)
+            
+            if (light.Radius == float.MaxValue)
             {
-                continue;
+                if (light.ObjId != -1)
+                {
+                    Log.Warning("Object {Id}: Infinite light radius.", light.ObjId);
+                }
+                else
+                {
+                    Log.Warning("Brush at {Position}: Infinite light radius.", light.Position);
+                }
+                infinite++;
             }
-
-            if (light.ObjId != -1)
+            
+            // TODO: Extract magic number
+            if (light.InnerRadius > 0 && light.Radius - light.InnerRadius > 4)
             {
-                Log.Warning("Infinite light from object {Id}", light.ObjId);
+                if (light.ObjId != -1)
+                {
+                    Log.Warning("Object {Id}: High radius to inner-radius differential ({D}). Lightmap may not accurately represent lightgem.", light.ObjId, light.Radius - light.InnerRadius);
+                }
+                else
+                {
+                    Log.Warning("Brush at {Position}: High radius to inner-radius differential ({D}). Lightmap may not accurately represent lightgem.", light.Position, light.Radius - light.InnerRadius);
+                }
             }
-            else
-            {
-                Log.Warning("Infinite light from brush near {Position}", light.Position);
-            }
-            infinite++;
         }
         
         if (infinite > 0)
