@@ -22,12 +22,19 @@ public class LightMapper
     {
         public Vector3[] AmbientLight;
         public bool Hdr;
+        public float Attenuation;
+        public float Saturation;
         public SoftnessMode MultiSampling;
         public float MultiSamplingCenterWeight;
         public bool LightmappedWater;
         public SunSettings Sunlight;
         public uint AnimLightCutoff;
         public bool UsePvs;
+
+        public override string ToString()
+        {
+            return $"Ambient Levels: {AmbientLight}, Hdr: {Hdr}, Attenuation: {Attenuation}, Saturation: {Saturation}";
+        }
     }
 
     private ResourcePathManager.CampaignResources _campaign;
@@ -106,6 +113,8 @@ public class LightMapper
         {
             Hdr = worldRep.DataHeader.LightmapFormat == 2,
             AmbientLight = [..ambientLight],
+            Attenuation =  lmParams.Attenuation,
+            Saturation =  lmParams.Saturation,
             MultiSampling = lmParams.ShadowSoftness,
             MultiSamplingCenterWeight = lmParams.CenterWeight,
             LightmappedWater = lmParams.LightmappedWater,
@@ -113,6 +122,8 @@ public class LightMapper
             AnimLightCutoff = lmParams.AnimLightCutoff,
             UsePvs = pvs,
         };
+        
+        Log.Information("Lighting Settings: {Settings}", settings);
         
         Timing.TimeStage("Gather Lights", BuildLightList);
         Timing.TimeStage("Set Light Indices", () => SetCellLightIndices(settings));
@@ -791,7 +802,7 @@ public class LightMapper
                                 
                                 if (!TraceOcclusion(_scene, light.Position, point))
                                 {
-                                    strength += targetWeights[idx] * light.StrengthAtPoint(point, plane, settings.AnimLightCutoff);
+                                    strength += targetWeights[idx] * light.StrengthAtPoint(point, plane, settings.AnimLightCutoff, settings.Attenuation);
                                 }
                             }
 

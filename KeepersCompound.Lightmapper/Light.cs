@@ -56,23 +56,26 @@ public class Light
         SpotlightDir = Vector3.Normalize(Vector3.Transform(vhotLightDir, scale * rotate));
     }
 
-    public float StrengthAtPoint(Vector3 point, Plane plane, uint lightCutoff)
+    public float StrengthAtPoint(Vector3 point, Plane plane, uint lightCutoff, float attenuation)
     {
         // Calculate light strength at a given point. As far as I can tell
-        // this is exact to Dark (I'm a genius??). It's just an inverse distance
-        // falloff with diffuse angle, except we have to scale the length.
+        // this is exact to Dark (I'm a genius??).
         var dir = Position - point;
-        var angle = Vector3.Dot(Vector3.Normalize(dir), plane.Normal);
         var len = dir.Length();
-        var slen = len / 4.0f;
-        var strength = (angle + 1.0f) / slen;
+        dir = Vector3.Normalize(dir);
+
+        // Base strength is a scaled inverse falloff
+        var strength = 4.0f / MathF.Pow(len, attenuation);
+        
+        // Diffuse light angle
+        strength *= 1.0f + MathF.Pow(Vector3.Dot(dir, plane.Normal), attenuation);
 
         // Inner radius starts a linear falloff to 0 at the radius
         if (InnerRadius != 0 && len > InnerRadius)
         {
-            strength *= (Radius - len) / (Radius - InnerRadius);
+            strength *= MathF.Pow((Radius - len) / (Radius - InnerRadius), attenuation);
         }
-
+        
         // Anim lights have a (configurable) minimum light cutoff. This is checked before
         // spotlight multipliers are applied so we don't cutoff the spot radius falloff.
         if (Anim && strength * Brightness < lightCutoff)
@@ -102,6 +105,7 @@ public class Light
             }
             else
             {
+                // Interestingly DromEd doesn't apply attenuation here
                 spotlightMultiplier = (spotAngle - outer) / (inner - outer);
             }
 
