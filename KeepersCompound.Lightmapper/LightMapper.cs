@@ -123,8 +123,6 @@ public class LightMapper
             UsePvs = pvs,
         };
         
-        Log.Information("Lighting Settings: {Settings}", settings);
-        
         Timing.TimeStage("Gather Lights", () => BuildLightList(settings));
         Timing.TimeStage("Set Light Indices", () => SetCellLightIndices(settings));
         Timing.TimeStage("Trace Scene", () => TraceScene(settings));
