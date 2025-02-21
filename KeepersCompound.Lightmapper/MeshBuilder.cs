@@ -35,38 +35,12 @@ public class MeshBuilder
         var polyVertices = new List<Vector3>();
         foreach (var cell in worldRep.Cells)
         {
-            var numPolys = cell.PolyCount;
-            var numRenderPolys = cell.RenderPolyCount;
-            var numPortalPolys = cell.PortalPolyCount;
-            var solidPolys = numPolys - numPortalPolys;
-            
+            // We only care about polys representing solid terrain. We can't use RenderPolyCount because that includes
+            // water surfaces.
+            var solidPolys = cell.PolyCount - cell.PortalPolyCount;
             var cellIdxOffset = 0;
-            for (var polyIdx = 0; polyIdx < numPolys; polyIdx++)
+            for (var polyIdx = 0; polyIdx < solidPolys; polyIdx++)
             {
-                // There's 2 types of poly that we need to include in the mesh:
-                // - Terrain
-                // - Door vision blockers
-                //
-                // Door vision blockers are the interesting one. They're not RenderPolys at all, just flagged Polys.
-                SurfaceType primType;
-                if (polyIdx < solidPolys)
-                {
-                    primType = cell.RenderPolys[polyIdx].TextureId == 249 ? SurfaceType.Sky : SurfaceType.Solid;
-                }
-                else if (polyIdx < numRenderPolys)
-                {
-                    // we no longer want water polys :)
-                    continue;
-                }
-                else if ((cell.Flags & 8) != 0)
-                {
-                    primType = SurfaceType.Solid;
-                }
-                else
-                {
-                    continue;
-                }
-                
                 var poly = cell.Polys[polyIdx];
                 polyVertices.Clear();
                 polyVertices.EnsureCapacity(poly.VertexCount);
@@ -75,6 +49,7 @@ public class MeshBuilder
                     polyVertices.Add(cell.Vertices[cell.Indices[cellIdxOffset + i]]);
                 }
                 
+                var primType = cell.RenderPolys[polyIdx].TextureId == 249 ? SurfaceType.Sky : SurfaceType.Solid;
                 AddPolygon(polyVertices, primType);
                 cellIdxOffset += poly.VertexCount;
             }
