@@ -93,12 +93,12 @@ public class LightMapper
             return;
         }
 
-        var sunlightSettings = new SunSettings()
+        var sunlightSettings = new SunSettings
         {
             Enabled = rendParams.useSunlight,
             QuadLit = rendParams.sunlightMode is RendParams.SunlightMode.QuadUnshadowed or RendParams.SunlightMode.QuadObjcastShadows,
             Direction = Vector3.Normalize(rendParams.sunlightDirection),
-            Color = Utils.HsbToRgb(rendParams.sunlightHue, rendParams.sunlightSaturation, rendParams.sunlightBrightness),
+            Color = Utils.HsbToRgb(rendParams.sunlightHue, rendParams.sunlightSaturation * lmParams.Saturation, rendParams.sunlightBrightness),
         };
         
         var ambientLight = rendParams.ambientLightZones.ToList();
@@ -125,7 +125,7 @@ public class LightMapper
         
         Log.Information("Lighting Settings: {Settings}", settings);
         
-        Timing.TimeStage("Gather Lights", BuildLightList);
+        Timing.TimeStage("Gather Lights", () => BuildLightList(settings));
         Timing.TimeStage("Set Light Indices", () => SetCellLightIndices(settings));
         Timing.TimeStage("Trace Scene", () => TraceScene(settings));
         Timing.TimeStage("Update AnimLight Cell Mapping", SetAnimLightCellMaps);
@@ -222,7 +222,7 @@ public class LightMapper
         return (noObjMesh, fullMesh);
     }
 
-    private void BuildLightList()
+    private void BuildLightList(Settings settings)
     {
         _lights.Clear();
 
@@ -242,10 +242,10 @@ public class LightMapper
             switch (brush.media)
             {
                 case BrList.Brush.Media.Light:
-                    ProcessBrushLight(worldRep.LightingTable, brush);
+                    ProcessBrushLight(worldRep.LightingTable, brush, settings);
                     break;
                 case BrList.Brush.Media.Object:
-                    ProcessObjectLight(worldRep.LightingTable, brush);
+                    ProcessObjectLight(worldRep.LightingTable, brush, settings);
                     break;
             }
         }
@@ -293,7 +293,7 @@ public class LightMapper
     }
     
     // TODO: Check if this works (brush is a record type)
-    private void ProcessBrushLight(WorldRep.LightTable lightTable, BrList.Brush brush)
+    private void ProcessBrushLight(WorldRep.LightTable lightTable, BrList.Brush brush, Settings settings)
     {
         // For some reason the light table index on brush lights is 1 indexed
         brush.brushInfo = (uint)lightTable.LightCount + 1;
@@ -306,10 +306,11 @@ public class LightMapper
         }
 
         var brightness = Math.Min(sz.X, 255.0f);
+        var saturation = sz.Z * settings.Saturation;
         var light = new Light
         {
             Position = brush.position,
-            Color = Utils.HsbToRgb(sz.Y, sz.Z, brightness),
+            Color = Utils.HsbToRgb(sz.Y, saturation, brightness),
             Brightness = brightness,
             Radius = float.MaxValue,
             R2 = float.MaxValue,
@@ -322,7 +323,7 @@ public class LightMapper
         lightTable.AddLight(light.ToLightData(32.0f));
     }
 
-    private void ProcessObjectLight(WorldRep.LightTable lightTable, BrList.Brush brush)
+    private void ProcessObjectLight(WorldRep.LightTable lightTable, BrList.Brush brush, Settings settings)
     {
         // TODO: Handle PropSpotlightAndAmbient
         var id = (int)brush.brushInfo;
@@ -336,6 +337,8 @@ public class LightMapper
         var propJointPos = _hierarchy.GetProperty<PropJointPos>(id, "P$JointPos");
 
         propLightColor ??= new PropLightColor { Hue = 0, Saturation = 0 };
+        propLightColor.Saturation *= settings.Saturation;
+        
         var joints = propJointPos?.Positions ?? [0, 0, 0, 0, 0, 0];
         
         // Transform data
