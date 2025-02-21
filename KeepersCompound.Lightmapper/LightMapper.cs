@@ -406,6 +406,11 @@ public class LightMapper
             lightTable.AddLight(light.ToLightData(32.0f), propAnimLight.Dynamic);
         }
 
+        if (propLight != null && propLight.Brightness == 0)
+        {
+            Log.Warning("Concrete object {Id} has Light property with 0 brightness. Adjust brightness or remove property.", id);
+        }
+        
         if (propLight != null && propLight.Brightness != 0)
         {
             var light = new Light
