@@ -510,6 +510,18 @@ public class LightMapper
                         break;
                     }
                 }
+
+                if (lightCellMap[i] == -1)
+                {
+                    if (light.ObjId != -1)
+                    {
+                        Log.Warning("Object {Id}: Light is inside solid terrain.", light.ObjId);
+                    }
+                    else
+                    {
+                        Log.Warning("Brush at {Position}: Light is inside solid terrain.", light.Position);
+                    }
+                }
             });
             Log.Information("Mission has {c} lights", _lights.Count);
             
