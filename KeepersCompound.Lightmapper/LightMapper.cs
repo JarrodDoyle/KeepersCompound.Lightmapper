@@ -635,7 +635,14 @@ public class LightMapper
 
             if (overLit > 0)
             {
-                Log.Warning("{Count}/{CellCount} cells are overlit. Overlit cells can cause Object/Light Gem lighting issues. Try running with the --pvs flag.", overLit, worldRep.Cells.Length);
+                if (settings.FastPvs)
+                {
+                    Log.Warning("{Count}/{CellCount} cells are overlit. Overlit cells can cause Object/Light Gem lighting issues. Try running without the --fast-pvs flag.", overLit, worldRep.Cells.Length);
+                }
+                else
+                {
+                    Log.Warning("{Count}/{CellCount} cells are overlit. Overlit cells can cause Object/Light Gem lighting issues.", overLit, worldRep.Cells.Length);
+                }
             }
 
             Log.Information("Max cell lights found ({Count}/96)", maxLights);
