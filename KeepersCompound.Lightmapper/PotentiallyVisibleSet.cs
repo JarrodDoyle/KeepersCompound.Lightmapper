@@ -170,8 +170,7 @@ public class PotentiallyVisibleSet
         return visibleCells;
     }
     
-    // TODO: Max distance :)
-    public HashSet<int> ComputeVisibilityExact(Vector3 pos, int cellIdx)
+    public HashSet<int> ComputeVisibilityExact(Vector3 pos, int cellIdx, float maxRange)
     {
         if (cellIdx >= _graph.Length)
         {
@@ -185,7 +184,7 @@ public class PotentiallyVisibleSet
         foreach (var edgeIdx in _graph[cellIdx].EdgeIndices)
         {
             var edge = _edges[edgeIdx];
-            ComputeVisibilityExactRecursive(pos, visibleCells, visited, edge.Destination, edge.Poly);
+            ComputeVisibilityExactRecursive(pos, maxRange, visibleCells, visited, edge.Destination, edge.Poly);
         }
         
         return visibleCells;
@@ -193,6 +192,7 @@ public class PotentiallyVisibleSet
 
     private void ComputeVisibilityExactRecursive(
         Vector3 lightPos,
+        float maxRange,
         HashSet<int> visibleCells,
         Stack<int> visited,
         int currentCellIdx,
@@ -222,8 +222,12 @@ public class PotentiallyVisibleSet
         
         foreach (var targetEdgeIdx in _graph[currentCellIdx].EdgeIndices)
         {
+            // This only checks is there is a point on the plane in range.
+            // Could probably use poly center + radius to get an even better early out.
             var targetEdge = _edges[targetEdgeIdx];
-            if (visited.Contains(targetEdge.Destination) || passPoly.IsCoplanar(targetEdge.Poly))
+            if (visited.Contains(targetEdge.Destination) ||
+                passPoly.IsCoplanar(targetEdge.Poly) ||
+                Math.Abs(MathUtils.DistanceFromNormalizedPlane(targetEdge.Poly.Plane, lightPos)) > maxRange)
             {
                 continue;
             }
@@ -239,7 +243,7 @@ public class PotentiallyVisibleSet
                 continue;
             }
 
-            ComputeVisibilityExactRecursive(lightPos, visibleCells, visited, targetEdge.Destination, poly);
+            ComputeVisibilityExactRecursive(lightPos, maxRange, visibleCells, visited, targetEdge.Destination, poly);
         }
 
         visited.Pop();

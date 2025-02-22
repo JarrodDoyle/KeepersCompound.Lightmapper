@@ -536,10 +536,10 @@ public class LightMapper
 
                 var visibleSet = settings.FastPvs switch {
                     true => pvs.ComputeVisibilityFast(lightCellMap[i]),
-                    false => pvs.ComputeVisibilityExact(_lights[i].Position, lightCellMap[i])
+                    false => pvs.ComputeVisibilityExact(_lights[i].Position, lightCellMap[i], _lights[i].Radius)
                 };
                 
-                // Log.Information("Light {i} sees {c} cells", i, visibleSet.Length);
+                // Log.Information("Light {i} sees {c} cells", i, visibleSet.Count);
                 visibleCellMap[i] = visibleSet;
             });
 
@@ -599,6 +599,7 @@ public class LightMapper
                 cell.LightIndices[0]++;
             }
 
+            Log.Information("Cell {Id} sees ({Count}) lights.", i, cell.LightIndices[0]);
             if (cell.LightIndexCount > 97)
             {
                 Log.Warning("Cell {Id} sees too many lights ({Count})", i, cell.LightIndices[0]);
