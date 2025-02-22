@@ -9,7 +9,6 @@ public class PotentiallyVisibleSet
 {
     private readonly struct Node(List<int> edgeIndices)
     {
-        public readonly HashSet<int> VisibleNodes = [];
         public readonly List<int> EdgeIndices = edgeIndices;
     }
     
@@ -75,15 +74,9 @@ public class PotentiallyVisibleSet
     }
 
     private readonly Node[] _graph;
-    private readonly bool[] _computedMap;
     private readonly List<Edge> _edges;
 
-    private const float Epsilon = 0.1f;
-    
-    // This is yucky and means we're not thread safe
-    private readonly List<float> _clipDistances = new(32);
-    private readonly List<Side> _clipSides = new(32);
-    private readonly int[] _clipCounts = [0, 0, 0];
+    private const float Epsilon = MathUtils.Epsilon;
 
     // TODO:
     // - This is a conservative algorithm based on Matt's Ramblings Quake PVS video
@@ -99,12 +92,10 @@ public class PotentiallyVisibleSet
     public PotentiallyVisibleSet(WorldRep.Cell[] cells)
     {
         _graph = new Node[cells.Length];
-        _computedMap = new bool[cells.Length]; 
 
         var portalCount = 0;
         for (var i = 0; i < cells.Length; i++)
         {
-            _computedMap[i] = false;
             portalCount += cells[i].PortalPolyCount;
         }
         
@@ -156,18 +147,115 @@ public class PotentiallyVisibleSet
         // Parallel.ForEach(_edges, ComputeEdgeMightSee);
     }
 
-    public int[] GetVisible(int cellIdx)
+    public HashSet<int> ComputeVisibilityFast(int cellIdx)
     {
-        // TODO: Handle out of range indices
-        var node = _graph[cellIdx];
-        if (_computedMap[cellIdx])
+        if (cellIdx >= _graph.Length)
         {
-            return [..node.VisibleNodes];
+            return [];
         }
 
-        ComputeVisibility(cellIdx);
-        _graph[cellIdx] = node;
-        return [.._graph[cellIdx].VisibleNodes];
+        var visibleCells = new HashSet<int>();
+        foreach (var edgeIdx in _graph[cellIdx].EdgeIndices)
+        {
+            var edge = _edges[edgeIdx];
+            for (var i = 0; i < edge.MightSee.Length; i++)
+            {
+                if (edge.MightSee[i])
+                {
+                    visibleCells.Add(i);
+                }
+            }
+        }
+        
+        return visibleCells;
+    }
+    
+    // TODO: Max distance :)
+    public HashSet<int> ComputeVisibilityExact(Vector3 pos, int cellIdx)
+    {
+        if (cellIdx >= _graph.Length)
+        {
+            return [];
+        }
+
+        var visibleCells = new HashSet<int> { cellIdx };
+        var visited = new Stack<int>();
+        visited.Push(cellIdx);
+
+        foreach (var edgeIdx in _graph[cellIdx].EdgeIndices)
+        {
+            var edge = _edges[edgeIdx];
+            ComputeVisibilityExactRecursive(pos, visibleCells, visited, edge.Destination, edge.Poly);
+        }
+        
+        return visibleCells;
+    }
+
+    private void ComputeVisibilityExactRecursive(
+        Vector3 lightPos,
+        HashSet<int> visibleCells,
+        Stack<int> visited,
+        int currentCellIdx,
+        Poly passPoly)
+    {
+        visited.Push(currentCellIdx);
+        visibleCells.Add(currentCellIdx);
+
+        var clipPlanes = new List<Plane>(passPoly.Vertices.Count);
+        clipPlanes.Clear();
+        for (var i = 0; i < passPoly.Vertices.Count; i++)
+        {
+            var v0 = passPoly.Vertices[i];
+            var v1 = passPoly.Vertices[(i + 1) % passPoly.Vertices.Count];
+
+            var normal = Vector3.Cross(v0 - lightPos, v1 - lightPos);
+            if (normal.LengthSquared() < Epsilon)
+            {
+                continue;
+            }
+
+            normal = Vector3.Normalize(normal);
+            var d = -Vector3.Dot(v1, normal);
+            var plane = new Plane(normal, d);
+            clipPlanes.Add(plane);
+        }
+        
+        foreach (var targetEdgeIdx in _graph[currentCellIdx].EdgeIndices)
+        {
+            var targetEdge = _edges[targetEdgeIdx];
+            if (visited.Contains(targetEdge.Destination) || passPoly.IsCoplanar(targetEdge.Poly))
+            {
+                continue;
+            }
+
+            var poly = new Poly(targetEdge.Poly);
+            foreach (var clipPlane in clipPlanes)
+            {
+                ClipPolygonByPlane(ref poly, clipPlane);
+            }
+            
+            if (poly.Vertices.Count == 0)
+            {
+                continue;
+            }
+
+            ComputeVisibilityExactRecursive(lightPos, visibleCells, visited, targetEdge.Destination, poly);
+        }
+
+        visited.Pop();
+    }
+    
+    public void ComputeCellMightSee(int cellIdx)
+    {
+        if (cellIdx >= _graph.Length)
+        {
+            return;
+        }
+        
+        foreach (var edgeIdx in _graph[cellIdx].EdgeIndices)
+        {
+            ComputeEdgeMightSee(_edges[edgeIdx]);
+        }
     }
 
     private void ComputeEdgeMightSee(Edge source)
@@ -239,192 +327,6 @@ public class PotentiallyVisibleSet
         }
     }
     
-    public void ComputeVisibility(int cellIdx)
-    {
-        if (cellIdx >= _graph.Length)
-        {
-            return;
-        }
-
-        // A cell can always see itself, so we'll add that now
-        _graph[cellIdx].VisibleNodes.Add(cellIdx);
-        foreach (var edgeIdx in _graph[cellIdx].EdgeIndices)
-        {
-            var edge = _edges[edgeIdx];
-            ComputeEdgeMightSee(edge);
-            for (var i = 0; i < edge.MightSee.Length; i++)
-            {
-                if (edge.MightSee[i])
-                {
-                    _graph[cellIdx].VisibleNodes.Add(i);
-                }
-            }
-        }
-
-        _computedMap[cellIdx] = true;
-
-        // if (cellIdx >= _portalGraph.Length)
-        // {
-        //     return [];
-        // }
-
-        // Additionally a cell can always see it's direct neighbours (obviously)
-        // foreach (var edgeIndex in _portalGraph[cellIdx])
-        // {
-        //     var edge = _edges[edgeIndex];
-        //     var neighbourIdx = edge.Destination;
-        //     visible.Add(neighbourIdx);
-        //     
-        //     // Neighbours of our direct neighbour are always visible, unless they're coplanar
-        //     foreach (var innerEdgeIndex in _portalGraph[neighbourIdx])
-        //     {
-        //         var innerEdge = _edges[innerEdgeIndex];
-        //         if (innerEdge.Destination == cellIdx || edge.Poly.IsCoplanar(innerEdge.Poly))
-        //         {
-        //             continue;
-        //         }
-        //
-        //         ExplorePortalRecursive(visible, edge.Poly, new Poly(innerEdge.Poly), neighbourIdx, innerEdge.Destination, 0);
-        //     }
-        // }
-        
-        // return visible;
-    }
-    
-    // private void ExplorePortalRecursive(
-    //     HashSet<int> visible,
-    //     Poly sourcePoly,
-    //     Poly previousPoly,
-    //     int previousCellIdx,
-    //     int currentCellIdx,
-    //     int depth)
-    // {
-    //     // TODO: Might need to lose this
-    //     if (depth > 1024)
-    //     {
-    //         return;
-    //     }
-    //     
-    //     visible.Add(currentCellIdx);
-    //     
-    //     // Only one edge out of the cell means we'd be going back on ourselves
-    //     if (_portalGraph[currentCellIdx].Count <= 1)
-    //     {
-    //         return;
-    //     }
-    //     
-    //     // TODO: If all neighbours are already in `visible` skip exploring?
-    //     
-    //     var separators = new List<Plane>();
-    //     GetSeparatingPlanes(separators, sourcePoly, previousPoly, false);
-    //     GetSeparatingPlanes(separators, previousPoly, sourcePoly, true);
-    //
-    //     // The case for this occuring is... interesting ( idk )
-    //     if (separators.Count == 0)
-    //     {
-    //         return;
-    //     }
-    //     
-    //     // Clip all new polys and recurse
-    //     foreach (var edgeIndex in _portalGraph[currentCellIdx])
-    //     {
-    //         var edge = _edges[edgeIndex];
-    //         if (edge.Destination == previousCellIdx || previousPoly.IsCoplanar(edge.Poly) || sourcePoly.IsCoplanar(edge.Poly))
-    //         {
-    //             continue;
-    //         }
-    //
-    //         var poly = new Poly(edge.Poly);
-    //         foreach (var separator in separators)
-    //         {
-    //             ClipPolygonByPlane(ref poly, separator);
-    //         }
-    //         
-    //         if (poly.Vertices.Count == 0)
-    //         {
-    //             continue;
-    //         }
-    //         
-    //         ExplorePortalRecursive(visible, sourcePoly, poly, currentCellIdx, edge.Destination, depth + 1);
-    //     }
-    // }
-
-    // TODO: We're getting multiple separating planes that are the same, let's not somehow?
-    private static void GetSeparatingPlanes(List<Plane> separators, Poly p0, Poly p1, bool flip)
-    {
-        for (var i = 0; i < p0.Vertices.Count; i++)
-        {
-            // brute force all combinations
-            // there's probably some analytical way to choose the "correct" v2 but I couldn't find anything online
-            var v0 = p0.Vertices[i];
-            var v1 = p0.Vertices[(i + 1) % p0.Vertices.Count];
-            for (var j = 0; j < p1.Vertices.Count; j++)
-            {
-                var v2 = p1.Vertices[j];
-                
-                var normal = Vector3.Cross(v1 - v0, v2 - v0);
-                if (normal.LengthSquared() < Epsilon)
-                {
-                    // colinear (or near colinear) points will produce an invalid plane
-                    continue;
-                }
-                
-                normal = Vector3.Normalize(normal);
-                var d = -Vector3.Dot(v2, normal);
-                
-                // Depending on how the edges were built, the resulting plane might be facing the wrong way
-                var distanceToSource = MathUtils.DistanceFromPlane(p0.Plane, v2);
-                if (distanceToSource > Epsilon)
-                {
-                    normal = -normal;
-                    d = -d;
-                }
-                
-                var plane = new Plane(normal, d);
-                
-                if (MathUtils.IsCoplanar(plane, flip ? p0.Plane : p1.Plane))
-                {
-                    continue;
-                }
-                
-                // All points should be in front of the plane (except for the point used to create it)
-                var invalid = false;
-                var count = 0;
-                for (var k = 0; k < p1.Vertices.Count; k++)
-                {
-                    if (k == j)
-                    {
-                        continue;
-                    }
-                    
-                    var dist = MathUtils.DistanceFromPlane(plane, p1.Vertices[k]);
-                    if (dist > Epsilon)
-                    {
-                        count++;
-                    }
-                    else if (dist < -Epsilon)
-                    {
-                        invalid = true;
-                        break;
-                    }
-                }
-
-                if (invalid || count == 0)
-                {
-                    continue;
-                }
-
-                if (flip)
-                {
-                    plane.Normal = -normal;
-                    plane.D = -d;
-                }
-                
-                separators.Add(plane);
-            }
-        }
-    }
-    
     private enum Side 
     {
         Front,
@@ -434,7 +336,7 @@ public class PotentiallyVisibleSet
     
     // TODO: is this reference type poly going to fuck me?
     // TODO: Should this and Poly be in MathUtils?
-    private void ClipPolygonByPlane(ref Poly poly, Plane plane)
+    private static void ClipPolygonByPlane(ref Poly poly, Plane plane)
     {
         var vertexCount = poly.Vertices.Count;
         if (vertexCount == 0)
@@ -444,34 +346,30 @@ public class PotentiallyVisibleSet
         
         // Firstly we want to tally up what side of the plane each point of the poly is on
         // This is used both to early out if nothing/everything is clipped, and to aid the clipping
-        // var distances = new float[vertexCount];
-        // var sides = new Side[vertexCount];
-        // var counts = new int[3];
-        _clipDistances.Clear();
-        _clipSides.Clear();
-        _clipCounts[0] = 0;
-        _clipCounts[1] = 0;
-        _clipCounts[2] = 0;
+        var distances = new float[vertexCount];
+        var sides = new Side[vertexCount];
+        var counts = new[] {0, 0, 0};
         for (var i = 0; i < vertexCount; i++)
         {
             var distance = MathUtils.DistanceFromPlane(plane, poly.Vertices[i]);
-            _clipDistances.Add(distance);
-            _clipSides.Add(distance switch {
+            distances[i] = distance;
+            sides[i] = distance switch
+            {
                 > Epsilon => Side.Front,
-                <-Epsilon => Side.Back,
+                < -Epsilon => Side.Back,
                 _ => Side.On,
-            });
-            _clipCounts[(int)_clipSides[i]]++;
+            };
+            counts[(int)sides[i]]++;
         }
-
+        
         // Everything is within the half-space, so we don't need to clip anything
-        if (_clipCounts[(int)Side.Back] == 0 && _clipCounts[(int)Side.On] != vertexCount)
+        if (counts[(int)Side.Back] == 0 && counts[(int)Side.On] != vertexCount)
         {
             return;
         }
         
         // Everything is outside the half-space, so we clip everything
-        if (_clipCounts[(int)Side.Front] == 0)
+        if (counts[(int)Side.Front] == 0)
         {
             poly.Vertices.Clear();
             return;
@@ -483,11 +381,11 @@ public class PotentiallyVisibleSet
             var i1 = (i + 1) % vertexCount;
             var v0 = poly.Vertices[i];
             var v1 = poly.Vertices[i1];
-            var side = _clipSides[i];
-            var nextSide = _clipSides[i1];
+            var side = sides[i];
+            var nextSide = sides[i1];
             
             // Vertices that are inside/on the half-space don't get clipped
-            if (_clipSides[i] != Side.Back)
+            if (sides[i] != Side.Back)
             {
                 vertices.Add(v0);
             }
@@ -501,7 +399,7 @@ public class PotentiallyVisibleSet
             }
 
             // This is how far along the vector v0 -> v1 the front/back crossover occurs
-            var frac = _clipDistances[i] / (_clipDistances[i] - _clipDistances[i1]);
+            var frac = distances[i] / (distances[i] - distances[i1]);
             var splitVertex = v0 + frac * (v1 - v0);
             vertices.Add(splitVertex);
         }
