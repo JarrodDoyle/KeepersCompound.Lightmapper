@@ -122,6 +122,11 @@ public class LightMapper
             AnimLightCutoff = lmParams.AnimLightCutoff,
             FastPvs = pvs,
         };
+
+        if (settings.AnimLightCutoff > 0)
+        {
+            Log.Warning("Non-zero anim_light_cutoff ({Cutoff}). AnimLight lightmap shadow radius may not match lightgem shadow radius.", settings.AnimLightCutoff);
+        }
         
         Timing.TimeStage("Gather Lights", () => BuildLightList(settings));
         Timing.TimeStage("Set Light Indices", () => SetCellLightIndices(settings));
