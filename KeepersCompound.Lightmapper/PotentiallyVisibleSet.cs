@@ -226,7 +226,6 @@ public class PotentiallyVisibleSet
             // Could probably use poly center + radius to get an even better early out.
             var targetEdge = _edges[targetEdgeIdx];
             if (visited.Contains(targetEdge.Destination) ||
-                passPoly.IsCoplanar(targetEdge.Poly) ||
                 Math.Abs(MathUtils.DistanceFromNormalizedPlane(targetEdge.Poly.Plane, lightPos)) > maxRange)
             {
                 continue;
