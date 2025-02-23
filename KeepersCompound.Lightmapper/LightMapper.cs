@@ -477,96 +477,88 @@ public class LightMapper
 
     private void SetCellLightIndices(Settings settings)
     {
-        // TODO: Doors aren't blocking lights. Need to do some cell traversal to remove light indices :(
-        
         if (!_mission.TryGetChunk<WorldRep>("WREXT", out var worldRep))
             return;
         
-        var lightVisibleCells = Timing.TimeStage("Light PVS", () =>
+        var cellCount = worldRep.Cells.Length;
+        var aabbs = new MathUtils.Aabb[worldRep.Cells.Length];
+        Parallel.For(0, cellCount, i => aabbs[i] = new MathUtils.Aabb(worldRep.Cells[i].Vertices));
+
+        var lightCellMap = new int[_lights.Count];
+        Parallel.For(0, _lights.Count, i =>
         {
-            var cellCount = worldRep.Cells.Length;
-            var aabbs = new MathUtils.Aabb[worldRep.Cells.Length];
-            Parallel.For(0, cellCount, i => aabbs[i] = new MathUtils.Aabb(worldRep.Cells[i].Vertices));
-
-            var lightCellMap = new int[_lights.Count];
-            Parallel.For(0, _lights.Count, i =>
+            lightCellMap[i] = -1;
+            var light = _lights[i];
+            for (var j = 0; j < cellCount; j++)
             {
-                lightCellMap[i] = -1;
-                var light = _lights[i];
-                for (var j = 0; j < cellCount; j++)
+                if (!MathUtils.Intersects(aabbs[j], light.Position))
                 {
-                    if (!MathUtils.Intersects(aabbs[j], light.Position))
-                    {
-                        continue;
-                    }
+                    continue;
+                }
 
-                    // Half-space contained
-                    var cell = worldRep.Cells[j];
-                    var contained = true;
-                    for (var k = 0; k < cell.PlaneCount; k++)
+                // Half-space contained
+                var cell = worldRep.Cells[j];
+                var contained = true;
+                for (var k = 0; k < cell.PlaneCount; k++)
+                {
+                    var plane = cell.Planes[k];
+                    if (MathUtils.DistanceFromPlane(plane, light.Position) < -MathUtils.Epsilon)
                     {
-                        var plane = cell.Planes[k];
-                        if (MathUtils.DistanceFromPlane(plane, light.Position) < -MathUtils.Epsilon)
-                        {
-                            contained = false;
-                            break;
-                        }
-                    }
-
-                    if (contained)
-                    {
-                        lightCellMap[i] = j;
+                        contained = false;
                         break;
                     }
                 }
 
-                if (lightCellMap[i] == -1)
+                if (contained)
                 {
-                    if (light.ObjId != -1)
-                    {
-                        Log.Warning("Object {Id}: Light is inside solid terrain.", light.ObjId);
-                    }
-                    else
-                    {
-                        Log.Warning("Brush at {Position}: Light is inside solid terrain.", light.Position);
-                    }
+                    lightCellMap[i] = j;
+                    break;
                 }
-            });
-            Log.Information("Mission has {c} lights", _lights.Count);
-            
-            var pvs = new PotentiallyVisibleSet(worldRep.Cells);
-            var visibleCellMap = new HashSet<int>[_lights.Count];
-
-            // Exact visibility doesn't use MightSee (yet?) so we only bother computing it if we're doing fast vis
-            if (settings.FastPvs)
-            {
-                Parallel.ForEach(lightCellMap, i =>
-                {
-                    if (i != -1) pvs.ComputeCellMightSee(i);
-                });
             }
-            
-            Parallel.For(0, _lights.Count, i =>
+
+            if (lightCellMap[i] == -1)
             {
-                var cellIdx = lightCellMap[i];
-                if (cellIdx == -1)
+                if (light.ObjId != -1)
                 {
-                    visibleCellMap[i] = [];
-                    return;
+                    Log.Warning("Object {Id}: Light is inside solid terrain.", light.ObjId);
                 }
-
-                var visibleSet = settings.FastPvs switch {
-                    true => pvs.ComputeVisibilityFast(lightCellMap[i]),
-                    false => pvs.ComputeVisibilityExact(_lights[i].Position, lightCellMap[i], _lights[i].Radius)
-                };
-                
-                // Log.Information("Light {i} sees {c} cells", i, visibleSet.Count);
-                visibleCellMap[i] = visibleSet;
-            });
-
-            return visibleCellMap;
+                else
+                {
+                    Log.Warning("Brush at {Position}: Light is inside solid terrain.", light.Position);
+                }
+            }
         });
+        Log.Information("Mission has {c} lights", _lights.Count);
         
+        var pvs = new PotentiallyVisibleSet(worldRep.Cells);
+        var visibleCellMap = new HashSet<int>[_lights.Count];
+
+        // Exact visibility doesn't use MightSee (yet?) so we only bother computing it if we're doing fast vis
+        if (settings.FastPvs)
+        {
+            Parallel.ForEach(lightCellMap, i =>
+            {
+                if (i != -1) pvs.ComputeCellMightSee(i);
+            });
+        }
+        
+        Parallel.For(0, _lights.Count, i =>
+        {
+            var cellIdx = lightCellMap[i];
+            if (cellIdx == -1)
+            {
+                visibleCellMap[i] = [];
+                return;
+            }
+
+            var visibleSet = settings.FastPvs switch {
+                true => pvs.ComputeVisibilityFast(lightCellMap[i]),
+                false => pvs.ComputeVisibilityExact(_lights[i].Position, lightCellMap[i], _lights[i].Radius)
+            };
+            
+            // Log.Information("Light {i} sees {c} cells", i, visibleSet.Count);
+            visibleCellMap[i] = visibleSet;
+        });
 
         // TODO: Move this functionality to the LGS library
         // We set up light indices in separately from lighting because the actual
@@ -610,7 +602,7 @@ public class LightMapper
                     continue;
                 }
                 
-                if (!lightVisibleCells[j].Contains(i))
+                if (!visibleCellMap[j].Contains(i))
                 {
                     continue;
                 }
