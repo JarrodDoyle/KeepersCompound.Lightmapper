@@ -1068,16 +1068,17 @@ public class LightMapper
     // TODO: direction should already be normalised here
     private bool TraceSunRay(Vector3 origin, Vector3 direction)
     {
-        // Avoid self intersection
-        origin += direction * MathUtils.Epsilon;
-        
         var hitResult = _scene.Trace(new Ray
         {
             Origin = origin,
             Direction = Vector3.Normalize(direction),
         });
 
-        if (hitResult)
+        // If origin is very close to a wall, the initial trace to the sun sometimes misses the wall. Now that we have
+        // backface culling enabled in Embree, this can result in reaching a sky when we shouldn't.
+        // By doing another occlusion trace in the reverse direction we fix this. Any backfaces we passed through in
+        // the initial trace become frontfaces to be occluded by.
+        if (hitResult && !TraceOcclusion(_scene, hitResult.Position + hitResult.ErrorOffset * hitResult.Normal, origin))
         {
             return _triangleTypeMap[(int)hitResult.PrimId] == SurfaceType.Sky;
         }
