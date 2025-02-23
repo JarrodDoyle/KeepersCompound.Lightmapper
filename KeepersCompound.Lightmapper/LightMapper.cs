@@ -300,6 +300,7 @@ public class LightMapper
         // Ignore 0 brightness lights
         if (sz.X == 0)
         {
+            Log.Warning("Brush at {Id}: Zero brightness static light. Adjust brightness or remove light.", brush.position);
             return;
         }
 
