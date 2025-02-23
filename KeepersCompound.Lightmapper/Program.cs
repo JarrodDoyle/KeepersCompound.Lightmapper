@@ -49,11 +49,12 @@ public class LightCommand
     public void Run()
     {
         Timing.Reset();
-             
-        var lightMapper = new LightMapper(InstallPath, CampaignName, MissionName);
-        lightMapper.Light(FastPvs);
-        lightMapper.Save(OutputName);
-         
+        Timing.TimeStage("Total", () =>
+        {
+            var lightMapper = new LightMapper(InstallPath, CampaignName, MissionName);
+            lightMapper.Light(FastPvs);
+            lightMapper.Save(OutputName);
+        });
         Timing.LogAll();
     }
 }
