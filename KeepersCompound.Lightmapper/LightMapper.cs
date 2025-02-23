@@ -240,22 +240,53 @@ public class LightMapper
             switch (brush.media)
             {
                 case BrList.Brush.Media.Light:
-                    ProcessBrushLight(worldRep.LightingTable, brush, settings);
+                    ProcessBrushLight(brush, settings);
                     break;
                 case BrList.Brush.Media.Object:
-                    ProcessObjectLight(worldRep.LightingTable, brush, settings);
+                    ProcessObjectLight(brush, settings);
                     break;
             }
         }
         
-        CheckLightConfigurations();
-    }
-
-    private void CheckLightConfigurations()
-    {
-        var infinite = 0;
+        ValidateLightConfigurations();
+        
+        worldRep.LightingTable.Reset();
         foreach (var light in _lights)
         {
+            // TODO: Set brush light index
+            light.LightTableIndex = worldRep.LightingTable.LightCount;
+
+            if (light.Anim)
+            {
+                var propAnimLight = _hierarchy.GetProperty<PropAnimLight>(light.ObjId, "P$AnimLight", false);
+                propAnimLight!.LightTableLightIndex = (ushort)light.LightTableIndex;
+            }
+            
+            worldRep.LightingTable.AddLight(light.ToLightData(32.0f));
+        }
+    }
+
+    // TODO: Validate in-world here? Set cell idx on lights maybe?
+    private void ValidateLightConfigurations()
+    {
+        var infinite = 0;
+        for (var i = _lights.Count - 1; i > 0; i--)
+        {
+            var light = _lights[i];
+            
+            if (light.Brightness == 0)
+            {
+                if (light.ObjId != -1)
+                {
+                    Log.Warning("Object {Id}: Zero brightness static light. Adjust brightness or remove un-used Light property.", light.ObjId);
+                }
+                else
+                {
+                    Log.Warning("Brush at {Id}: Zero brightness static light. Adjust brightness or remove light.", light.Position);
+                }
+                
+                _lights.RemoveAt(i);
+            }
             
             if (light.Radius == float.MaxValue)
             {
@@ -290,20 +321,10 @@ public class LightMapper
         }
     }
     
-    // TODO: Check if this works (brush is a record type)
-    private void ProcessBrushLight(WorldRep.LightTable lightTable, BrList.Brush brush, Settings settings)
+    private void ProcessBrushLight(BrList.Brush brush, Settings settings)
     {
-        // For some reason the light table index on brush lights is 1 indexed
-        brush.brushInfo = (uint)lightTable.LightCount + 1;
         var sz = brush.size;
         
-        // Ignore 0 brightness lights
-        if (sz.X == 0)
-        {
-            Log.Warning("Brush at {Id}: Zero brightness static light. Adjust brightness or remove light.", brush.position);
-            return;
-        }
-
         var brightness = Math.Min(sz.X, 255.0f);
         var saturation = sz.Z * settings.Saturation;
         var light = new Light
@@ -313,16 +334,14 @@ public class LightMapper
             Brightness = brightness,
             Radius = float.MaxValue,
             R2 = float.MaxValue,
-            LightTableIndex = lightTable.LightCount,
             SpotlightInnerAngle = -1f,
             ObjId = -1,
         };
         
         _lights.Add(light);
-        lightTable.AddLight(light.ToLightData(32.0f));
     }
 
-    private void ProcessObjectLight(WorldRep.LightTable lightTable, BrList.Brush brush, Settings settings)
+    private void ProcessObjectLight(BrList.Brush brush, Settings settings)
     {
         // TODO: Handle PropSpotlightAndAmbient
         var id = (int)brush.brushInfo;
@@ -372,9 +391,6 @@ public class LightMapper
         
         if (propAnimLight != null)
         {
-            var lightIndex = lightTable.LightCount;
-            propAnimLight.LightTableLightIndex = (ushort)lightIndex;
-            
             var light = new Light
             {
                 Position = propAnimLight.Offset,
@@ -385,7 +401,6 @@ public class LightMapper
                 R2 = propAnimLight.Radius * propAnimLight.Radius,
                 QuadLit = propAnimLight.QuadLit,
                 ObjId = id,
-                LightTableIndex = propAnimLight.LightTableLightIndex,
                 Anim = true,
                 Dynamic = propAnimLight.Dynamic,
                 SpotlightInnerAngle = -1f,
@@ -402,15 +417,9 @@ public class LightMapper
             light.ApplyTransforms(vhotLightPos, vhotLightDir, translate, rotate, scale);
 
             _lights.Add(light);
-            lightTable.AddLight(light.ToLightData(32.0f), propAnimLight.Dynamic);
-        }
-
-        if (propLight != null && propLight.Brightness == 0)
-        {
-            Log.Warning("Object {Id}: Zero brightness static light. Adjust brightness or remove un-used Light property.", id);
         }
         
-        if (propLight != null && propLight.Brightness != 0)
+        if (propLight != null)
         {
             var light = new Light
             {
@@ -422,7 +431,6 @@ public class LightMapper
                 R2 = propLight.Radius * propLight.Radius,
                 QuadLit = propLight.QuadLit,
                 ObjId = id,
-                LightTableIndex = lightTable.LightCount,
                 SpotlightInnerAngle = -1f,
             };
             
@@ -441,16 +449,12 @@ public class LightMapper
                     SpotlightInnerAngle = (float)Math.Cos(float.DegreesToRadians(propSpotAmb.InnerAngle)),
                     SpotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotAmb.OuterAngle)),
                     ObjId = light.ObjId,
-                    LightTableIndex = light.LightTableIndex,
                 };
-
-                light.LightTableIndex++; // Because we're inserting the spotlight part first
                 
                 spot.FixRadius();
                 spot.ApplyTransforms(vhotLightPos, vhotLightDir, translate, rotate, scale);
                 
                 _lights.Add(spot);
-                lightTable.AddLight(spot.ToLightData(32.0f));
             }
             else if (propSpotlight != null)
             {
@@ -463,7 +467,6 @@ public class LightMapper
             light.ApplyTransforms(vhotLightPos, vhotLightDir, translate, rotate, scale);
             
             _lights.Add(light);
-            lightTable.AddLight(light.ToLightData(32.0f));
         }
     }
 
