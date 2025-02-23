@@ -564,8 +564,8 @@ public class LightMapper
             }
 
             var visibleSet = settings.FastPvs switch {
-                true => pvs.ComputeVisibilityFast(lightCellMap[i]),
-                false => pvs.ComputeVisibilityExact(_lights[i].Position, lightCellMap[i], _lights[i].Radius)
+                true => pvs.ComputeVisibilityFast(cellIdx),
+                false => pvs.ComputeVisibilityExact(_lights[i].Position, cellIdx, _lights[i].Radius)
             };
             
             // Log.Information("Light {i} sees {c} cells", i, visibleSet.Count);

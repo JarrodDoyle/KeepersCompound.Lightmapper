@@ -154,7 +154,7 @@ public class PotentiallyVisibleSet
             return [];
         }
 
-        var visibleCells = new HashSet<int>();
+        var visibleCells = new HashSet<int> { cellIdx };
         foreach (var edgeIdx in _graph[cellIdx].EdgeIndices)
         {
             var edge = _edges[edgeIdx];
