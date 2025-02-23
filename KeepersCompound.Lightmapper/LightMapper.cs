@@ -406,7 +406,7 @@ public class LightMapper
 
         if (propLight != null && propLight.Brightness == 0)
         {
-            Log.Warning("Concrete object {Id} has Light property with 0 brightness. Adjust brightness or remove property.", id);
+            Log.Warning("Object {Id}: Zero brightness static light. Adjust brightness or remove un-used Light property.", id);
         }
         
         if (propLight != null && propLight.Brightness != 0)
