@@ -59,22 +59,22 @@ public class LightMapper
         
         _campaign = pathManager.GetCampaign(campaignName);
         _misPath = _campaign.GetResourcePath(ResourceType.Mission, missionName);
-        _mission = Timing.TimeStage("Parse DB", () => new DbFile(_misPath));
-        _hierarchy = Timing.TimeStage("Build Hierarchy", BuildHierarchy);
+        _mission = Timing.TimeStage("Load Mission File", () => new DbFile(_misPath));
+        _hierarchy = Timing.TimeStage("Build Object Hierarchy", BuildHierarchy);
         _lights = [];
 
         VerifyRequiredChunksExist();
         
-        var (noObjMesh, fullMesh) = Timing.TimeStage("Build Meshes", BuildMeshes);
+        var (noObjMesh, fullMesh) = Timing.TimeStage("Build Raytracing Meshes", BuildMeshes);
         _triangleTypeMap = fullMesh.TriangleSurfaceMap;
-        _sceneNoObj = Timing.TimeStage("Build RT NoObj Scene", () =>
+        _sceneNoObj = Timing.TimeStage("Upload Raytracing Scenes", () =>
         {
             var rt = new Raytracer();
             rt.AddMesh(new TriangleMesh(noObjMesh.Vertices, noObjMesh.Indices));
             rt.CommitScene();
             return rt;
         });
-        _scene = Timing.TimeStage("Build RT Scene", () =>
+        _scene = Timing.TimeStage("Upload Raytracing Scenes", () =>
         {
             var rt = new Raytracer();
             rt.AddMesh(new TriangleMesh(fullMesh.Vertices, fullMesh.Indices));
@@ -129,7 +129,7 @@ public class LightMapper
         }
         
         Timing.TimeStage("Gather Lights", () => BuildLightList(settings));
-        Timing.TimeStage("Set Light Indices", () => SetCellLightIndices(settings));
+        Timing.TimeStage("Set Light Visibility", () => SetCellLightIndices(settings));
         Timing.TimeStage("Trace Scene", () => TraceScene(settings));
         Timing.TimeStage("Update AnimLight Cell Mapping", SetAnimLightCellMaps);
 
@@ -149,7 +149,7 @@ public class LightMapper
         var ext = Path.GetExtension(_misPath);
         var dir = Path.GetDirectoryName(_misPath);
         var savePath = Path.Join(dir, missionName + ext);
-        Timing.TimeStage("Save DB", () => _mission.Save(savePath));
+        Timing.TimeStage("Save Mission File", () => _mission.Save(savePath));
     }
 
     private bool VerifyRequiredChunksExist()
