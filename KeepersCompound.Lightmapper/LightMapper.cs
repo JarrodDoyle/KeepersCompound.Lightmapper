@@ -253,7 +253,7 @@ public class LightMapper
             }
         }
         
-        ValidateLightConfigurations();
+        ValidateLightConfigurations(settings);
         
         worldRep.LightingTable.Reset();
         foreach (var light in _lights)
@@ -272,12 +272,24 @@ public class LightMapper
     }
 
     // TODO: Validate in-world here? Set cell idx on lights maybe?
-    private void ValidateLightConfigurations()
+    private void ValidateLightConfigurations(Settings settings)
     {
         var infinite = 0;
         for (var i = _lights.Count - 1; i > 0; i--)
         {
             var light = _lights[i];
+
+            if (light.QuadLit && settings.MultiSampling != SoftnessMode.Standard)
+            {
+                if (light.ObjId != -1)
+                {
+                    Log.Warning("Object {Id}: Light flagged QuadLit but using Shadow Softness in build dialog. Shadow Softness overrides QuadLit.", light.ObjId);
+                }
+                else
+                {
+                    Log.Warning("Brush at {Id}: Light flagged QuadLit but using Shadow Softness in build dialog. Shadow Softness overrides QuadLit.", light.Position);
+                }
+            }
             
             if (light.Brightness == 0)
             {
