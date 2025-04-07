@@ -2,7 +2,7 @@
 
 ## Description
 
-[TTLG Release Thread](https://github.com/JarrodDoyle/KeepersCompound.Lightmapper)
+[TTLG Release Thread](https://www.ttlg.com/forums/showthread.php?t=152903)
 
 KCLight is an external lightmapping tool for [NewDark 1.27](https://www.ttlg.com/forums/showthread.php?t=149856) fan mission. DromEd's built-in lighting is single-threaded, has a number of bugs, and scales extremely poorly with lightmap scale and large open spaces. KCLight uses a multi-threaded approach with a modern raytracing library to improve lighting times, reduce lighting artifacts, and often improves in-game performance in complex scenes.
 
