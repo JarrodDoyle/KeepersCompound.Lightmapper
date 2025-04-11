@@ -3,7 +3,7 @@ using KeepersCompound.Lighting;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
 
-namespace KeepersCompound.Lightmapper;
+namespace KCLight;
 
 internal static class Program
 {
