@@ -1,4 +1,4 @@
-# KeepersCompound: Lightmapper
+# KCLight
 
 ## Description
 
@@ -14,13 +14,13 @@ KCLight is an external lightmapping tool for [NewDark 1.27](https://www.ttlg.com
 - Produces generally more accurate shadows
 
 ## Usage
-Download the [latest release](https://github.com/JarrodDoyle/KeepersCompound.Lightmapper/releases/latest) and unzip it somewhere. Open a console in the unzipped folder and run `KeepersCompound.Lightmapper --help` to see the help screen:
+Download the [latest release](https://github.com/JarrodDoyle/KeepersCompound.Lightmapper/releases/latest) and unzip it somewhere. Open a console in the unzipped folder and run `KCLight --help` to see the help screen:
 
 ```
 Compute lightmaps for a NewDark .MIS/.COW
 
 Usage:
-  KeepersCompound.Lightmapper <install-path> <campaign-name> <mission-name> 
+  KCLight <install-path> <campaign-name> <mission-name> 
   [options]
 
 Arguments:
