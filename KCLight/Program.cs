@@ -22,10 +22,12 @@ internal static class Program
             .CreateLogger();
     }
     
-    public static async Task<int> Main(string[] args)
+    public static void Main(string[] args)
     {
         ConfigureLogger();
-        return await Cli.RunAsync<LightCommand>(args);
+        
+        var parseResult = Cli.Parse<LightCommand>(args);
+        Cli.Run<LightCommand>(parseResult.Errors.Count > 0 ? ["--help"] : args);
     }
 }
 
