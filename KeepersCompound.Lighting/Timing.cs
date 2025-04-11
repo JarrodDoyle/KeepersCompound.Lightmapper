@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Serilog;
 
-namespace KeepersCompound.Lightmapper;
+namespace KeepersCompound.Lighting;
 
 public static class Timing
 {

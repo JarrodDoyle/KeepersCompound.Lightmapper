@@ -1,7 +1,7 @@
 using System.Numerics;
 using KeepersCompound.LGS.Database.Chunks;
 
-namespace KeepersCompound.Lightmapper;
+namespace KeepersCompound.Lighting;
 
 public class Light
 {
