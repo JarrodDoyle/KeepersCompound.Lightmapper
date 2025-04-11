@@ -5,7 +5,7 @@ using KeepersCompound.LGS.Database.Chunks;
 using Serilog;
 using TinyEmbree;
 
-namespace KeepersCompound.Lightmapper;
+namespace KeepersCompound.Lighting;
 
 public class LightMapper
 {

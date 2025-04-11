@@ -1,4 +1,5 @@
 using DotMake.CommandLine;
+using KeepersCompound.Lighting;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
 

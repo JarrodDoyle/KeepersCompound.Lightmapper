@@ -4,7 +4,7 @@ using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
 using Serilog;
 
-namespace KeepersCompound.Lightmapper;
+namespace KeepersCompound.Lighting;
 
 // TODO: Rename to CastSurfaceType?
 public enum SurfaceType

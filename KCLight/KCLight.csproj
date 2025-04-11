@@ -9,6 +9,7 @@
     <SelfContained>true</SelfContained>
     <PublishTrimmed>true</PublishTrimmed>
     <PublishAot>true</PublishAot>
+    <RootNamespace>KeepersCompound.Lightmapper</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,11 +17,11 @@
     <PackageReference Include="Serilog" Version="4.2.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
-    <PackageReference Include="TinyEmbree" Version="1.1.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\KeepersCompound.LGS\KeepersCompound.LGS.csproj" />
+    <ProjectReference Include="..\KeepersCompound.Lighting\KeepersCompound.Lighting.csproj" />
   </ItemGroup>
 
 </Project>

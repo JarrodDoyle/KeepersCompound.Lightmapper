@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace KeepersCompound.Lightmapper;
+namespace KeepersCompound.Lighting;
 
 public static class Utils
 {

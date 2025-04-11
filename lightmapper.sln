@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeepersCompound.Lightmapper", "KeepersCompound.Lightmapper\KeepersCompound.Lightmapper.csproj", "{24FE5A7B-3E74-43CE-8F61-92AEFB07C544}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KCLight", "KCLight\KCLight.csproj", "{24FE5A7B-3E74-43CE-8F61-92AEFB07C544}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeepersCompound.LGS", "KeepersCompound.LGS\KeepersCompound.LGS.csproj", "{7262E507-A972-4693-8C99-67E163E8BF7C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeepersCompound.Lighting", "KeepersCompound.Lighting\KeepersCompound.Lighting.csproj", "{028E8038-EE60-4562-B786-9A58EE4022A0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,5 +26,9 @@ Global
 		{7262E507-A972-4693-8C99-67E163E8BF7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7262E507-A972-4693-8C99-67E163E8BF7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7262E507-A972-4693-8C99-67E163E8BF7C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{028E8038-EE60-4562-B786-9A58EE4022A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{028E8038-EE60-4562-B786-9A58EE4022A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{028E8038-EE60-4562-B786-9A58EE4022A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{028E8038-EE60-4562-B786-9A58EE4022A0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

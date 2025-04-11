@@ -3,7 +3,7 @@ using System.Numerics;
 using KeepersCompound.LGS.Database.Chunks;
 using Serilog;
 
-namespace KeepersCompound.Lightmapper;
+namespace KeepersCompound.Lighting;
 
 public class PotentiallyVisibleSet
 {
