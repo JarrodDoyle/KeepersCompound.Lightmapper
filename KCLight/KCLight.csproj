@@ -9,6 +9,7 @@
     <SelfContained>true</SelfContained>
     <PublishTrimmed>true</PublishTrimmed>
     <PublishAot>true</PublishAot>
+    <RootNamespace>KeepersCompound.Lightmapper</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
