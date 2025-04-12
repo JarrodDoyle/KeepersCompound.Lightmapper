@@ -35,8 +35,8 @@
         </Grid>
         
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button>Run</Button>
-            <Button>Close</Button>
+            <Button Content="Run" Command="{Binding Run}"/>
+            <Button Content="Close" Command="{Binding Close}"/>
         </StackPanel>
     </StackPanel>
     
