@@ -51,7 +51,8 @@ public partial class MainWindowViewModel : ViewModelBase
         var options = new FolderPickerOpenOptions
         {
             Title = "Select Game Directory",
-            AllowMultiple = false
+            AllowMultiple = false,
+            SuggestedStartLocation = await provider.TryGetFolderFromPathAsync(InstallPath)
         };
 
         var folders = await provider.OpenFolderPickerAsync(options);
