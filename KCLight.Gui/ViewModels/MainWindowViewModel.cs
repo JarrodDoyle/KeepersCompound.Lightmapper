@@ -25,7 +25,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool Run()
     {
-        if (InstallPath == "" || CampaignName == "" || MissionName == "" || OutputName == "")
+        if (!CanRun)
         {
             return false;
         }
