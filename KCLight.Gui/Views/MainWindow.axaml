@@ -22,7 +22,7 @@
             <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Game Directory:"/>
             <Grid Grid.Row="0" Grid.Column="2" ColumnDefinitions="*, 8, Auto">
                 <TextBox Grid.Row="0" Grid.Column="0" Text="{Binding InstallPath}"/>
-                <Button Grid.Row="0" Grid.Column="2">Browse</Button>
+                <Button Grid.Row="0" Grid.Column="2" Command="{Binding SelectGameDirectoryCommand}">Browse</Button>
             </Grid>
             <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Campaign Name:"/>
             <TextBox Grid.Row="2" Grid.Column="2" Text="{Binding CampaignName}"/>

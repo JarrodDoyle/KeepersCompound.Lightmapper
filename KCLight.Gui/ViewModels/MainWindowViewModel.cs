@@ -1,7 +1,9 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using KeepersCompound.Lighting;
@@ -35,6 +37,28 @@ public partial class MainWindowViewModel : ViewModelBase
             lightMapper.Light(FastPvs);
             lightMapper.Save(outputName);
         });
+    }
+
+    [RelayCommand]
+    private async Task SelectGameDirectory()
+    {
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||
+            desktop.MainWindow?.StorageProvider is not { } provider)
+        {
+            throw new NullReferenceException("Missing StorageProvider instance.");
+        }
+
+        var options = new FolderPickerOpenOptions
+        {
+            Title = "Select Game Directory",
+            AllowMultiple = false
+        };
+
+        var folders = await provider.OpenFolderPickerAsync(options);
+        if (folders.Count > 0)
+        {
+            InstallPath = folders[0].Path.LocalPath;
+        }
     }
 
     public void Close()
