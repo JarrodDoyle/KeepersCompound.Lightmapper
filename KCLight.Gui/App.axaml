@@ -10,6 +10,6 @@
     </Application.DataTemplates>
   
     <Application.Styles>
-        <FluentTheme />
+        <RomzetronTheme/>
     </Application.Styles>
 </Application>
