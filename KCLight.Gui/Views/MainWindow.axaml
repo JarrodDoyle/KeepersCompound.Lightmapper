@@ -21,17 +21,17 @@
         <Grid RowDefinitions="*, 8, *, 8, *, 8, *, 8, *" ColumnDefinitions="Auto, 8, *">
             <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Game Directory:"/>
             <Grid Grid.Row="0" Grid.Column="2" ColumnDefinitions="*, 8, Auto">
-                <TextBox Grid.Row="0" Grid.Column="0"/>
+                <TextBox Grid.Row="0" Grid.Column="0" Text="{Binding InstallPath}"/>
                 <Button Grid.Row="0" Grid.Column="2">Browse</Button>
             </Grid>
             <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Campaign Name:"/>
-            <TextBox Grid.Row="2" Grid.Column="2"/>
+            <TextBox Grid.Row="2" Grid.Column="2" Text="{Binding CampaignName}"/>
             <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Mission Filename:"/>
-            <TextBox Grid.Row="4" Grid.Column="2"/>
+            <TextBox Grid.Row="4" Grid.Column="2" Text="{Binding MissionName}"/>
             <TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Text="Output Filename:"/>
-            <TextBox Grid.Row="6" Grid.Column="2"/>
+            <TextBox Grid.Row="6" Grid.Column="2" Text="{Binding OutputName}"/>
             <TextBlock Grid.Row="8" Grid.Column="0" VerticalAlignment="Center" Text="Quick Vis:"/>
-            <CheckBox Grid.Row="8" Grid.Column="2"/>
+            <CheckBox Grid.Row="8" Grid.Column="2" IsChecked="{Binding FastPvs}"/>
         </Grid>
         
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
