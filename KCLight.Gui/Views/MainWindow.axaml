@@ -7,6 +7,8 @@
         x:Class="KCLight.Gui.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
+        CanResize="False"
+        SizeToContent="WidthAndHeight"
         Title="KCLight.Gui">
 
     <Design.DataContext>
@@ -14,7 +16,28 @@
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainWindowViewModel/>
     </Design.DataContext>
-
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-
+    
+    <StackPanel Width="480" Margin="16" Spacing="16">
+        <Grid RowDefinitions="*, 8, *, 8, *, 8, *, 8, *" ColumnDefinitions="Auto, 8, *">
+            <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Game Directory:"/>
+            <Grid Grid.Row="0" Grid.Column="2" ColumnDefinitions="*, 8, Auto">
+                <TextBox Grid.Row="0" Grid.Column="0"/>
+                <Button Grid.Row="0" Grid.Column="2">Browse</Button>
+            </Grid>
+            <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Campaign Name:"/>
+            <TextBox Grid.Row="2" Grid.Column="2"/>
+            <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Mission Filename:"/>
+            <TextBox Grid.Row="4" Grid.Column="2"/>
+            <TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Text="Output Filename:"/>
+            <TextBox Grid.Row="6" Grid.Column="2"/>
+            <TextBlock Grid.Row="8" Grid.Column="0" VerticalAlignment="Center" Text="Quick Vis:"/>
+            <CheckBox Grid.Row="8" Grid.Column="2"/>
+        </Grid>
+        
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button>Run</Button>
+            <Button>Close</Button>
+        </StackPanel>
+    </StackPanel>
+    
 </Window>
