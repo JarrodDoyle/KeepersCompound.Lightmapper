@@ -35,7 +35,7 @@
         </Grid>
         
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button Content="Run" Command="{Binding Run}"/>
+            <Button IsEnabled="{Binding CanRun}" Content="Run" Command="{Binding Run}"/>
             <Button Content="Close" Command="{Binding Close}"/>
         </StackPanel>
     </StackPanel>
