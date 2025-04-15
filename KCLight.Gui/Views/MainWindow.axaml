@@ -1,0 +1,43 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:KCLight.Gui.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="KCLight.Gui.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/kclight-logo.ico"
+        CanResize="False"
+        SizeToContent="WidthAndHeight"
+        Title="KCLight.Gui">
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+    
+    <StackPanel Width="480" Margin="8" Spacing="8">
+        <Grid RowDefinitions="*, 8, *, 8, *, 8, *, 8, *" ColumnDefinitions="Auto, 8, *">
+            <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Game Directory:"/>
+            <Grid Grid.Row="0" Grid.Column="2" ColumnDefinitions="*, 8, Auto">
+                <TextBox Grid.Row="0" Grid.Column="0" Text="{Binding InstallPath}"/>
+                <Button Grid.Row="0" Grid.Column="2" Command="{Binding SelectGameDirectoryCommand}">Browse</Button>
+            </Grid>
+            <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Campaign Name:"/>
+            <TextBox Grid.Row="2" Grid.Column="2" Text="{Binding CampaignName}"/>
+            <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Mission Filename:"/>
+            <TextBox Grid.Row="4" Grid.Column="2" Text="{Binding MissionName}"/>
+            <TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Text="Output Filename:"/>
+            <TextBox Grid.Row="6" Grid.Column="2" Text="{Binding OutputName}"/>
+            <TextBlock Grid.Row="8" Grid.Column="0" VerticalAlignment="Center" Text="Simple Vis:"/>
+            <CheckBox Grid.Row="8" Grid.Column="2" IsChecked="{Binding FastPvs}"/>
+        </Grid>
+        
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Content="Run" Command="{Binding RunCommand}"/>
+            <Button Content="Close" Command="{Binding Close}"/>
+        </StackPanel>
+    </StackPanel>
+    
+</Window>
