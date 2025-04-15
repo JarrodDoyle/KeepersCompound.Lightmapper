@@ -17,7 +17,7 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
     
-    <StackPanel Width="480" Margin="16" Spacing="16">
+    <StackPanel Width="480" Margin="8" Spacing="8">
         <Grid RowDefinitions="*, 8, *, 8, *, 8, *, 8, *" ColumnDefinitions="Auto, 8, *">
             <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Game Directory:"/>
             <Grid Grid.Row="0" Grid.Column="2" ColumnDefinitions="*, 8, Auto">
