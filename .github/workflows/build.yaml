@@ -48,3 +48,4 @@ jobs:
           path: |
             ${{ github.workspace }}/release/linux-x64/
             !${{ github.workspace }}/release/linux-x64/*.dbg
+            !${{ github.workspace }}/release/linux-x64/*.pdb
