@@ -23,6 +23,7 @@ public class ObjectHierarchy
             {
                 return (T)prop;
             }
+
             return null;
         }
     }
@@ -45,6 +46,7 @@ public class ObjectHierarchy
                 gamChunk.Merge(chunk);
                 return gamChunk;
             }
+
             return chunk;
         }
 
@@ -62,6 +64,7 @@ public class ObjectHierarchy
             {
                 _objects.Add(childId, new DarkObject(childId));
             }
+
             if (!_objects.ContainsKey(parentId))
             {
                 _objects.Add(parentId, new DarkObject(parentId));
@@ -84,6 +87,7 @@ public class ObjectHierarchy
                     value = new DarkObject(id);
                     _objects.Add(id, value);
                 }
+
                 value.properties.TryAdd(name, prop);
             }
         }
@@ -127,6 +131,7 @@ public class ObjectHierarchy
             {
                 return prop;
             }
+
             parentId = obj.parentId;
         }
 

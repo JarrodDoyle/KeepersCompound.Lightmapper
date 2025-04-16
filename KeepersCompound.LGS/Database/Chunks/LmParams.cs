@@ -20,7 +20,7 @@ public class LmParams : IChunk
         Raycast,
         Objcast,
     }
-    
+
     public enum DepthMode
     {
         Lm16,
@@ -38,9 +38,9 @@ public class LmParams : IChunk
     public bool LightmappedWater { get; set; }
     public int LightmapScale { get; set; }
     public uint AnimLightCutoff { get; set; }
-    
+
     private int _dataSize;
-    
+
     public void ReadData(BinaryReader reader, DbFile.TableOfContents.Entry entry)
     {
         _dataSize = reader.ReadInt32();

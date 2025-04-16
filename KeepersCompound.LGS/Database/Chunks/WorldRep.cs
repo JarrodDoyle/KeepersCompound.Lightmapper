@@ -171,6 +171,7 @@ public class WorldRep : IChunk
                     Pixels.Add(reader.ReadBytes(length));
                     _litLayers[i] = true;
                 }
+
                 Layers = layers;
                 Width = width;
                 Height = height;
@@ -249,7 +250,7 @@ public class WorldRep : IChunk
                 {
                     AddLayer();
                 }
-                
+
                 var idx = (x + y * Width) * Bpp;
                 var pLayer = Pixels[layer];
                 switch (Bpp)
@@ -271,7 +272,7 @@ public class WorldRep : IChunk
                         pLayer[idx + 3] = 255;
                         break;
                 }
-                
+
                 _litLayers[layer] = true;
             }
 
@@ -335,6 +336,7 @@ public class WorldRep : IChunk
                 {
                     bytes[i] = 0;
                 }
+
                 Pixels.Add(bytes);
                 Layers++;
             }
@@ -364,7 +366,7 @@ public class WorldRep : IChunk
         public Lightmap[] Lightmaps { get; set; }
         public int LightIndexCount { get; set; }
         public List<ushort> LightIndices { get; set; }
-        
+
         // Bonus data to make parallel iteration of cells easier
         public CellZone ZoneInfo { get; set; } = new();
 
@@ -388,43 +390,51 @@ public class WorldRep : IChunk
             {
                 Vertices[i] = reader.ReadVec3();
             }
+
             Polys = new Poly[PolyCount];
             for (var i = 0; i < PolyCount; i++)
             {
                 Polys[i] = new Poly(reader);
             }
+
             RenderPolys = new RenderPoly[RenderPolyCount];
             for (var i = 0; i < RenderPolyCount; i++)
             {
                 RenderPolys[i] = new RenderPoly(reader);
             }
+
             IndexCount = reader.ReadUInt32();
             Indices = new byte[IndexCount];
             for (var i = 0; i < IndexCount; i++)
             {
                 Indices[i] = reader.ReadByte();
             }
+
             Planes = new Plane[PlaneCount];
             for (var i = 0; i < PlaneCount; i++)
             {
                 Planes[i] = new Plane(reader.ReadVec3(), reader.ReadSingle());
             }
+
             AnimLights = new List<ushort>(AnimLightCount);
             for (var i = 0; i < AnimLightCount; i++)
             {
                 AnimLights.Add(reader.ReadUInt16());
             }
+
             LightList = new LightmapInfo[RenderPolyCount];
             for (var i = 0; i < RenderPolyCount; i++)
             {
                 LightList[i] = new LightmapInfo(reader);
             }
+
             Lightmaps = new Lightmap[RenderPolyCount];
             for (var i = 0; i < RenderPolyCount; i++)
             {
                 var info = LightList[i];
                 Lightmaps[i] = new Lightmap(reader, info.Width, info.Height, info.AnimLightBitmask, bpp);
             }
+
             LightIndexCount = reader.ReadInt32();
             LightIndices = new List<ushort>(LightIndexCount);
             for (var i = 0; i < LightIndexCount; i++)
@@ -452,14 +462,17 @@ public class WorldRep : IChunk
             {
                 writer.WriteVec3(vertex);
             }
+
             foreach (var poly in Polys)
             {
                 poly.Write(writer);
             }
+
             foreach (var renderPoly in RenderPolys)
             {
                 renderPoly.Write(writer);
             }
+
             writer.Write(IndexCount);
             writer.Write(Indices);
             foreach (var plane in Planes)
@@ -467,18 +480,22 @@ public class WorldRep : IChunk
                 writer.WriteVec3(plane.Normal);
                 writer.Write(plane.D);
             }
+
             foreach (var animLight in AnimLights)
             {
                 writer.Write(animLight);
             }
+
             foreach (var lightmapInfo in LightList)
             {
                 lightmapInfo.Write(writer);
             }
+
             foreach (var lightmap in Lightmaps)
             {
                 lightmap.Write(writer);
             }
+
             writer.Write(LightIndexCount);
             foreach (var lightIndex in LightIndices)
             {
@@ -517,7 +534,7 @@ public class WorldRep : IChunk
             writer.Write(_data);
         }
     }
-    
+
     public struct BspTree
     {
         public struct Node
@@ -577,6 +594,7 @@ public class WorldRep : IChunk
                 writer.WriteVec3(plane.Normal);
                 writer.Write(plane.D);
             }
+
             writer.Write(NodeCount);
             foreach (var node in Nodes)
             {
@@ -653,11 +671,13 @@ public class WorldRep : IChunk
             {
                 Lights.Add(new LightData(reader));
             }
+
             ScratchpadLights = new LightData[32];
             for (var i = 0; i < 32; i++)
             {
                 ScratchpadLights[i] = new LightData(reader);
             }
+
             AnimMapCount = reader.ReadInt32();
             AnimCellMaps = new List<AnimCellMap>(AnimMapCount);
             for (var i = 0; i < AnimMapCount; i++)
@@ -674,10 +694,12 @@ public class WorldRep : IChunk
             {
                 light.Write(writer);
             }
+
             foreach (var light in ScratchpadLights)
             {
                 light.Write(writer);
             }
+
             writer.Write(AnimMapCount);
             foreach (var map in AnimCellMaps)
             {
@@ -740,7 +762,7 @@ public class WorldRep : IChunk
             CellZones[i] = zone;
             Cells[i].ZoneInfo = zone;
         }
-        
+
         LightingTable = new LightTable(reader);
 
         // TODO: All the other info lol
@@ -755,11 +777,13 @@ public class WorldRep : IChunk
         {
             cell.Write(writer);
         }
+
         Bsp.Write(writer);
         foreach (var cellZone in CellZones)
         {
             cellZone.Write(writer);
         }
+
         LightingTable.Write(writer);
         writer.Write(_unreadData);
     }

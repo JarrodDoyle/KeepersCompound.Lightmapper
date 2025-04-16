@@ -43,6 +43,7 @@ public static class Timing
         {
             elapsed += time;
         }
+
         _stages[stagename] = elapsed;
     }
 }

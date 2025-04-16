@@ -46,6 +46,7 @@ public class RendParams : IChunk
         {
             ambientLightZones[i] = reader.ReadVec3();
         }
+
         globalAiVisBias = reader.ReadSingle();
         ambientZoneAiVisBiases = new float[8];
         for (var i = 0; i < ambientZoneAiVisBiases.Length; i++)
@@ -72,6 +73,7 @@ public class RendParams : IChunk
         {
             writer.WriteVec3(lightZone);
         }
+
         writer.Write(globalAiVisBias);
         foreach (var visBias in ambientZoneAiVisBiases)
         {

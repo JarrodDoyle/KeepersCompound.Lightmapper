@@ -48,7 +48,7 @@ public class MeshBuilder
                 {
                     polyVertices.Add(cell.Vertices[cell.Indices[cellIdxOffset + i]]);
                 }
-                
+
                 var primType = cell.RenderPolys[polyIdx].TextureId == 249 ? SurfaceType.Sky : SurfaceType.Solid;
                 AddPolygon(polyVertices, primType);
                 cellIdxOffset += poly.VertexCount;
@@ -80,13 +80,13 @@ public class MeshBuilder
             var joints = jointPosProp?.Positions ?? [0, 0, 0, 0, 0, 0];
             var castsShadows = (immobileProp?.value ?? false) || (staticShadowProp?.value ?? false);
             var renderMode = renderTypeProp?.mode ?? PropRenderType.Mode.Normal;
-            
+
             // TODO: Check which rendermodes cast shadows :)
             if (modelNameProp == null || !castsShadows || renderMode == PropRenderType.Mode.CoronaOnly)
             {
                 continue;
             }
-            
+
             // Let's try and place an object :)
             // TODO: Handle failing to find model more gracefully
             var modelName = modelNameProp.value.ToLower() + ".bin";
@@ -96,17 +96,17 @@ public class MeshBuilder
                 Log.Warning("Failed to find model file: {Name}", modelName);
                 continue;
             }
-            
+
             var model = new ModelFile(modelPath);
             model.ApplyJoints(joints);
-            
+
             // Calculate base model transform
             var transform = Matrix4x4.CreateScale(scaleProp?.value ?? Vector3.One);
             transform *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.angle.X));
             transform *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
             transform *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
             transform *= Matrix4x4.CreateTranslation(brush.position - model.Header.Center);
-            
+
             // for each polygon slam its vertices and indices :)
             foreach (var poly in model.Polygons)
             {
@@ -118,7 +118,7 @@ public class MeshBuilder
                     vertex = Vector3.Transform(vertex, transform);
                     polyVertices.Add(vertex);
                 }
-                
+
                 AddPolygon(polyVertices, SurfaceType.Object);
             }
         }

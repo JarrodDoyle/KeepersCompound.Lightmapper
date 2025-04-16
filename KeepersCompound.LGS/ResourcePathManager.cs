@@ -81,22 +81,25 @@ public class ResourcePathManager
             var texPaths = GetTexturePaths(resPath);
             var objPaths = GetObjectPaths(resPath);
             var objTexPaths = GetObjectTexturePaths(resPath);
-            Log.Information("Found {TexCount} textures, {ObjCount} objects, {ObjTexCount} object textures for campaign: {CampaignName}",
+            Log.Information(
+                "Found {TexCount} textures, {ObjCount} objects, {ObjTexCount} object textures for campaign: {CampaignName}",
                 texPaths.Count, objPaths.Count, objTexPaths.Count, name);
 
             foreach (var (resName, path) in texPaths)
             {
                 _texturePathMap[resName] = path;
             }
+
             foreach (var (resName, path) in objPaths)
             {
                 _objectPathMap[resName] = path;
             }
+
             foreach (var (resName, path) in objTexPaths)
             {
                 _objectTexturePathMap[resName] = path;
             }
-            
+
             initialised = true;
         }
 
@@ -106,10 +109,12 @@ public class ResourcePathManager
             {
                 _texturePathMap[resName] = path;
             }
+
             foreach (var (resName, path) in parent._objectPathMap)
             {
                 _objectPathMap[resName] = path;
             }
+
             foreach (var (resName, path) in parent._objectTexturePathMap)
             {
                 _objectTexturePathMap[resName] = path;
@@ -165,7 +170,7 @@ public class ResourcePathManager
             Log.Error("Failed to find `resname_base` in install config");
             return false;
         }
-        
+
         var zipPaths = new List<string>();
         foreach (var resPath in resPaths.Split('+'))
         {
@@ -175,7 +180,7 @@ public class ResourcePathManager
                 Log.Warning("Install config references non-existent `resname_base`: {Path}", dir);
                 continue;
             }
-            
+
             foreach (var path in Directory.GetFiles(dir))
             {
                 var name = Path.GetFileName(path).ToLower();
@@ -202,7 +207,7 @@ public class ResourcePathManager
             Log.Error("Failed to find `load_path` in install config");
             return false;
         }
-        
+
         omsPath = Path.Join(installPath, ConvertSeparator(omsPath));
         _omResources = new CampaignResources();
         _omResources.name = "";
@@ -249,12 +254,13 @@ public class ResourcePathManager
             Log.Error("Failed to find campaign: {CampaignName}", campaignName);
             throw new ArgumentException("No campaign found with given name", nameof(campaignName));
         }
-        
+
         if (!campaign.initialised)
         {
             var fmPath = Path.Join(_fmsDir, campaignName);
             campaign.Initialise(fmPath, fmPath, _omResources);
         }
+
         return campaign;
     }
 
@@ -399,7 +405,7 @@ public class ResourcePathManager
                     break;
             }
         }
-        
+
         // TODO: Verify we found cam/cam_ext/cam_mod
         var camExtLines = File.ReadAllLines(configPaths[(int)ConfigFile.CamExt]);
         var camLines = File.ReadAllLines(configPaths[(int)ConfigFile.Cam]);
@@ -407,11 +413,11 @@ public class ResourcePathManager
         bool FindCamVar(string varName, out string value, string defaultValue = "")
         {
             return FindConfigVar(camExtLines, varName, out value, defaultValue) ||
-                FindConfigVar(camLines, varName, out value, defaultValue);
+                   FindConfigVar(camLines, varName, out value, defaultValue);
         }
 
         FindCamVar("include_path", out var includePath, "./");
-        
+
         if (!FindCamVar("game", out var gameName))
         {
             Log.Error("`game` not specified in Cam/CamExt");
@@ -476,7 +482,7 @@ public class ResourcePathManager
             Log.Error("Failed to find all required config files in Thief installation directory");
             return false;
         }
-        
+
         return true;
     }
 

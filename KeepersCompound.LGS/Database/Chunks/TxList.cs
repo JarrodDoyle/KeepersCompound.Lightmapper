@@ -20,9 +20,7 @@ public class TxList : IChunk
         }
     }
 
-
     public ChunkHeader Header { get; set; }
-
     public int BlockSize { get; set; }
     public int ItemCount { get; set; }
     public int TokenCount { get; set; }
@@ -39,6 +37,7 @@ public class TxList : IChunk
         {
             Tokens[i] = reader.ReadNullString(16);
         }
+
         Items = new Item[ItemCount];
         for (var i = 0; i < ItemCount; i++)
         {
@@ -55,6 +54,7 @@ public class TxList : IChunk
         {
             writer.WriteNullString(token, 16);
         }
+
         foreach (var item in Items)
         {
             item.Write(writer);

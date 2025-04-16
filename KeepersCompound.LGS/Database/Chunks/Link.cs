@@ -95,12 +95,12 @@ public class LinkChunk : IChunk, IMergable
                 links.RemoveAt(i);
             }
         }
-        
+
         if (links.Count != count)
         {
             Log.Information("Trimming excess Links in GAM: {StartCount} -> {EndCount}", count, links.Count);
         }
-        
+
         links.AddRange(((LinkChunk)other).links);
     }
 }
@@ -166,7 +166,7 @@ public class LinkDataMetaProp : IChunk, IMergable
         {
             Log.Information("Trimming excess LinkData in GAM: {StartCount} -> {EndCount}", count, linkData.Count);
         }
-        
+
         linkData.AddRange(((LinkDataMetaProp)other).linkData);
     }
 }

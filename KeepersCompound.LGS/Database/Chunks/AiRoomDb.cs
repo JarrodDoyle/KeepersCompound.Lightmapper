@@ -56,6 +56,7 @@ class AiRoomDb : IChunk
         {
             Cells[i].Write(writer);
         }
+
         throw new System.NotImplementedException();
     }
 }

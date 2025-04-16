@@ -44,7 +44,7 @@ public class Light
             R2 = float.MaxValue;
         }
     }
-    
+
     public void ApplyTransforms(
         Vector3 vhotLightPos,
         Vector3 vhotLightDir,
@@ -66,7 +66,7 @@ public class Light
 
         // Base strength is a scaled inverse falloff
         var strength = 4.0f / MathF.Pow(len, attenuation);
-        
+
         // Diffuse light angle
         strength *= 1.0f + MathF.Pow(Vector3.Dot(dir, plane.Normal), attenuation);
 
@@ -75,7 +75,7 @@ public class Light
         {
             strength *= MathF.Pow((Radius - len) / (Radius - InnerRadius), attenuation);
         }
-        
+
         // Anim lights have a (configurable) minimum light cutoff. This is checked before
         // spotlight multipliers are applied so we don't cutoff the spot radius falloff.
         if (Anim && strength * Brightness < lightCutoff)
@@ -114,13 +114,13 @@ public class Light
 
         return strength;
     }
-    
+
     public float CalculateMaxRadius(float minLightCutoff)
     {
         // TODO: Should it be ceiling'd? Do we need to care about hdr? (I don't think so)
         var radius = 8 * Brightness / minLightCutoff;
         return radius;
-        
+
         // 2 / (x / 4.0f) = minLightCutoff;
         // 2 / minLightCutOff = x / 4.0f;
         // x = 8 * rgb / minLightCutOff;

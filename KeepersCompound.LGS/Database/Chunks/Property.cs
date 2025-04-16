@@ -202,7 +202,10 @@ public class PropSlayResult : Property
 {
     public enum Effect
     {
-        Normal, NoEffect, Terminate, Destroy,
+        Normal,
+        NoEffect,
+        Terminate,
+        Destroy,
     }
 
     public Effect effect;
@@ -224,7 +227,9 @@ public class PropInventoryType : Property
 {
     public enum Slot
     {
-        Junk, Item, Weapon,
+        Junk,
+        Item,
+        Weapon,
     }
 
     public Slot type;
