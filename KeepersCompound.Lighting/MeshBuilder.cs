@@ -6,8 +6,7 @@ using Serilog;
 
 namespace KeepersCompound.Lighting;
 
-// TODO: Rename to CastSurfaceType?
-public enum SurfaceType
+public enum CastSurfaceType
 {
     Solid,
     Sky,
@@ -15,12 +14,16 @@ public enum SurfaceType
     Air
 }
 
-public class Mesh(int triangleCount, List<Vector3> vertices, List<int> indices, List<SurfaceType> triangleSurfaceMap)
+public class Mesh(
+    int triangleCount,
+    List<Vector3> vertices,
+    List<int> indices,
+    List<CastSurfaceType> triangleSurfaceMap)
 {
     public int TriangleCount { get; } = triangleCount;
     public Vector3[] Vertices { get; } = [..vertices];
     public int[] Indices { get; } = [..indices];
-    public SurfaceType[] TriangleSurfaceMap { get; } = [..triangleSurfaceMap];
+    public CastSurfaceType[] TriangleSurfaceMap { get; } = [..triangleSurfaceMap];
 }
 
 public class MeshBuilder
@@ -28,7 +31,7 @@ public class MeshBuilder
     private int _triangleCount = 0;
     private readonly List<Vector3> _vertices = [];
     private readonly List<int> _indices = [];
-    private readonly List<SurfaceType> _primSurfaceMap = [];
+    private readonly List<CastSurfaceType> _primSurfaceMap = [];
 
     public void AddWorldRepPolys(WorldRep worldRep)
     {
@@ -49,7 +52,7 @@ public class MeshBuilder
                     polyVertices.Add(cell.Vertices[cell.Indices[cellIdxOffset + i]]);
                 }
 
-                var primType = cell.RenderPolys[polyIdx].TextureId == 249 ? SurfaceType.Sky : SurfaceType.Solid;
+                var primType = cell.RenderPolys[polyIdx].TextureId == 249 ? CastSurfaceType.Sky : CastSurfaceType.Solid;
                 AddPolygon(polyVertices, primType);
                 cellIdxOffset += poly.VertexCount;
             }
@@ -119,12 +122,12 @@ public class MeshBuilder
                     polyVertices.Add(vertex);
                 }
 
-                AddPolygon(polyVertices, SurfaceType.Object);
+                AddPolygon(polyVertices, CastSurfaceType.Object);
             }
         }
     }
 
-    private void AddPolygon(List<Vector3> vertices, SurfaceType surfaceType)
+    private void AddPolygon(List<Vector3> vertices, CastSurfaceType castSurfaceType)
     {
         var vertexCount = vertices.Count;
         var indexOffset = _vertices.Count;
@@ -137,7 +140,7 @@ public class MeshBuilder
             _indices.Add(indexOffset);
             _indices.Add(indexOffset + i + 1);
             _indices.Add(indexOffset + i);
-            _primSurfaceMap.Add(surfaceType);
+            _primSurfaceMap.Add(castSurfaceType);
             _triangleCount++;
         }
     }

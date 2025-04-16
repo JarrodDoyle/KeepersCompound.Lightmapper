@@ -44,7 +44,7 @@ public class LightMapper
     private Raytracer _scene;
     private Raytracer _sceneNoObj;
     private List<Light> _lights;
-    private SurfaceType[] _triangleTypeMap;
+    private CastSurfaceType[] _triangleTypeMap;
 
     public LightMapper(
         string installPath,
@@ -1115,7 +1115,7 @@ public class LightMapper
         // the initial trace become frontfaces to be occluded by.
         if (hitResult && !TraceOcclusion(_scene, hitResult.Position + hitResult.ErrorOffset * hitResult.Normal, origin))
         {
-            return _triangleTypeMap[(int)hitResult.PrimId] == SurfaceType.Sky;
+            return _triangleTypeMap[(int)hitResult.PrimId] == CastSurfaceType.Sky;
         }
 
         return false;
