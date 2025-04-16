@@ -1,11 +1,11 @@
 namespace KeepersCompound.LGS.Database.Chunks;
 
-class AiRoomDb : IChunk
+public class AiRoomDb : IChunk
 {
     public struct Cell
     {
-        int Size { get; set; }
-        uint[] CellIds { get; set; }
+        private int Size { get; set; }
+        private uint[] CellIds { get; set; }
 
         public Cell(BinaryReader reader)
         {
@@ -57,6 +57,6 @@ class AiRoomDb : IChunk
             Cells[i].Write(writer);
         }
 
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 }
