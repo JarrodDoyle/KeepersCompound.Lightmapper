@@ -41,43 +41,43 @@ public class LinkChunk : IChunk, IMergable
 {
     public record Link
     {
-        public LinkId linkId;
-        public int source;
-        public int destination;
-        public ushort relation;
+        public LinkId LinkId;
+        public int Source;
+        public int Destination;
+        public ushort Relation;
 
         public Link(BinaryReader reader)
         {
-            linkId = new LinkId(reader.ReadUInt32());
-            source = reader.ReadInt32();
-            destination = reader.ReadInt32();
-            relation = reader.ReadUInt16();
+            LinkId = new LinkId(reader.ReadUInt32());
+            Source = reader.ReadInt32();
+            Destination = reader.ReadInt32();
+            Relation = reader.ReadUInt16();
         }
 
         public void Write(BinaryWriter writer)
         {
-            linkId.Write(writer);
-            writer.Write(source);
-            writer.Write(destination);
-            writer.Write(relation);
+            LinkId.Write(writer);
+            writer.Write(Source);
+            writer.Write(Destination);
+            writer.Write(Relation);
         }
     }
 
     public ChunkHeader Header { get; set; }
-    public List<Link> links;
+    public List<Link> Links;
 
     public void ReadData(BinaryReader reader, DbFile.TableOfContents.Entry entry)
     {
-        links = new List<Link>();
+        Links = new List<Link>();
         while (reader.BaseStream.Position < entry.Offset + entry.Size + 24)
         {
-            links.Add(new Link(reader));
+            Links.Add(new Link(reader));
         }
     }
 
     public void WriteData(BinaryWriter writer)
     {
-        foreach (var link in links)
+        foreach (var link in Links)
         {
             link.Write(writer);
         }
@@ -86,22 +86,22 @@ public class LinkChunk : IChunk, IMergable
     public void Merge(IMergable other)
     {
         // !HACK: We always merge into gamesys so we can pre-trim garbage here
-        var count = links.Count;
+        var count = Links.Count;
         for (var i = count - 1; i >= 0; i--)
         {
-            var link = links[i];
-            if (link.linkId.IsConcrete())
+            var link = Links[i];
+            if (link.LinkId.IsConcrete())
             {
-                links.RemoveAt(i);
+                Links.RemoveAt(i);
             }
         }
 
-        if (links.Count != count)
+        if (Links.Count != count)
         {
-            Log.Information("Trimming excess Links in GAM: {StartCount} -> {EndCount}", count, links.Count);
+            Log.Information("Trimming excess Links in GAM: {StartCount} -> {EndCount}", count, Links.Count);
         }
 
-        links.AddRange(((LinkChunk)other).links);
+        Links.AddRange(((LinkChunk)other).Links);
     }
 }
 
@@ -110,40 +110,40 @@ public class LinkDataMetaProp : IChunk, IMergable
 {
     public record LinkData
     {
-        public LinkId linkId;
-        public int priority;
+        public LinkId LinkId;
+        public int Priority;
 
         public LinkData(BinaryReader reader)
         {
-            linkId = new LinkId(reader.ReadUInt32());
-            priority = reader.ReadInt32();
+            LinkId = new LinkId(reader.ReadUInt32());
+            Priority = reader.ReadInt32();
         }
 
         public void Write(BinaryWriter writer)
         {
-            linkId.Write(writer);
-            writer.Write(priority);
+            LinkId.Write(writer);
+            writer.Write(Priority);
         }
     }
 
     public ChunkHeader Header { get; set; }
     public int DataSize;
-    public List<LinkData> linkData;
+    public List<LinkData> LinkDatas;
 
     public void ReadData(BinaryReader reader, DbFile.TableOfContents.Entry entry)
     {
         DataSize = reader.ReadInt32();
-        linkData = new List<LinkData>();
+        LinkDatas = new List<LinkData>();
         while (reader.BaseStream.Position < entry.Offset + entry.Size + 24)
         {
-            linkData.Add(new LinkData(reader));
+            LinkDatas.Add(new LinkData(reader));
         }
     }
 
     public void WriteData(BinaryWriter writer)
     {
         writer.Write(DataSize);
-        foreach (var data in linkData)
+        foreach (var data in LinkDatas)
         {
             data.Write(writer);
         }
@@ -152,21 +152,21 @@ public class LinkDataMetaProp : IChunk, IMergable
     public void Merge(IMergable other)
     {
         // !HACK: We always merge into gamesys so we can pre-trim garbage here
-        var count = linkData.Count;
+        var count = LinkDatas.Count;
         for (var i = count - 1; i >= 0; i--)
         {
-            var link = linkData[i];
-            if (link.linkId.IsConcrete())
+            var link = LinkDatas[i];
+            if (link.LinkId.IsConcrete())
             {
-                linkData.RemoveAt(i);
+                LinkDatas.RemoveAt(i);
             }
         }
 
-        if (linkData.Count != count)
+        if (LinkDatas.Count != count)
         {
-            Log.Information("Trimming excess LinkData in GAM: {StartCount} -> {EndCount}", count, linkData.Count);
+            Log.Information("Trimming excess LinkData in GAM: {StartCount} -> {EndCount}", count, LinkDatas.Count);
         }
 
-        linkData.AddRange(((LinkDataMetaProp)other).linkData);
+        LinkDatas.AddRange(((LinkDataMetaProp)other).LinkDatas);
     }
 }

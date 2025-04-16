@@ -9,7 +9,7 @@ public enum SoftnessMode
     MediumFourPoint,
     MediumFivePoint,
     MediumNinePoint,
-    LowFourPoint,
+    LowFourPoint
 }
 
 public class LmParams : IChunk
@@ -18,14 +18,14 @@ public class LmParams : IChunk
     {
         Quick,
         Raycast,
-        Objcast,
+        Objcast
     }
 
     public enum DepthMode
     {
         Lm16,
         Lm32,
-        Lm32x,
+        Lm32X
     }
 
     public ChunkHeader Header { get; set; }

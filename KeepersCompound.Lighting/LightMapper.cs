@@ -95,16 +95,15 @@ public class LightMapper
 
         var sunlightSettings = new SunSettings
         {
-            Enabled = rendParams.useSunlight,
-            QuadLit = rendParams.sunlightMode is RendParams.SunlightMode.QuadUnshadowed
-                or RendParams.SunlightMode.QuadObjcastShadows,
-            Direction = Vector3.Normalize(rendParams.sunlightDirection),
-            Color = Utils.HsbToRgb(rendParams.sunlightHue, rendParams.sunlightSaturation * lmParams.Saturation,
-                rendParams.sunlightBrightness),
+            Enabled = rendParams.UseSunlight,
+            QuadLit = rendParams.SunlightMode is SunlightMode.QuadUnshadowed or SunlightMode.QuadObjcastShadows,
+            Direction = Vector3.Normalize(rendParams.SunlightDirection),
+            Color = Utils.HsbToRgb(rendParams.SunlightHue, rendParams.SunlightSaturation * lmParams.Saturation,
+                rendParams.SunlightBrightness)
         };
 
-        var ambientLight = rendParams.ambientLightZones.ToList();
-        ambientLight.Insert(0, rendParams.ambientLight);
+        var ambientLight = rendParams.AmbientLightZones.ToList();
+        ambientLight.Insert(0, rendParams.AmbientLight);
         for (var i = 0; i < ambientLight.Count; i++)
         {
             ambientLight[i] *= 255;
@@ -122,7 +121,7 @@ public class LightMapper
             LightmappedWater = lmParams.LightmappedWater,
             Sunlight = sunlightSettings,
             AnimLightCutoff = lmParams.AnimLightCutoff,
-            FastPvs = pvs,
+            FastPvs = pvs
         };
 
         if (settings.AnimLightCutoff > 0)
@@ -139,13 +138,13 @@ public class LightMapper
 
         // We always do object casting, so it's nice to let dromed know that :)
         lmParams.ShadowType = LmParams.LightingMode.Objcast;
-        if (rendParams is { useSunlight: true, sunlightMode: RendParams.SunlightMode.SingleUnshadowed })
+        if (rendParams is { UseSunlight: true, SunlightMode: SunlightMode.SingleUnshadowed })
         {
-            rendParams.sunlightMode = RendParams.SunlightMode.SingleObjcastShadows;
+            rendParams.SunlightMode = SunlightMode.SingleObjcastShadows;
         }
-        else if (rendParams is { useSunlight: true, sunlightMode: RendParams.SunlightMode.QuadUnshadowed })
+        else if (rendParams is { UseSunlight: true, SunlightMode: SunlightMode.QuadUnshadowed })
         {
-            rendParams.sunlightMode = RendParams.SunlightMode.QuadObjcastShadows;
+            rendParams.SunlightMode = SunlightMode.QuadObjcastShadows;
         }
     }
 
@@ -165,7 +164,7 @@ public class LightMapper
             "LM_PARAM",
             "WREXT",
             "BRLIST",
-            "P$AnimLight",
+            "P$AnimLight"
         };
 
         var allFound = true;
@@ -198,7 +197,7 @@ public class LightMapper
 
         var dir = Path.GetDirectoryName(_misPath);
         var options = new EnumerationOptions { MatchCasing = MatchCasing.CaseInsensitive };
-        var name = gamFile.fileName;
+        var name = gamFile.FileName;
         var paths = Directory.GetFiles(dir!, name, options);
         if (paths.Length > 0)
         {
@@ -247,12 +246,12 @@ public class LightMapper
         // potentially do the same for all lights and lower their radius if necessary?
         foreach (var brush in brList.Brushes)
         {
-            switch (brush.media)
+            switch (brush.Media)
             {
-                case BrList.Brush.Media.Light:
+                case Media.Light:
                     ProcessBrushLight(brush, settings);
                     break;
-                case BrList.Brush.Media.Object:
+                case Media.Object:
                     ProcessObjectLight(brush, settings);
                     break;
             }
@@ -357,19 +356,19 @@ public class LightMapper
 
     private void ProcessBrushLight(BrList.Brush brush, Settings settings)
     {
-        var sz = brush.size;
+        var sz = brush.Size;
 
         var brightness = Math.Min(sz.X, 255.0f);
         var saturation = sz.Z * settings.Saturation;
         var light = new Light
         {
-            Position = brush.position,
+            Position = brush.Position,
             Color = Utils.HsbToRgb(sz.Y, saturation, brightness),
             Brightness = brightness,
             Radius = float.MaxValue,
             R2 = float.MaxValue,
             SpotlightInnerAngle = -1f,
-            ObjId = -1,
+            ObjId = -1
         };
 
         _lights.Add(light);
@@ -378,7 +377,7 @@ public class LightMapper
     private void ProcessObjectLight(BrList.Brush brush, Settings settings)
     {
         // TODO: Handle PropSpotlightAndAmbient
-        var id = (int)brush.brushInfo;
+        var id = (int)brush.BrushInfo;
         var propScale = _hierarchy.GetProperty<PropVector>(id, "P$Scale");
         var propAnimLight = _hierarchy.GetProperty<PropAnimLight>(id, "P$AnimLight", false);
         var propLight = _hierarchy.GetProperty<PropLight>(id, "P$Light", false);
@@ -394,18 +393,18 @@ public class LightMapper
         var joints = propJointPos?.Positions ?? [0, 0, 0, 0, 0, 0];
 
         // Transform data
-        var translate = Matrix4x4.CreateTranslation(brush.position);
+        var translate = Matrix4x4.CreateTranslation(brush.Position);
         var rotate = Matrix4x4.Identity;
-        rotate *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.angle.X));
-        rotate *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
-        rotate *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
-        var scale = Matrix4x4.CreateScale(propScale?.value ?? Vector3.One);
+        rotate *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.Angle.X));
+        rotate *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.Angle.Y));
+        rotate *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.Angle.Z));
+        var scale = Matrix4x4.CreateScale(propScale?.Value ?? Vector3.One);
 
         var vhotLightPos = Vector3.Zero;
         var vhotLightDir = -Vector3.UnitZ;
         if (propModelName != null)
         {
-            var resName = $"{propModelName.value.ToLower()}.bin";
+            var resName = $"{propModelName.Value.ToLower()}.bin";
             var modelPath = _campaign.GetResourcePath(ResourceType.Object, resName);
             if (modelPath != null)
             {
@@ -419,7 +418,7 @@ public class LightMapper
 
                 if (model.TryGetVhot(ModelFile.VhotId.LightDirection, out vhot))
                 {
-                    vhotLightDir = (vhot.Position - model.Header.Center) - vhotLightPos;
+                    vhotLightDir = vhot.Position - model.Header.Center - vhotLightPos;
                 }
             }
         }
@@ -438,7 +437,7 @@ public class LightMapper
                 ObjId = id,
                 Anim = true,
                 Dynamic = propAnimLight.Dynamic,
-                SpotlightInnerAngle = -1f,
+                SpotlightInnerAngle = -1f
             };
 
             if (propSpotlight != null)
@@ -466,7 +465,7 @@ public class LightMapper
                 R2 = propLight.Radius * propLight.Radius,
                 QuadLit = propLight.QuadLit,
                 ObjId = id,
-                SpotlightInnerAngle = -1f,
+                SpotlightInnerAngle = -1f
             };
 
             if (propSpotAmb != null)
@@ -483,7 +482,7 @@ public class LightMapper
                     Spotlight = true,
                     SpotlightInnerAngle = (float)Math.Cos(float.DegreesToRadians(propSpotAmb.InnerAngle)),
                     SpotlightOuterAngle = (float)Math.Cos(float.DegreesToRadians(propSpotAmb.OuterAngle)),
-                    ObjId = light.ObjId,
+                    ObjId = light.ObjId
                 };
 
                 spot.FixRadius();
@@ -508,7 +507,9 @@ public class LightMapper
     private void SetCellLightIndices(Settings settings)
     {
         if (!_mission.TryGetChunk<WorldRep>("WREXT", out var worldRep))
+        {
             return;
+        }
 
         var cellCount = worldRep.Cells.Length;
         var aabbs = new MathUtils.Aabb[worldRep.Cells.Length];
@@ -568,7 +569,10 @@ public class LightMapper
         {
             Parallel.ForEach(lightCellMap, i =>
             {
-                if (i != -1) pvs.ComputeCellMightSee(i);
+                if (i != -1)
+                {
+                    pvs.ComputeCellMightSee(i);
+                }
             });
         }
 
@@ -744,7 +748,7 @@ public class LightMapper
                     topLeft,
                     topLeft + xDir,
                     topLeft + yDir,
-                    topLeft + xDir + yDir,
+                    topLeft + xDir + yDir
                 ]);
 
                 // Log.Information("Poly plane: {X}x + {Y}y + {Z}z + {D} = 0", plane.Normal.X, plane.Normal.Y, plane.Normal.Z, plane.D);
@@ -925,7 +929,7 @@ public class LightMapper
             SoftnessMode.HighFourPoint or SoftnessMode.HighFivePoint or SoftnessMode.HighNinePoint => 4f,
             SoftnessMode.MediumFourPoint or SoftnessMode.MediumFivePoint or SoftnessMode.MediumNinePoint => 8f,
             SoftnessMode.LowFourPoint => 16f,
-            _ => 1f,
+            _ => 1f
         };
 
         var cw = centerWeight;
@@ -946,7 +950,7 @@ public class LightMapper
                 [cw, w * 0.125f, w * 0.125f, w * 0.125f, w * 0.125f, w * 0.125f, w * 0.125f, w * 0.125f, w * 0.125f]),
             _ => (
                 [Vector3.Zero],
-                [1f]),
+                [1f])
         };
     }
 
@@ -992,7 +996,7 @@ public class LightMapper
                 }
 
                 var u = polyCenter - pos;
-                var w = pos - (plane.Normal * -plane.D);
+                var w = pos - plane.Normal * -plane.D;
 
                 var d = Vector3.Dot(plane.Normal, u);
                 var n = -Vector3.Dot(plane.Normal, w);
@@ -1009,7 +1013,7 @@ public class LightMapper
                 var hitResult = _sceneNoObj.Trace(new Ray
                 {
                     Origin = origin,
-                    Direction = Vector3.Normalize(direction),
+                    Direction = Vector3.Normalize(direction)
                 });
 
                 if (hitResult)
@@ -1067,7 +1071,7 @@ public class LightMapper
                 var hitResult = _sceneNoObj.Trace(new Ray
                 {
                     Origin = polyCenter,
-                    Direction = Vector3.Normalize(pos - polyCenter),
+                    Direction = Vector3.Normalize(pos - polyCenter)
                 });
 
                 if (hitResult)
@@ -1089,7 +1093,7 @@ public class LightMapper
         var ray = new Ray
         {
             Origin = origin,
-            Direction = Vector3.Normalize(direction),
+            Direction = Vector3.Normalize(direction)
         };
 
         // Epsilon is used here to avoid occlusion when origin lies exactly on a poly
@@ -1102,7 +1106,7 @@ public class LightMapper
         var hitResult = _scene.Trace(new Ray
         {
             Origin = origin,
-            Direction = Vector3.Normalize(direction),
+            Direction = Vector3.Normalize(direction)
         });
 
         // If origin is very close to a wall, the initial trace to the sun sometimes misses the wall. Now that we have
@@ -1144,7 +1148,7 @@ public class LightMapper
                 value.Add(new WorldRep.LightTable.AnimCellMap
                 {
                     CellIndex = i,
-                    LightIndex = j,
+                    LightIndex = j
                 });
             }
         }
@@ -1154,7 +1158,7 @@ public class LightMapper
             // We need to update the object property so it knows its mapping range
             // TODO: Handle nulls
             var light = _lights.Find(l => l.Anim && l.LightTableIndex == lightIdx);
-            var prop = animLightChunk.properties.Find(p => p.objectId == light.ObjId);
+            var prop = animLightChunk.Properties.Find(p => p.ObjectId == light.ObjId);
             prop.LightTableLightIndex = lightIdx;
             prop.LightTableMapIndex = (ushort)worldRep.LightingTable.AnimMapCount;
             prop.CellsReached = (ushort)animCellMaps.Count;

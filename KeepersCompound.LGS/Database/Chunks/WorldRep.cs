@@ -34,7 +34,7 @@ public class WorldRep : IChunk
             {
                 1 => LightmapScale,
                 -1 => 1.0f / LightmapScale,
-                _ => 1.0f,
+                _ => 1.0f
             };
         }
 
@@ -539,28 +539,28 @@ public class WorldRep : IChunk
     {
         public struct Node
         {
-            int parentIndex; // TODO: Split the flags out of this
-            int cellId;
-            int planeId;
-            uint insideIndex;
-            uint outsideIndex;
+            private int _parentIndex; // TODO: Split the flags out of this
+            private int _cellId;
+            private int _planeId;
+            private uint _insideIndex;
+            private uint _outsideIndex;
 
             public Node(BinaryReader reader)
             {
-                parentIndex = reader.ReadInt32();
-                cellId = reader.ReadInt32();
-                planeId = reader.ReadInt32();
-                insideIndex = reader.ReadUInt32();
-                outsideIndex = reader.ReadUInt32();
+                _parentIndex = reader.ReadInt32();
+                _cellId = reader.ReadInt32();
+                _planeId = reader.ReadInt32();
+                _insideIndex = reader.ReadUInt32();
+                _outsideIndex = reader.ReadUInt32();
             }
 
             public readonly void Write(BinaryWriter writer)
             {
-                writer.Write(parentIndex);
-                writer.Write(cellId);
-                writer.Write(planeId);
-                writer.Write(insideIndex);
-                writer.Write(outsideIndex);
+                writer.Write(_parentIndex);
+                writer.Write(_cellId);
+                writer.Write(_planeId);
+                writer.Write(_insideIndex);
+                writer.Write(_outsideIndex);
             }
         }
 
@@ -745,8 +745,8 @@ public class WorldRep : IChunk
 
     public void ReadData(BinaryReader reader, DbFile.TableOfContents.Entry entry)
     {
-        DataHeader = new(reader);
-        var bpp = (DataHeader.LightmapFormat == 0) ? 2 : 4;
+        DataHeader = new WrHeader(reader);
+        var bpp = DataHeader.LightmapFormat == 0 ? 2 : 4;
 
         Cells = new Cell[DataHeader.CellCount];
         for (var i = 0; i < DataHeader.CellCount; i++)

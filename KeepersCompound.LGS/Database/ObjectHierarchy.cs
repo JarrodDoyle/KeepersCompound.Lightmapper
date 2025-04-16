@@ -6,20 +6,20 @@ public class ObjectHierarchy
 {
     private class DarkObject
     {
-        public int objectId;
-        public int parentId;
-        public Dictionary<string, Property> properties;
+        public int ObjectId;
+        public int ParentId;
+        public Dictionary<string, Property> Properties;
 
         public DarkObject(int id)
         {
-            objectId = id;
-            parentId = 0;
-            properties = new Dictionary<string, Property>();
+            ObjectId = id;
+            ParentId = 0;
+            Properties = new Dictionary<string, Property>();
         }
 
         public T? GetProperty<T>(string propName) where T : Property
         {
-            if (properties.TryGetValue(propName, out var prop))
+            if (Properties.TryGetValue(propName, out var prop))
             {
                 return (T)prop;
             }
@@ -53,13 +53,13 @@ public class ObjectHierarchy
         // Add parentages
         var metaPropLinks = GetMergedChunk<LinkChunk>("L$MetaProp");
         var metaPropLinkData = GetMergedChunk<LinkDataMetaProp>("LD$MetaProp");
-        var length = metaPropLinks.links.Count;
+        var length = metaPropLinks.Links.Count;
         for (var i = 0; i < length; i++)
         {
-            var link = metaPropLinks.links[i];
-            var linkData = metaPropLinkData.linkData[i];
-            var childId = link.source;
-            var parentId = link.destination;
+            var link = metaPropLinks.Links[i];
+            var linkData = metaPropLinkData.LinkDatas[i];
+            var childId = link.Source;
+            var parentId = link.Destination;
             if (!_objects.ContainsKey(childId))
             {
                 _objects.Add(childId, new DarkObject(childId));
@@ -70,25 +70,25 @@ public class ObjectHierarchy
                 _objects.Add(parentId, new DarkObject(parentId));
             }
 
-            if (linkData.priority == 0)
+            if (linkData.Priority == 0)
             {
-                _objects[childId].parentId = parentId;
+                _objects[childId].ParentId = parentId;
             }
         }
 
         void AddProp<T>(string name) where T : Property, new()
         {
             var chunk = GetMergedChunk<PropertyChunk<T>>(name);
-            foreach (var prop in chunk.properties)
+            foreach (var prop in chunk.Properties)
             {
-                var id = prop.objectId;
+                var id = prop.ObjectId;
                 if (!_objects.TryGetValue(id, out var value))
                 {
                     value = new DarkObject(id);
                     _objects.Add(id, value);
                 }
 
-                value.properties.TryAdd(name, prop);
+                value.Properties.TryAdd(name, prop);
             }
         }
 
@@ -132,7 +132,7 @@ public class ObjectHierarchy
                 return prop;
             }
 
-            parentId = obj.parentId;
+            parentId = obj.ParentId;
         }
 
         return null;

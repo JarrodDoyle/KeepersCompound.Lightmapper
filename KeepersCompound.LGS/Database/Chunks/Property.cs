@@ -4,41 +4,41 @@ namespace KeepersCompound.LGS.Database.Chunks;
 
 public class Property
 {
-    public int objectId;
-    public int length;
+    public int ObjectId;
+    public int Length;
 
     public virtual void Read(BinaryReader reader)
     {
-        objectId = reader.ReadInt32();
-        length = (int)reader.ReadUInt32();
+        ObjectId = reader.ReadInt32();
+        Length = (int)reader.ReadUInt32();
     }
 
     public virtual void Write(BinaryWriter writer)
     {
-        writer.Write(objectId);
-        writer.Write((uint)length);
+        writer.Write(ObjectId);
+        writer.Write((uint)Length);
     }
 }
 
 public class PropertyChunk<T> : IChunk, IMergable where T : Property, new()
 {
     public ChunkHeader Header { get; set; }
-    public List<T> properties;
+    public List<T> Properties;
 
     public void ReadData(BinaryReader reader, DbFile.TableOfContents.Entry entry)
     {
-        properties = new List<T>();
+        Properties = new List<T>();
         while (reader.BaseStream.Position < entry.Offset + entry.Size + 24)
         {
             var prop = new T();
             prop.Read(reader);
-            properties.Add(prop);
+            Properties.Add(prop);
         }
     }
 
     public void WriteData(BinaryWriter writer)
     {
-        foreach (var prop in properties)
+        foreach (var prop in Properties)
         {
             prop.Write(writer);
         }
@@ -46,155 +46,155 @@ public class PropertyChunk<T> : IChunk, IMergable where T : Property, new()
 
     public void Merge(IMergable other)
     {
-        properties.AddRange(((PropertyChunk<T>)other).properties);
+        Properties.AddRange(((PropertyChunk<T>)other).Properties);
     }
 }
 
 public class PropGeneric : Property
 {
-    public byte[] data;
+    public byte[] Data;
 
     public override void Read(BinaryReader reader)
     {
         base.Read(reader);
-        data = reader.ReadBytes(length);
+        Data = reader.ReadBytes(Length);
     }
 
     public override void Write(BinaryWriter writer)
     {
         base.Write(writer);
-        writer.Write(data);
+        writer.Write(Data);
     }
 }
 
 public class PropBool : Property
 {
-    public bool value;
+    public bool Value;
 
     public override void Read(BinaryReader reader)
     {
         base.Read(reader);
-        value = reader.ReadInt32() != 0;
+        Value = reader.ReadInt32() != 0;
     }
 
     public override void Write(BinaryWriter writer)
     {
         base.Write(writer);
-        writer.Write(value ? 1 : 0);
+        writer.Write(Value ? 1 : 0);
     }
 }
 
 public class PropInt : Property
 {
-    public int value;
+    public int Value;
 
     public override void Read(BinaryReader reader)
     {
         base.Read(reader);
-        value = reader.ReadInt32();
+        Value = reader.ReadInt32();
     }
 
     public override void Write(BinaryWriter writer)
     {
         base.Write(writer);
-        writer.Write(value);
+        writer.Write(Value);
     }
 }
 
 public class PropLabel : Property
 {
-    public string value;
+    public string Value;
 
     public override void Read(BinaryReader reader)
     {
         base.Read(reader);
-        value = reader.ReadNullString(length);
+        Value = reader.ReadNullString(Length);
     }
 
     public override void Write(BinaryWriter writer)
     {
         base.Write(writer);
-        writer.WriteNullString(value, length);
+        writer.WriteNullString(Value, Length);
     }
 }
 
 public class PropString : Property
 {
-    public int stringLength;
-    public string value;
+    public int StringLength;
+    public string Value;
 
     public override void Read(BinaryReader reader)
     {
         base.Read(reader);
-        stringLength = reader.ReadInt32();
-        value = reader.ReadNullString(stringLength);
+        StringLength = reader.ReadInt32();
+        Value = reader.ReadNullString(StringLength);
     }
 
     public override void Write(BinaryWriter writer)
     {
         base.Write(writer);
-        writer.Write(stringLength);
-        writer.WriteNullString(value, stringLength);
+        writer.Write(StringLength);
+        writer.WriteNullString(Value, StringLength);
     }
 }
 
 public class PropFloat : Property
 {
-    public float value;
+    public float Value;
 
     public override void Read(BinaryReader reader)
     {
         base.Read(reader);
-        value = reader.ReadSingle();
+        Value = reader.ReadSingle();
     }
 
     public override void Write(BinaryWriter writer)
     {
         base.Write(writer);
-        writer.Write(value);
+        writer.Write(Value);
     }
 }
 
 public class PropVector : Property
 {
-    public Vector3 value;
+    public Vector3 Value;
 
     public override void Read(BinaryReader reader)
     {
         base.Read(reader);
-        value = reader.ReadVec3();
+        Value = reader.ReadVec3();
     }
 
     public override void Write(BinaryWriter writer)
     {
         base.Write(writer);
-        writer.WriteVec3(value);
+        writer.WriteVec3(Value);
     }
+}
+
+public enum RenderMode
+{
+    Normal,
+    NotRendered,
+    Unlit,
+    EditorOnly,
+    CoronaOnly
 }
 
 public class PropRenderType : Property
 {
-    public enum Mode
-    {
-        Normal,
-        NotRendered,
-        Unlit,
-        EditorOnly,
-        CoronaOnly,
-    }
-
-    public Mode mode;
+    public RenderMode RenderMode;
 
     public override void Read(BinaryReader reader)
     {
         base.Read(reader);
-        mode = (Mode)reader.ReadUInt32();
+        RenderMode = (RenderMode)reader.ReadUInt32();
     }
 
     public override void Write(BinaryWriter writer)
     {
         base.Write(writer);
-        writer.Write((uint)mode);
+        writer.Write((uint)RenderMode);
     }
 }
 
@@ -205,21 +205,21 @@ public class PropSlayResult : Property
         Normal,
         NoEffect,
         Terminate,
-        Destroy,
+        Destroy
     }
 
-    public Effect effect;
+    public Effect SlayEffect;
 
     public override void Read(BinaryReader reader)
     {
         base.Read(reader);
-        effect = (Effect)reader.ReadUInt32();
+        SlayEffect = (Effect)reader.ReadUInt32();
     }
 
     public override void Write(BinaryWriter writer)
     {
         base.Write(writer);
-        writer.Write((uint)effect);
+        writer.Write((uint)SlayEffect);
     }
 }
 
@@ -229,21 +229,21 @@ public class PropInventoryType : Property
     {
         Junk,
         Item,
-        Weapon,
+        Weapon
     }
 
-    public Slot type;
+    public Slot Type;
 
     public override void Read(BinaryReader reader)
     {
         base.Read(reader);
-        type = (Slot)reader.ReadUInt32();
+        Type = (Slot)reader.ReadUInt32();
     }
 
     public override void Write(BinaryWriter writer)
     {
         base.Write(writer);
-        writer.Write((uint)type);
+        writer.Write((uint)Type);
     }
 }
 
@@ -272,12 +272,36 @@ public class PropCollisionType : Property
     {
         base.Write(writer);
         var flags = 0u;
-        if (Bounce) flags += 1;
-        if (DestroyOnImpact) flags += 2;
-        if (SlayOnImpact) flags += 4;
-        if (NoCollisionSound) flags += 8;
-        if (NoResult) flags += 16;
-        if (FullCollisionSound) flags += 32;
+        if (Bounce)
+        {
+            flags += 1;
+        }
+
+        if (DestroyOnImpact)
+        {
+            flags += 2;
+        }
+
+        if (SlayOnImpact)
+        {
+            flags += 4;
+        }
+
+        if (NoCollisionSound)
+        {
+            flags += 8;
+        }
+
+        if (NoResult)
+        {
+            flags += 16;
+        }
+
+        if (FullCollisionSound)
+        {
+            flags += 32;
+        }
+
         writer.Write(flags);
     }
 }
@@ -348,7 +372,7 @@ public class PropAnimLight : Property
         SmoothlyBrighten,
         SmoothlyDim,
         RandomButCoherent,
-        FlickerMinMax,
+        FlickerMinMax
     }
 
     // Standard light props

@@ -2,80 +2,80 @@ using System.Numerics;
 
 namespace KeepersCompound.LGS.Database.Chunks;
 
+public enum SunlightMode
+{
+    SingleUnshadowed,
+    QuadObjcastShadows,
+    QuadUnshadowed,
+    SingleObjcastShadows
+}
+
 public class RendParams : IChunk
 {
-    public enum SunlightMode
-    {
-        SingleUnshadowed,
-        QuadObjcastShadows,
-        QuadUnshadowed,
-        SingleObjcastShadows,
-    }
-
     public ChunkHeader Header { get; set; }
 
-    public string palette;
-    public Vector3 ambientLight;
-    public bool useSunlight;
-    public SunlightMode sunlightMode;
-    public Vector3 sunlightDirection;
-    public float sunlightHue;
-    public float sunlightSaturation;
-    public float sunlightBrightness;
-    public float viewDistance;
-    public Vector3[] ambientLightZones;
-    public float globalAiVisBias;
-    public float[] ambientZoneAiVisBiases;
+    public string Palette;
+    public Vector3 AmbientLight;
+    public bool UseSunlight;
+    public SunlightMode SunlightMode;
+    public Vector3 SunlightDirection;
+    public float SunlightHue;
+    public float SunlightSaturation;
+    public float SunlightBrightness;
+    public float ViewDistance;
+    public Vector3[] AmbientLightZones;
+    public float GlobalAiVisBias;
+    public float[] AmbientZoneAiVisBiases;
 
     public void ReadData(BinaryReader reader, DbFile.TableOfContents.Entry entry)
     {
-        palette = reader.ReadNullString(16);
-        ambientLight = reader.ReadVec3();
-        useSunlight = reader.ReadBoolean();
+        Palette = reader.ReadNullString(16);
+        AmbientLight = reader.ReadVec3();
+        UseSunlight = reader.ReadBoolean();
         reader.ReadBytes(3);
-        sunlightMode = (SunlightMode)reader.ReadUInt32();
-        sunlightDirection = reader.ReadVec3();
-        sunlightHue = reader.ReadSingle();
-        sunlightSaturation = reader.ReadSingle();
-        sunlightBrightness = reader.ReadSingle();
+        SunlightMode = (SunlightMode)reader.ReadUInt32();
+        SunlightDirection = reader.ReadVec3();
+        SunlightHue = reader.ReadSingle();
+        SunlightSaturation = reader.ReadSingle();
+        SunlightBrightness = reader.ReadSingle();
         reader.ReadBytes(24);
-        viewDistance = reader.ReadSingle();
+        ViewDistance = reader.ReadSingle();
         reader.ReadBytes(12);
-        ambientLightZones = new Vector3[8];
-        for (var i = 0; i < ambientLightZones.Length; i++)
+        AmbientLightZones = new Vector3[8];
+        for (var i = 0; i < AmbientLightZones.Length; i++)
         {
-            ambientLightZones[i] = reader.ReadVec3();
+            AmbientLightZones[i] = reader.ReadVec3();
         }
 
-        globalAiVisBias = reader.ReadSingle();
-        ambientZoneAiVisBiases = new float[8];
-        for (var i = 0; i < ambientZoneAiVisBiases.Length; i++)
+        GlobalAiVisBias = reader.ReadSingle();
+        AmbientZoneAiVisBiases = new float[8];
+        for (var i = 0; i < AmbientZoneAiVisBiases.Length; i++)
         {
-            ambientZoneAiVisBiases[i] = reader.ReadSingle();
+            AmbientZoneAiVisBiases[i] = reader.ReadSingle();
         }
     }
 
     public void WriteData(BinaryWriter writer)
     {
-        writer.WriteNullString(palette, 16);
-        writer.WriteVec3(ambientLight);
-        writer.Write(useSunlight);
+        writer.WriteNullString(Palette, 16);
+        writer.WriteVec3(AmbientLight);
+        writer.Write(UseSunlight);
         writer.Write(new byte[3]);
-        writer.Write((uint)sunlightMode);
-        writer.WriteVec3(sunlightDirection);
-        writer.Write(sunlightHue);
-        writer.Write(sunlightSaturation);
-        writer.Write(sunlightBrightness);
+        writer.Write((uint)SunlightMode);
+        writer.WriteVec3(SunlightDirection);
+        writer.Write(SunlightHue);
+        writer.Write(SunlightSaturation);
+        writer.Write(SunlightBrightness);
         writer.Write(new byte[24]);
-        writer.Write(viewDistance);
+        writer.Write(ViewDistance);
         writer.Write(new byte[12]);
-        foreach (var lightZone in ambientLightZones)
+        foreach (var lightZone in AmbientLightZones)
         {
             writer.WriteVec3(lightZone);
         }
 
-        writer.Write(globalAiVisBias);
-        foreach (var visBias in ambientZoneAiVisBiases)
+        writer.Write(GlobalAiVisBias);
+        foreach (var visBias in AmbientZoneAiVisBiases)
         {
             writer.Write(visBias);
         }

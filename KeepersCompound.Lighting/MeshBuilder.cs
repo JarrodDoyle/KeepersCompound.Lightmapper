@@ -12,7 +12,7 @@ public enum SurfaceType
     Solid,
     Sky,
     Object,
-    Air,
+    Air
 }
 
 public class Mesh(int triangleCount, List<Vector3> vertices, List<int> indices, List<SurfaceType> triangleSurfaceMap)
@@ -64,12 +64,12 @@ public class MeshBuilder
         var polyVertices = new List<Vector3>();
         foreach (var brush in brushList.Brushes)
         {
-            if (brush.media != BrList.Brush.Media.Object)
+            if (brush.Media != Media.Object)
             {
                 continue;
             }
 
-            var id = (int)brush.brushInfo;
+            var id = (int)brush.BrushInfo;
             var modelNameProp = hierarchy.GetProperty<PropLabel>(id, "P$ModelName");
             var scaleProp = hierarchy.GetProperty<PropVector>(id, "P$Scale");
             var renderTypeProp = hierarchy.GetProperty<PropRenderType>(id, "P$RenderTyp");
@@ -78,18 +78,18 @@ public class MeshBuilder
             var staticShadowProp = hierarchy.GetProperty<PropBool>(id, "P$StatShad");
 
             var joints = jointPosProp?.Positions ?? [0, 0, 0, 0, 0, 0];
-            var castsShadows = (immobileProp?.value ?? false) || (staticShadowProp?.value ?? false);
-            var renderMode = renderTypeProp?.mode ?? PropRenderType.Mode.Normal;
+            var castsShadows = (immobileProp?.Value ?? false) || (staticShadowProp?.Value ?? false);
+            var renderMode = renderTypeProp?.RenderMode ?? RenderMode.Normal;
 
             // TODO: Check which rendermodes cast shadows :)
-            if (modelNameProp == null || !castsShadows || renderMode == PropRenderType.Mode.CoronaOnly)
+            if (modelNameProp == null || !castsShadows || renderMode == RenderMode.CoronaOnly)
             {
                 continue;
             }
 
             // Let's try and place an object :)
             // TODO: Handle failing to find model more gracefully
-            var modelName = modelNameProp.value.ToLower() + ".bin";
+            var modelName = modelNameProp.Value.ToLower() + ".bin";
             var modelPath = campaignResources.GetResourcePath(ResourceType.Object, modelName);
             if (modelPath == null)
             {
@@ -101,11 +101,11 @@ public class MeshBuilder
             model.ApplyJoints(joints);
 
             // Calculate base model transform
-            var transform = Matrix4x4.CreateScale(scaleProp?.value ?? Vector3.One);
-            transform *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.angle.X));
-            transform *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
-            transform *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
-            transform *= Matrix4x4.CreateTranslation(brush.position - model.Header.Center);
+            var transform = Matrix4x4.CreateScale(scaleProp?.Value ?? Vector3.One);
+            transform *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.Angle.X));
+            transform *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.Angle.Y));
+            transform *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.Angle.Z));
+            transform *= Matrix4x4.CreateTranslation(brush.Position - model.Header.Center);
 
             // for each polygon slam its vertices and indices :)
             foreach (var poly in model.Polygons)
