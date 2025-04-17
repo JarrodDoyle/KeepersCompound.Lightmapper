@@ -25,7 +25,8 @@ public class DbFile
             writer.Write(TocOffset);
             Version.Write(writer);
             writer.Write(new byte[256]);
-            writer.Write(Array.ConvertAll(Deadbeef.Split('-'), s => byte.Parse(s, System.Globalization.NumberStyles.HexNumber)));
+            writer.Write(Array.ConvertAll(Deadbeef.Split('-'),
+                s => byte.Parse(s, System.Globalization.NumberStyles.HexNumber)));
         }
     }
 
@@ -86,7 +87,7 @@ public class DbFile
     public DbFile(string filename)
     {
         Log.Information("Loading DbFile: {Path}", filename);
-        
+
         if (!File.Exists(filename))
         {
             Log.Error("Failed to load DbFile. File does not exist.");
@@ -130,6 +131,7 @@ public class DbFile
             item.Size = (uint)size;
             Toc.Items[i] = item;
         }
+
         var tocOffset = (uint)stream.Position;
         Toc.Write(writer);
 
@@ -144,6 +146,7 @@ public class DbFile
             chunk = (T)rawChunk;
             return true;
         }
+
         chunk = default;
         return false;
     }

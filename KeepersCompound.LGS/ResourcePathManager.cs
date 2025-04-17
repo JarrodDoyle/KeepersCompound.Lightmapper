@@ -8,7 +8,7 @@ namespace KeepersCompound.LGS;
 // Campaign resources should be lazy loaded (only get the paths when we first set it as campaign)
 // Campaign resources should extend off of the base game resources and just overwrite any resource paths it needs to
 
-enum ConfigFile
+internal enum ConfigFile
 {
     Cam,
     CamExt,
@@ -16,7 +16,7 @@ enum ConfigFile
     Game,
     Install,
     User,
-    ConfigFileCount,
+    ConfigFileCount
 }
 
 public enum ResourceType
@@ -24,15 +24,15 @@ public enum ResourceType
     Mission,
     Object,
     ObjectTexture,
-    Texture,
+    Texture
 }
 
 public class ResourcePathManager
 {
     public record CampaignResources
     {
-        public bool initialised = false;
-        public string name;
+        public bool Initialised = false;
+        public string Name;
         private readonly Dictionary<string, string> _missionPathMap = [];
         private readonly Dictionary<string, string> _texturePathMap = [];
         private readonly Dictionary<string, string> _objectPathMap = [];
@@ -46,7 +46,7 @@ public class ResourcePathManager
                 ResourceType.Object => [.. _objectPathMap.Keys],
                 ResourceType.ObjectTexture => [.. _objectTexturePathMap.Keys],
                 ResourceType.Texture => [.. _texturePathMap.Keys],
-                _ => throw new ArgumentOutOfRangeException(nameof(type)),
+                _ => throw new ArgumentOutOfRangeException(nameof(type))
             };
             keys.Sort();
             return keys;
@@ -60,7 +60,7 @@ public class ResourcePathManager
                 ResourceType.Object => _objectPathMap,
                 ResourceType.ObjectTexture => _objectTexturePathMap,
                 ResourceType.Texture => _texturePathMap,
-                _ => throw new ArgumentOutOfRangeException(nameof(type)),
+                _ => throw new ArgumentOutOfRangeException(nameof(type))
             };
             return map.TryGetValue(name.ToLower(), out var resourcePath) ? resourcePath : null;
         }
@@ -81,23 +81,26 @@ public class ResourcePathManager
             var texPaths = GetTexturePaths(resPath);
             var objPaths = GetObjectPaths(resPath);
             var objTexPaths = GetObjectTexturePaths(resPath);
-            Log.Information("Found {TexCount} textures, {ObjCount} objects, {ObjTexCount} object textures for campaign: {CampaignName}",
-                texPaths.Count, objPaths.Count, objTexPaths.Count, name);
+            Log.Information(
+                "Found {TexCount} textures, {ObjCount} objects, {ObjTexCount} object textures for campaign: {CampaignName}",
+                texPaths.Count, objPaths.Count, objTexPaths.Count, Name);
 
             foreach (var (resName, path) in texPaths)
             {
                 _texturePathMap[resName] = path;
             }
+
             foreach (var (resName, path) in objPaths)
             {
                 _objectPathMap[resName] = path;
             }
+
             foreach (var (resName, path) in objTexPaths)
             {
                 _objectTexturePathMap[resName] = path;
             }
-            
-            initialised = true;
+
+            Initialised = true;
         }
 
         public void Initialise(string misPath, string resPath, CampaignResources parent)
@@ -106,10 +109,12 @@ public class ResourcePathManager
             {
                 _texturePathMap[resName] = path;
             }
+
             foreach (var (resName, path) in parent._objectPathMap)
             {
                 _objectPathMap[resName] = path;
             }
+
             foreach (var (resName, path) in parent._objectTexturePathMap)
             {
                 _objectTexturePathMap[resName] = path;
@@ -165,7 +170,7 @@ public class ResourcePathManager
             Log.Error("Failed to find `resname_base` in install config");
             return false;
         }
-        
+
         var zipPaths = new List<string>();
         foreach (var resPath in resPaths.Split('+'))
         {
@@ -175,7 +180,7 @@ public class ResourcePathManager
                 Log.Warning("Install config references non-existent `resname_base`: {Path}", dir);
                 continue;
             }
-            
+
             foreach (var path in Directory.GetFiles(dir))
             {
                 var name = Path.GetFileName(path).ToLower();
@@ -202,10 +207,10 @@ public class ResourcePathManager
             Log.Error("Failed to find `load_path` in install config");
             return false;
         }
-        
+
         omsPath = Path.Join(installPath, ConvertSeparator(omsPath));
         _omResources = new CampaignResources();
-        _omResources.name = "";
+        _omResources.Name = "";
         _omResources.Initialise(omsPath, _extractionPath);
 
         var camModLines = File.ReadAllLines(configPaths[(int)ConfigFile.CamMod]);
@@ -220,7 +225,7 @@ public class ResourcePathManager
         {
             var name = Path.GetFileName(dir);
             var fmResource = new CampaignResources();
-            fmResource.name = name;
+            fmResource.Name = name;
             _fmResources.Add(name, fmResource);
         }
 
@@ -230,7 +235,10 @@ public class ResourcePathManager
 
     public List<string> GetCampaignNames()
     {
-        if (!_initialised) return null;
+        if (!_initialised)
+        {
+            return null;
+        }
 
         var names = new List<string>(_fmResources.Keys);
         names.Sort();
@@ -249,24 +257,25 @@ public class ResourcePathManager
             Log.Error("Failed to find campaign: {CampaignName}", campaignName);
             throw new ArgumentException("No campaign found with given name", nameof(campaignName));
         }
-        
-        if (!campaign.initialised)
+
+        if (!campaign.Initialised)
         {
             var fmPath = Path.Join(_fmsDir, campaignName);
             campaign.Initialise(fmPath, fmPath, _omResources);
         }
+
         return campaign;
     }
 
     private static Dictionary<string, string> GetObjectTexturePaths(string root)
     {
-        string[] validExtensions = { ".dds", ".png", ".tga", ".pcx", ".gif", ".bmp", ".cel", };
+        string[] validExtensions = { ".dds", ".png", ".tga", ".pcx", ".gif", ".bmp", ".cel" };
 
         var dirOptions = new EnumerationOptions { MatchCasing = MatchCasing.CaseInsensitive };
         var texOptions = new EnumerationOptions
         {
             MatchCasing = MatchCasing.CaseInsensitive,
-            RecurseSubdirectories = true,
+            RecurseSubdirectories = true
         };
 
         var pathMap = new Dictionary<string, string>();
@@ -289,13 +298,13 @@ public class ResourcePathManager
 
     private static Dictionary<string, string> GetTexturePaths(string root)
     {
-        string[] validExtensions = { ".dds", ".png", ".tga", ".pcx", ".gif", ".bmp", ".cel", };
+        string[] validExtensions = { ".dds", ".png", ".tga", ".pcx", ".gif", ".bmp", ".cel" };
 
         var famOptions = new EnumerationOptions { MatchCasing = MatchCasing.CaseInsensitive };
         var textureOptions = new EnumerationOptions
         {
             MatchCasing = MatchCasing.CaseInsensitive,
-            RecurseSubdirectories = true,
+            RecurseSubdirectories = true
         };
 
         var pathMap = new Dictionary<string, string>();
@@ -322,7 +331,7 @@ public class ResourcePathManager
         var binOptions = new EnumerationOptions
         {
             MatchCasing = MatchCasing.CaseInsensitive,
-            RecurseSubdirectories = true,
+            RecurseSubdirectories = true
         };
 
         var pathMap = new Dictionary<string, string>();
@@ -348,7 +357,7 @@ public class ResourcePathManager
     {
         var searchOptions = new EnumerationOptions
         {
-            MatchCasing = MatchCasing.CaseInsensitive,
+            MatchCasing = MatchCasing.CaseInsensitive
         };
 
         foreach (var path in Directory.GetFiles(dir, "*.exe", searchOptions))
@@ -376,7 +385,7 @@ public class ResourcePathManager
 
         var searchOptions = new EnumerationOptions
         {
-            MatchCasing = MatchCasing.CaseInsensitive,
+            MatchCasing = MatchCasing.CaseInsensitive
         };
 
         // `cam.cfg`, `cam_ext.cfg`, and `cam_mod.ini` are always in the root of the install.
@@ -399,7 +408,7 @@ public class ResourcePathManager
                     break;
             }
         }
-        
+
         // TODO: Verify we found cam/cam_ext/cam_mod
         var camExtLines = File.ReadAllLines(configPaths[(int)ConfigFile.CamExt]);
         var camLines = File.ReadAllLines(configPaths[(int)ConfigFile.Cam]);
@@ -407,11 +416,11 @@ public class ResourcePathManager
         bool FindCamVar(string varName, out string value, string defaultValue = "")
         {
             return FindConfigVar(camExtLines, varName, out value, defaultValue) ||
-                FindConfigVar(camLines, varName, out value, defaultValue);
+                   FindConfigVar(camLines, varName, out value, defaultValue);
         }
 
         FindCamVar("include_path", out var includePath, "./");
-        
+
         if (!FindCamVar("game", out var gameName))
         {
             Log.Error("`game` not specified in Cam/CamExt");
@@ -476,7 +485,7 @@ public class ResourcePathManager
             Log.Error("Failed to find all required config files in Thief installation directory");
             return false;
         }
-        
+
         return true;
     }
 

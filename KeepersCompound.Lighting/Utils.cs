@@ -17,11 +17,11 @@ public static class Utils
             < 2 => new Vector3(0, 2f - hue, hue - 1f),
             _ => new Vector3(hue - 2f, 0, 3f - hue),
         };
-        
+
         color *= saturation;
         color += Vector3.One * (1.0f - saturation);
         color *= brightness;
-        
+
         return color;
     }
 }
@@ -92,12 +92,12 @@ public static class MathUtils
     {
         return (Vector3.Dot(plane.Normal, point) + plane.D) / plane.Normal.Length();
     }
-    
+
     public static float DistanceFromNormalizedPlane(Plane plane, Vector3 point)
     {
         return Vector3.Dot(plane.Normal, point) + plane.D;
     }
-    
+
     public static bool IsCoplanar(Plane p0, Plane p1)
     {
         var m = p0.D / p1.D;
@@ -139,6 +139,7 @@ public static class MathUtils
             {
                 points2d[i] = MapTo2d(points[i]);
             }
+
             return points2d;
         }
 
@@ -154,6 +155,7 @@ public static class MathUtils
             {
                 points3d[i] = MapTo3d(points[i]);
             }
+
             return points3d;
         }
     }

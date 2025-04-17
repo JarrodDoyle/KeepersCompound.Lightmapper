@@ -63,7 +63,7 @@ public class GenericChunk : IChunk
     }
 }
 
-public interface IMergable
+public interface IMergeable
 {
-    public abstract void Merge(IMergable other);
+    public abstract void Merge(IMergeable other);
 }

@@ -6,21 +6,24 @@ using Serilog;
 
 namespace KeepersCompound.Lighting;
 
-// TODO: Rename to CastSurfaceType?
-public enum SurfaceType
+public enum CastSurfaceType
 {
     Solid,
     Sky,
     Object,
-    Air,
+    Air
 }
 
-public class Mesh(int triangleCount, List<Vector3> vertices, List<int> indices, List<SurfaceType> triangleSurfaceMap)
+public class Mesh(
+    int triangleCount,
+    List<Vector3> vertices,
+    List<int> indices,
+    List<CastSurfaceType> triangleSurfaceMap)
 {
     public int TriangleCount { get; } = triangleCount;
     public Vector3[] Vertices { get; } = [..vertices];
     public int[] Indices { get; } = [..indices];
-    public SurfaceType[] TriangleSurfaceMap { get; } = [..triangleSurfaceMap];
+    public CastSurfaceType[] TriangleSurfaceMap { get; } = [..triangleSurfaceMap];
 }
 
 public class MeshBuilder
@@ -28,7 +31,7 @@ public class MeshBuilder
     private int _triangleCount = 0;
     private readonly List<Vector3> _vertices = [];
     private readonly List<int> _indices = [];
-    private readonly List<SurfaceType> _primSurfaceMap = [];
+    private readonly List<CastSurfaceType> _primSurfaceMap = [];
 
     public void AddWorldRepPolys(WorldRep worldRep)
     {
@@ -48,8 +51,8 @@ public class MeshBuilder
                 {
                     polyVertices.Add(cell.Vertices[cell.Indices[cellIdxOffset + i]]);
                 }
-                
-                var primType = cell.RenderPolys[polyIdx].TextureId == 249 ? SurfaceType.Sky : SurfaceType.Solid;
+
+                var primType = cell.RenderPolys[polyIdx].TextureId == 249 ? CastSurfaceType.Sky : CastSurfaceType.Solid;
                 AddPolygon(polyVertices, primType);
                 cellIdxOffset += poly.VertexCount;
             }
@@ -64,12 +67,12 @@ public class MeshBuilder
         var polyVertices = new List<Vector3>();
         foreach (var brush in brushList.Brushes)
         {
-            if (brush.media != BrList.Brush.Media.Object)
+            if (brush.Media != Media.Object)
             {
                 continue;
             }
 
-            var id = (int)brush.brushInfo;
+            var id = (int)brush.BrushInfo;
             var modelNameProp = hierarchy.GetProperty<PropLabel>(id, "P$ModelName");
             var scaleProp = hierarchy.GetProperty<PropVector>(id, "P$Scale");
             var renderTypeProp = hierarchy.GetProperty<PropRenderType>(id, "P$RenderTyp");
@@ -78,35 +81,35 @@ public class MeshBuilder
             var staticShadowProp = hierarchy.GetProperty<PropBool>(id, "P$StatShad");
 
             var joints = jointPosProp?.Positions ?? [0, 0, 0, 0, 0, 0];
-            var castsShadows = (immobileProp?.value ?? false) || (staticShadowProp?.value ?? false);
-            var renderMode = renderTypeProp?.mode ?? PropRenderType.Mode.Normal;
-            
+            var castsShadows = (immobileProp?.Value ?? false) || (staticShadowProp?.Value ?? false);
+            var renderMode = renderTypeProp?.RenderMode ?? RenderMode.Normal;
+
             // TODO: Check which rendermodes cast shadows :)
-            if (modelNameProp == null || !castsShadows || renderMode == PropRenderType.Mode.CoronaOnly)
+            if (modelNameProp == null || !castsShadows || renderMode == RenderMode.CoronaOnly)
             {
                 continue;
             }
-            
+
             // Let's try and place an object :)
             // TODO: Handle failing to find model more gracefully
-            var modelName = modelNameProp.value.ToLower() + ".bin";
+            var modelName = modelNameProp.Value.ToLower() + ".bin";
             var modelPath = campaignResources.GetResourcePath(ResourceType.Object, modelName);
             if (modelPath == null)
             {
                 Log.Warning("Failed to find model file: {Name}", modelName);
                 continue;
             }
-            
+
             var model = new ModelFile(modelPath);
             model.ApplyJoints(joints);
-            
+
             // Calculate base model transform
-            var transform = Matrix4x4.CreateScale(scaleProp?.value ?? Vector3.One);
-            transform *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.angle.X));
-            transform *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.angle.Y));
-            transform *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.angle.Z));
-            transform *= Matrix4x4.CreateTranslation(brush.position - model.Header.Center);
-            
+            var transform = Matrix4x4.CreateScale(scaleProp?.Value ?? Vector3.One);
+            transform *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.Angle.X));
+            transform *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.Angle.Y));
+            transform *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.Angle.Z));
+            transform *= Matrix4x4.CreateTranslation(brush.Position - model.Header.Center);
+
             // for each polygon slam its vertices and indices :)
             foreach (var poly in model.Polygons)
             {
@@ -118,13 +121,13 @@ public class MeshBuilder
                     vertex = Vector3.Transform(vertex, transform);
                     polyVertices.Add(vertex);
                 }
-                
-                AddPolygon(polyVertices, SurfaceType.Object);
+
+                AddPolygon(polyVertices, CastSurfaceType.Object);
             }
         }
     }
 
-    private void AddPolygon(List<Vector3> vertices, SurfaceType surfaceType)
+    private void AddPolygon(List<Vector3> vertices, CastSurfaceType castSurfaceType)
     {
         var vertexCount = vertices.Count;
         var indexOffset = _vertices.Count;
@@ -137,7 +140,7 @@ public class MeshBuilder
             _indices.Add(indexOffset);
             _indices.Add(indexOffset + i + 1);
             _indices.Add(indexOffset + i);
-            _primSurfaceMap.Add(surfaceType);
+            _primSurfaceMap.Add(castSurfaceType);
             _triangleCount++;
         }
     }

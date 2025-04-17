@@ -5,11 +5,11 @@ namespace KeepersCompound.Lighting;
 
 public static class Timing
 {
-    static readonly Dictionary<string, TimeSpan> _stages = new();
+    private static readonly Dictionary<string, TimeSpan> Stages = new();
 
     public static void Reset()
     {
-        _stages.Clear();
+        Stages.Clear();
     }
 
     public static void TimeStage(string stagename, Action action)
@@ -31,7 +31,7 @@ public static class Timing
 
     public static void LogAll()
     {
-        foreach (var (stagename, time) in _stages)
+        foreach (var (stagename, time) in Stages)
         {
             Log.Information("Timing {StageName}: {Time:g}", stagename, time);
         }
@@ -39,10 +39,11 @@ public static class Timing
 
     private static void AddOrIncrement(string stagename, TimeSpan elapsed)
     {
-        if (_stages.TryGetValue(stagename, out var time))
+        if (Stages.TryGetValue(stagename, out var time))
         {
             elapsed += time;
         }
-        _stages[stagename] = elapsed;
+
+        Stages[stagename] = elapsed;
     }
 }

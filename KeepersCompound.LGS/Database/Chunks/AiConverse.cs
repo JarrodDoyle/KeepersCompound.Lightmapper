@@ -1,6 +1,6 @@
 namespace KeepersCompound.LGS.Database.Chunks;
 
-class AiConverseChunk : IChunk
+public class AiConverseChunk : IChunk
 {
     public ChunkHeader Header { get; set; }
     public uint Count;

@@ -124,7 +124,8 @@ public class ModelFile
             var v2 = reader.ReadVec3();
             var v3 = reader.ReadVec3();
             var v4 = reader.ReadVec3();
-            Transform = new Matrix4x4(v1.X, v1.Y, v1.Z, 0, v2.X, v2.Y, v2.Z, 0, v3.X, v3.Y, v3.Z, 0, v4.X, v4.Y, v4.Z, 1);
+            Transform = new Matrix4x4(v1.X, v1.Y, v1.Z, 0, v2.X, v2.Y, v2.Z, 0, v3.X, v3.Y, v3.Z, 0, v4.X, v4.Y, v4.Z,
+                1);
             Child = reader.ReadInt16();
             Next = reader.ReadInt16();
             VhotIdx = reader.ReadUInt16();
@@ -139,7 +140,7 @@ public class ModelFile
             NodeCount = reader.ReadUInt16();
         }
     }
-    
+
     public struct Polygon
     {
         public ushort Index;
@@ -166,11 +167,13 @@ public class ModelFile
             {
                 VertexIndices[i] = reader.ReadUInt16();
             }
+
             LightIndices = new ushort[VertexCount];
             for (var i = 0; i < VertexCount; i++)
             {
                 LightIndices[i] = reader.ReadUInt16();
             }
+
             UvIndices = new ushort[Type == 0x1B ? VertexCount : 0];
             for (var i = 0; i < UvIndices.Length; i++)
             {
@@ -250,36 +253,42 @@ public class ModelFile
         {
             Vertices[i] = reader.ReadVec3();
         }
+
         stream.Seek(Header.UvOffset, SeekOrigin.Begin);
         Uvs = new Vector2[(Header.VHotOffset - Header.UvOffset) / 8];
         for (var i = 0; i < Uvs.Length; i++)
         {
             Uvs[i] = reader.ReadVec2();
         }
+
         stream.Seek(Header.NormalOffset, SeekOrigin.Begin);
         Normals = new Vector3[(Header.PolygonOffset - Header.NormalOffset) / 12];
         for (var i = 0; i < Normals.Length; i++)
         {
             Normals[i] = reader.ReadVec3();
         }
+
         stream.Seek(Header.PolygonOffset, SeekOrigin.Begin);
         Polygons = new Polygon[Header.PolygonCount];
         for (var i = 0; i < Polygons.Length; i++)
         {
             Polygons[i] = new Polygon(reader, BinHeader.Version);
         }
+
         stream.Seek(Header.MaterialOffset, SeekOrigin.Begin);
         Materials = new Material[Header.MaterialCount];
         for (var i = 0; i < Materials.Length; i++)
         {
             Materials[i] = new Material(reader);
         }
+
         stream.Seek(Header.VHotOffset, SeekOrigin.Begin);
         VHots = new VHot[Header.VHotCount];
         for (var i = 0; i < VHots.Length; i++)
         {
             VHots[i] = new VHot(reader);
         }
+
         stream.Seek(Header.ObjectOffset, SeekOrigin.Begin);
         Objects = new SubObject[Header.ObjectCount];
         for (var i = 0; i < Objects.Length; i++)
@@ -298,6 +307,7 @@ public class ModelFile
         {
             parentIds[i] = -1;
         }
+
         for (var i = 0; i < objCount; i++)
         {
             var subObj = Objects[i];
@@ -308,7 +318,7 @@ public class ModelFile
                 childIdx = Objects[childIdx].Next;
             }
         }
-        
+
         // Calculate base transforms for every subobj (including joint)
         var subObjTransforms = new Matrix4x4[objCount];
         for (var i = 0; i < objCount; i++)
@@ -322,16 +332,16 @@ public class ModelFile
                 var jointRot = Matrix4x4.CreateFromYawPitchRoll(0, ang, 0);
                 objTrans = jointRot * subObj.Transform;
             }
-           
+
             subObjTransforms[i] = objTrans;
         }
-        
+
         // Apply sub object transforms
         for (var i = 0; i < objCount; i++)
         {
             var subObj = Objects[i];
             var transform = subObjTransforms[i];
-        
+
             // Build compound transformation
             var parentId = parentIds[i];
             while (parentId != -1)
@@ -365,6 +375,7 @@ public class ModelFile
                 return true;
             }
         }
+
         vhot = new VHot();
         return false;
     }
