@@ -34,7 +34,7 @@ public class ObjectHierarchy
     {
         _objects = new Dictionary<int, DarkObject>();
 
-        T GetMergedChunk<T>(string name) where T : IMergable
+        T GetMergedChunk<T>(string name) where T : IMergeable
         {
             if (!db.TryGetChunk<T>(name, out var chunk))
             {

@@ -37,7 +37,7 @@ public record LinkId
     }
 }
 
-public class LinkChunk : IChunk, IMergable
+public class LinkChunk : IChunk, IMergeable
 {
     public record Link
     {
@@ -83,7 +83,7 @@ public class LinkChunk : IChunk, IMergable
         }
     }
 
-    public void Merge(IMergable other)
+    public void Merge(IMergeable other)
     {
         // !HACK: We always merge into gamesys so we can pre-trim garbage here
         var count = Links.Count;
@@ -106,7 +106,7 @@ public class LinkChunk : IChunk, IMergable
 }
 
 // TODO: This should be generic like Property
-public class LinkDataMetaProp : IChunk, IMergable
+public class LinkDataMetaProp : IChunk, IMergeable
 {
     public record LinkData
     {
@@ -149,7 +149,7 @@ public class LinkDataMetaProp : IChunk, IMergable
         }
     }
 
-    public void Merge(IMergable other)
+    public void Merge(IMergeable other)
     {
         // !HACK: We always merge into gamesys so we can pre-trim garbage here
         var count = LinkDatas.Count;

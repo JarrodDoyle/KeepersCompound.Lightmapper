@@ -20,7 +20,7 @@ public class Property
     }
 }
 
-public class PropertyChunk<T> : IChunk, IMergable where T : Property, new()
+public class PropertyChunk<T> : IChunk, IMergeable where T : Property, new()
 {
     public ChunkHeader Header { get; set; }
     public List<T> Properties;
@@ -44,7 +44,7 @@ public class PropertyChunk<T> : IChunk, IMergable where T : Property, new()
         }
     }
 
-    public void Merge(IMergable other)
+    public void Merge(IMergeable other)
     {
         Properties.AddRange(((PropertyChunk<T>)other).Properties);
     }
