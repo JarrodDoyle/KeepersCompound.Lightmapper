@@ -1,4 +1,5 @@
 using DotMake.CommandLine;
+using KeepersCompound.LGS;
 using KeepersCompound.Lighting;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -54,7 +55,15 @@ public class LightCommand
         Timing.Reset();
         Timing.TimeStage("Total", () =>
         {
-            var lightMapper = new LightMapper(InstallPath, CampaignName, MissionName);
+            var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
+            var pathManager = new ResourcePathManager(tmpDir.FullName);
+            if (!pathManager.TryInit(InstallPath))
+            {
+                Log.Error("Failed to configure path manager");
+                throw new Exception("Failed to configure path manager");
+            }
+
+            var lightMapper = new LightMapper(pathManager, CampaignName, MissionName);
             lightMapper.Light(FastPvs);
             lightMapper.Save(OutputName);
         });

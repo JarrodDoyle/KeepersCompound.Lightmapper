@@ -46,17 +46,8 @@ public class LightMapper
     private List<Light> _lights;
     private CastSurfaceType[] _triangleTypeMap;
 
-    public LightMapper(
-        string installPath,
-        string campaignName,
-        string missionName)
+    public LightMapper(ResourcePathManager pathManager, string campaignName, string missionName)
     {
-        if (!SetupPathManager(installPath, out var pathManager))
-        {
-            Log.Error("Failed to configure path manager");
-            throw new Exception("Failed to configure path manager");
-        }
-
         _campaign = pathManager.GetCampaign(campaignName);
         _misPath = _campaign.GetResourcePath(ResourceType.Mission, missionName);
         _mission = Timing.TimeStage("Load Mission File", () => new DbFile(_misPath));
@@ -178,14 +169,6 @@ public class LightMapper
         }
 
         return allFound;
-    }
-
-    private static bool SetupPathManager(string installPath, out ResourcePathManager pathManager)
-    {
-        var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
-
-        pathManager = new ResourcePathManager(tmpDir.FullName);
-        return pathManager.TryInit(installPath);
     }
 
     private ObjectHierarchy BuildHierarchy()

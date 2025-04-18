@@ -6,7 +6,9 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using KeepersCompound.LGS;
 using KeepersCompound.Lighting;
+using Serilog;
 
 namespace KCLight.Gui.ViewModels;
 
@@ -33,7 +35,15 @@ public partial class MainWindowViewModel : ViewModelBase
         var outputName = OutputName;
         await Task.Run(() =>
         {
-            var lightMapper = new LightMapper(InstallPath, CampaignName, MissionName);
+            var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
+            var pathManager = new ResourcePathManager(tmpDir.FullName);
+            if (!pathManager.TryInit(InstallPath))
+            {
+                Log.Error("Failed to configure path manager");
+                throw new Exception("Failed to configure path manager");
+            }
+
+            var lightMapper = new LightMapper(pathManager, CampaignName, MissionName);
             lightMapper.Light(FastPvs);
             lightMapper.Save(outputName);
         });
