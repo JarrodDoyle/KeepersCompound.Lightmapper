@@ -26,11 +26,11 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(RunCommand))]
     private string _outputName = "kc_lit";
 
+    [ObservableProperty] private bool _fastPvs;
+
     [ObservableProperty] private bool _validInstallPath;
     [ObservableProperty] private bool _validCampaignName;
     [ObservableProperty] private bool _validMissionName;
-
-    public bool FastPvs { get; set; }
 
     private ResourcePathManager? _pathManager;
 
