@@ -152,6 +152,11 @@ public class ResourcePathManager
 
         Log.Information("Initialising path manager");
 
+        if (!Directory.Exists(installPath))
+        {
+            return false;
+        }
+
         if (!DirContainsThiefExe(installPath))
         {
             return false;
