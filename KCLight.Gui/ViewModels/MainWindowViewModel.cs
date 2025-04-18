@@ -66,37 +66,16 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void ValidateCampaignName()
     {
-        if (!ValidInstallPath || _pathManager == null)
-        {
-            ValidCampaignName = false;
-            return;
-        }
-
-        ValidCampaignName = CampaignName == "" || _pathManager.GetCampaignNames().Contains(CampaignName);
+        ValidCampaignName = ValidInstallPath && CampaignNames.Contains(CampaignName);
         if (ValidCampaignName)
         {
-            MissionNames = _pathManager.GetCampaign(CampaignName).GetResourceNames(ResourceType.Mission);
+            MissionNames = _pathManager?.GetCampaign(CampaignName).GetResourceNames(ResourceType.Mission) ?? [];
         }
     }
 
     private void ValidateMissionName()
     {
-        if (!ValidInstallPath || !ValidCampaignName || _pathManager == null)
-        {
-            ValidMissionName = false;
-            return;
-        }
-
-        try
-        {
-            var campaign = _pathManager.GetCampaign(CampaignName);
-            var missions = campaign.GetResourceNames(ResourceType.Mission);
-            ValidMissionName = missions.Contains(MissionName.ToLower());
-        }
-        catch
-        {
-            ValidMissionName = false;
-        }
+        ValidMissionName = ValidInstallPath && ValidCampaignName && MissionNames.Contains(MissionName.ToLower());
     }
 
     [RelayCommand(CanExecute = nameof(ValidMissionName))]
