@@ -25,9 +25,11 @@
                 <Button Grid.Row="0" Grid.Column="2" Command="{Binding SelectGameDirectoryCommand}">Browse</Button>
             </Grid>
             <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Campaign Name:" />
-            <TextBox Grid.Row="2" Grid.Column="2" IsEnabled="{Binding ValidInstallPath}" Text="{Binding CampaignName}" />
+            <AutoCompleteBox Grid.Row="2" Grid.Column="2" IsEnabled="{Binding ValidInstallPath}"
+                             Text="{Binding CampaignName}" ItemsSource="{Binding CampaignNames}" />
             <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Mission Filename:" />
-            <TextBox Grid.Row="4" Grid.Column="2" IsEnabled="{Binding ValidCampaignName}" Text="{Binding MissionName}" />
+            <AutoCompleteBox Grid.Row="4" Grid.Column="2" IsEnabled="{Binding ValidCampaignName}"
+                             Text="{Binding MissionName}" ItemsSource="{Binding MissionNames}" />
             <TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Text="Output Filename:" />
             <TextBox Grid.Row="6" Grid.Column="2" Text="{Binding OutputName}" />
             <TextBlock Grid.Row="8" Grid.Column="0" VerticalAlignment="Center" Text="Simple Vis:" />
