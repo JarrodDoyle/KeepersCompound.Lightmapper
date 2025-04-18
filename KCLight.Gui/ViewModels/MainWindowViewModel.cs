@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia;
@@ -26,24 +27,76 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(RunCommand))]
     private string _outputName = "kc_lit";
 
-    public bool FastPvs { get; set; }
-    public bool CanRun => Directory.Exists(InstallPath) && CampaignName != "" && MissionName != "" && OutputName != "";
+    [ObservableProperty] private bool _fastPvs;
+    [ObservableProperty] private bool _validInstallPath;
+    [ObservableProperty] private bool _validCampaignName;
+    [ObservableProperty] private bool _validMissionName;
+    [ObservableProperty] private List<string> _campaignNames = [];
+    [ObservableProperty] private List<string> _missionNames = [];
 
-    [RelayCommand(CanExecute = nameof(CanRun))]
+    private ResourcePathManager? _pathManager;
+
+    partial void OnInstallPathChanged(string value)
+    {
+        var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
+        var pathManager = new ResourcePathManager(tmpDir.FullName);
+
+        ValidInstallPath = pathManager.TryInit(InstallPath);
+        if (ValidInstallPath)
+        {
+            Log.Information("Path manager initialised successfully");
+            _pathManager = pathManager;
+            CampaignNames = _pathManager.GetCampaignNames();
+        }
+
+        ValidateCampaignName();
+        UpdateMissionNames();
+        ValidateMissionName();
+    }
+
+    partial void OnCampaignNameChanged(string value)
+    {
+        ValidateCampaignName();
+        UpdateMissionNames();
+        ValidateMissionName();
+    }
+
+    partial void OnMissionNameChanged(string value)
+    {
+        ValidateMissionName();
+    }
+
+    private void ValidateCampaignName()
+    {
+        ValidCampaignName = ValidInstallPath && CampaignNames.Contains(CampaignName);
+    }
+
+    private void ValidateMissionName()
+    {
+        ValidMissionName = ValidInstallPath && ValidCampaignName && MissionNames.Contains(MissionName.ToLower());
+    }
+
+    private void UpdateMissionNames()
+    {
+        if (ValidCampaignName)
+        {
+            MissionNames = _pathManager?.GetCampaign(CampaignName).GetResourceNames(ResourceType.Mission) ?? [];
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(ValidMissionName))]
     private async Task RunAsync()
     {
         var outputName = OutputName;
         await Task.Run(() =>
         {
-            var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
-            var pathManager = new ResourcePathManager(tmpDir.FullName);
-            if (!pathManager.TryInit(InstallPath))
+            if (_pathManager == null)
             {
-                Log.Error("Failed to configure path manager");
-                throw new Exception("Failed to configure path manager");
+                Log.Error("Invalid path manager");
+                throw new Exception("Invalid path manager");
             }
 
-            var lightMapper = new LightMapper(pathManager, CampaignName, MissionName);
+            var lightMapper = new LightMapper(_pathManager, CampaignName, MissionName);
             lightMapper.Light(FastPvs);
             lightMapper.Save(outputName);
         });
