@@ -27,6 +27,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _outputName = "kc_lit";
 
     [ObservableProperty] private bool _validInstallPath;
+    [ObservableProperty] private bool _validCampaignName;
+    [ObservableProperty] private bool _validMissionName;
 
     public bool FastPvs { get; set; }
 
@@ -43,34 +45,54 @@ public partial class MainWindowViewModel : ViewModelBase
             Log.Information("Path manager initialised successfully");
             _pathManager = pathManager;
         }
+
+        ValidateCampaignName();
+        ValidateMissionName();
     }
 
-    public bool CanRun()
+    partial void OnCampaignNameChanged(string value)
+    {
+        ValidateCampaignName();
+        ValidateMissionName();
+    }
+
+    partial void OnMissionNameChanged(string value)
+    {
+        ValidateMissionName();
+    }
+
+    private void ValidateCampaignName()
     {
         if (!ValidInstallPath || _pathManager == null)
         {
-            return false;
+            ValidCampaignName = false;
+            return;
+        }
+
+        ValidCampaignName = CampaignName == "" || _pathManager.GetCampaignNames().Contains(CampaignName);
+    }
+
+    private void ValidateMissionName()
+    {
+        if (!ValidInstallPath || !ValidCampaignName || _pathManager == null)
+        {
+            ValidMissionName = false;
+            return;
         }
 
         try
         {
             var campaign = _pathManager.GetCampaign(CampaignName);
             var missions = campaign.GetResourceNames(ResourceType.Mission);
-            var validMission = missions.Contains(MissionName.ToLower());
-            if (validMission)
-            {
-                Log.Information("Woo valid mission!");
-            }
-
-            return validMission;
+            ValidMissionName = missions.Contains(MissionName.ToLower());
         }
         catch
         {
-            return false;
+            ValidMissionName = false;
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanRun))]
+    [RelayCommand(CanExecute = nameof(ValidMissionName))]
     private async Task RunAsync()
     {
         var outputName = OutputName;

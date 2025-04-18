@@ -27,7 +27,7 @@
             <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Campaign Name:" />
             <TextBox Grid.Row="2" Grid.Column="2" IsEnabled="{Binding ValidInstallPath}" Text="{Binding CampaignName}" />
             <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Mission Filename:" />
-            <TextBox Grid.Row="4" Grid.Column="2" IsEnabled="{Binding ValidInstallPath}" Text="{Binding MissionName}" />
+            <TextBox Grid.Row="4" Grid.Column="2" IsEnabled="{Binding ValidCampaignName}" Text="{Binding MissionName}" />
             <TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Text="Output Filename:" />
             <TextBox Grid.Row="6" Grid.Column="2" Text="{Binding OutputName}" />
             <TextBlock Grid.Row="8" Grid.Column="0" VerticalAlignment="Center" Text="Simple Vis:" />
