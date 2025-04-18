@@ -124,7 +124,7 @@ public class ResourcePathManager
         }
     }
 
-    private bool _initialised = false;
+    public bool Initialised { get; private set; }
     private readonly string _extractionPath;
     private string _fmsDir;
     private CampaignResources _omResources;
@@ -229,13 +229,13 @@ public class ResourcePathManager
             _fmResources.Add(name, fmResource);
         }
 
-        _initialised = true;
+        Initialised = true;
         return true;
     }
 
     public List<string> GetCampaignNames()
     {
-        if (!_initialised)
+        if (!Initialised)
         {
             return null;
         }
