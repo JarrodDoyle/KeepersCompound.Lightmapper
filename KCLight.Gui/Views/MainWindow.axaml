@@ -27,11 +27,11 @@
             <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Campaign Name:" />
             <AutoCompleteBox Grid.Row="2" Grid.Column="2" IsEnabled="{Binding ValidInstallPath}"
                              Text="{Binding CampaignName}" ItemsSource="{Binding CampaignNames}"
-                             FilterMode="Contains" />
+                             FilterMode="Contains" x:Name="CampaignNameBox" MinimumPrefixLength="0" />
             <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Mission Filename:" />
             <AutoCompleteBox Grid.Row="4" Grid.Column="2" IsEnabled="{Binding ValidCampaignName}"
                              Text="{Binding MissionName}" ItemsSource="{Binding MissionNames}"
-                             FilterMode="Contains" />
+                             FilterMode="Contains" x:Name="MissionNameBox" MinimumPrefixLength="0" />
             <TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Text="Output Filename:" />
             <TextBox Grid.Row="6" Grid.Column="2" Text="{Binding OutputName}" />
             <TextBlock Grid.Row="8" Grid.Column="0" VerticalAlignment="Center" Text="Simple Vis:" />
