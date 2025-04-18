@@ -26,8 +26,25 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(RunCommand))]
     private string _outputName = "kc_lit";
 
+    [ObservableProperty] private bool _validInstallPath;
+
     public bool FastPvs { get; set; }
-    public bool CanRun => Directory.Exists(InstallPath) && CampaignName != "" && MissionName != "" && OutputName != "";
+    public bool CanRun => ValidInstallPath && CampaignName != "" && MissionName != "" && OutputName != "";
+
+    private ResourcePathManager? _pathManager;
+
+    partial void OnInstallPathChanged(string value)
+    {
+        var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
+        var pathManager = new ResourcePathManager(tmpDir.FullName);
+
+        ValidInstallPath = pathManager.TryInit(InstallPath);
+        if (ValidInstallPath)
+        {
+            Log.Information("Path manager initialised successfully");
+            _pathManager = pathManager;
+        }
+    }
 
     [RelayCommand(CanExecute = nameof(CanRun))]
     private async Task RunAsync()
@@ -35,15 +52,13 @@ public partial class MainWindowViewModel : ViewModelBase
         var outputName = OutputName;
         await Task.Run(() =>
         {
-            var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
-            var pathManager = new ResourcePathManager(tmpDir.FullName);
-            if (!pathManager.TryInit(InstallPath))
+            if (_pathManager == null)
             {
-                Log.Error("Failed to configure path manager");
-                throw new Exception("Failed to configure path manager");
+                Log.Error("Invalid path manager");
+                throw new Exception("Invalid path manager");
             }
 
-            var lightMapper = new LightMapper(pathManager, CampaignName, MissionName);
+            var lightMapper = new LightMapper(_pathManager, CampaignName, MissionName);
             lightMapper.Light(FastPvs);
             lightMapper.Save(outputName);
         });
