@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia;
@@ -27,10 +28,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _outputName = "kc_lit";
 
     [ObservableProperty] private bool _fastPvs;
-
     [ObservableProperty] private bool _validInstallPath;
     [ObservableProperty] private bool _validCampaignName;
     [ObservableProperty] private bool _validMissionName;
+    [ObservableProperty] private List<string> _campaignNames = [];
+    [ObservableProperty] private List<string> _missionNames = [];
 
     private ResourcePathManager? _pathManager;
 
@@ -44,6 +46,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Log.Information("Path manager initialised successfully");
             _pathManager = pathManager;
+            CampaignNames = _pathManager.GetCampaignNames();
         }
 
         ValidateCampaignName();
@@ -70,6 +73,10 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         ValidCampaignName = CampaignName == "" || _pathManager.GetCampaignNames().Contains(CampaignName);
+        if (ValidCampaignName)
+        {
+            MissionNames = _pathManager.GetCampaign(CampaignName).GetResourceNames(ResourceType.Mission);
+        }
     }
 
     private void ValidateMissionName()
