@@ -29,7 +29,6 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private bool _validInstallPath;
 
     public bool FastPvs { get; set; }
-    public bool CanRun => ValidInstallPath && CampaignName != "" && MissionName != "" && OutputName != "";
 
     private ResourcePathManager? _pathManager;
 
@@ -43,6 +42,31 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Log.Information("Path manager initialised successfully");
             _pathManager = pathManager;
+        }
+    }
+
+    public bool CanRun()
+    {
+        if (!ValidInstallPath || _pathManager == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            var campaign = _pathManager.GetCampaign(CampaignName);
+            var missions = campaign.GetResourceNames(ResourceType.Mission);
+            var validMission = missions.Contains(MissionName.ToLower());
+            if (validMission)
+            {
+                Log.Information("Woo valid mission!");
+            }
+
+            return validMission;
+        }
+        catch
+        {
+            return false;
         }
     }
 
