@@ -44,4 +44,9 @@ public partial class MainWindow : Window
 
         e.Handled = true;
     }
+
+    private void Control_OnSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        LogScrollViewer.ScrollToEnd();
+    }
 }

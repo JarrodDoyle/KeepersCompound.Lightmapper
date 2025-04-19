@@ -24,8 +24,8 @@
                 BorderThickness="1"
                 BorderBrush="{DynamicResource UiTheme05}"
                 CornerRadius="8">
-            <ScrollViewer Margin="4">
-                <ItemsControl Margin="4" ItemsSource="{Binding LogLines}">
+            <ScrollViewer Name="LogScrollViewer" Margin="4">
+                <ItemsControl Margin="4" ItemsSource="{Binding LogLines}" SizeChanged="Control_OnSizeChanged">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding}" FontWeight="Light" TextWrapping="WrapWithOverflow" />
