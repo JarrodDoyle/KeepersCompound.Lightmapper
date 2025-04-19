@@ -19,9 +19,12 @@
     </Design.DataContext>
 
     <Grid Width="1024" Height="600" Margin="8" RowDefinitions="*" ColumnDefinitions="*, 8, Auto">
-        <Border Grid.Row="0" Grid.Column="0" BorderThickness="1" BorderBrush="{DynamicResource UiTheme05}"
+        <Border Grid.Column="0"
+                Background="{DynamicResource UiTheme01}"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource UiTheme05}"
                 CornerRadius="8">
-            <ScrollViewer Margin="8">
+            <ScrollViewer Padding="4" Margin="4">
                 <ItemsControl ItemsSource="{Binding LogLines}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
