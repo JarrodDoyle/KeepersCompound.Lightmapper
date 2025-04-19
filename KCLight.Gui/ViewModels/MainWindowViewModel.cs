@@ -93,15 +93,20 @@ public partial class MainWindowViewModel : ViewModelBase, IObserver<LogEvent>
         var outputName = OutputName;
         await Task.Run(() =>
         {
-            if (_pathManager == null)
+            Timing.Reset();
+            Timing.TimeStage("Total", () =>
             {
-                Log.Error("Invalid path manager");
-                throw new Exception("Invalid path manager");
-            }
+                if (_pathManager == null)
+                {
+                    Log.Error("Invalid path manager");
+                    throw new Exception("Invalid path manager");
+                }
 
-            var lightMapper = new LightMapper(_pathManager, CampaignName, MissionName);
-            lightMapper.Light(FastPvs);
-            lightMapper.Save(outputName);
+                var lightMapper = new LightMapper(_pathManager, CampaignName, MissionName);
+                lightMapper.Light(FastPvs);
+                lightMapper.Save(outputName);
+            });
+            Timing.LogAll();
         });
     }
 
