@@ -13,6 +13,23 @@ KCLight is an external lightmapping tool for [NewDark 1.27](https://www.ttlg.com
 - Additional warnings to mappers for mis-configured lights
 - Produces generally more accurate shadows
 
+## Benchmarks
+
+All tests were performed on a PC with a `Ryzen 5 2600` CPU. I've used a variety of mission sizes and types to help show what sort of missions benefit most from KCLight.
+
+| Mission                           | DromEd   | KCLight  | Speedup |
+|-----------------------------------|----------|----------|---------|
+| Alcazar                           | 00:00:03 | 00:00:02 | ~1.5x   |
+| Cinder Notes                      | 00:05:12 | 00:00:12 | ~26x    |
+| Fierce Competition                | 00:00:08 | 00:00:01 | ~8x     |
+| Godbreaker M2: Impious Pilgrimage | 00:07:21 | 00:00:03 | ~147x   |
+| Into the Odd                      | 00:01:41 | 00:00:05 | ~20x    |
+| Malazars Tower                    | 00:00:46 | 00:00:06 | ~7.5x   |
+| TBP M8: Jaws of Darkness          | 00:08:23 | 00:00:18 | ~28x    |
+| The Scarlet Cascabel M2           | 00:01:30 | 00:00:02 | ~45x    |
+| TPOAIR M2: Collecting it All      | 01:00:58 | 00:00:27 | ~135x   |
+| Winds of Misfortune               | 00:15:23 | 00:00:05 | ~185x   |
+
 ## Usage
 Download the [latest release](https://github.com/JarrodDoyle/KeepersCompound.Lightmapper/releases/latest) and unzip it somewhere. KCLight comes with both a command line interface (`KCLight.exe`) and a GUI (`KCLight.Gui.exe`).
 
