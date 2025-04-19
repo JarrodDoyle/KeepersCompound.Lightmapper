@@ -14,8 +14,12 @@ KCLight is an external lightmapping tool for [NewDark 1.27](https://www.ttlg.com
 - Produces generally more accurate shadows
 
 ## Usage
-Download the [latest release](https://github.com/JarrodDoyle/KeepersCompound.Lightmapper/releases/latest) and unzip it somewhere. Open a console in the unzipped folder and run `KCLight --help` to see the help screen:
+Download the [latest release](https://github.com/JarrodDoyle/KeepersCompound.Lightmapper/releases/latest) and unzip it somewhere. KCLight comes with both a command line interface (`KCLight.exe`) and a GUI (`KCLight.Gui.exe`).
 
+The GUI is simpler to use and is recommended if you don't have much experience using a terminal:
+![GUI.png](docs/GUI.png)
+
+To use the CLI, open a console in the KCLight folder and run `KCLight --help` to see the help screen:
 ```
 Compute lightmaps for a NewDark .MIS/.COW
 
