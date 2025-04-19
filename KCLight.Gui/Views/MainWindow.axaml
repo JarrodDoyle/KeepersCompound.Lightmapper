@@ -18,31 +18,45 @@
         <vm:MainWindowViewModel />
     </Design.DataContext>
 
-    <StackPanel Width="480" Margin="8" Spacing="8">
-        <Grid RowDefinitions="*, 8, *, 8, *, 8, *, 8, *" ColumnDefinitions="Auto, 8, *">
-            <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Game Directory:" />
-            <Grid Grid.Row="0" Grid.Column="2" ColumnDefinitions="*, 8, Auto">
-                <TextBox Grid.Row="0" Grid.Column="0" Text="{Binding InstallPath}" />
-                <Button Grid.Row="0" Grid.Column="2" Command="{Binding SelectGameDirectoryCommand}">Browse</Button>
+    <Grid Width="1024" Height="600" Margin="8" RowDefinitions="*" ColumnDefinitions="*, 8, Auto">
+        <Border Grid.Row="0" Grid.Column="0" BorderThickness="1" BorderBrush="{DynamicResource UiTheme05}"
+                CornerRadius="8">
+            <ScrollViewer Margin="8">
+                <ItemsControl ItemsSource="{Binding LogLines}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" FontWeight="Light" TextWrapping="WrapWithOverflow" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <StackPanel Grid.Row="0" Grid.Column="2" Width="480" Spacing="8">
+            <Grid RowDefinitions="*, 8, *, 8, *, 8, *, 8, *" ColumnDefinitions="Auto, 8, *">
+                <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Game Directory:" />
+                <Grid Grid.Row="0" Grid.Column="2" ColumnDefinitions="*, 8, Auto">
+                    <TextBox Grid.Row="0" Grid.Column="0" Text="{Binding InstallPath}" />
+                    <Button Grid.Row="0" Grid.Column="2" Command="{Binding SelectGameDirectoryCommand}">Browse</Button>
+                </Grid>
+                <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Campaign Name:" />
+                <AutoCompleteBox Grid.Row="2" Grid.Column="2" IsEnabled="{Binding ValidInstallPath}"
+                                 Text="{Binding CampaignName}" ItemsSource="{Binding CampaignNames}"
+                                 FilterMode="Contains" x:Name="CampaignNameBox" MinimumPrefixLength="0" />
+                <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Mission Filename:" />
+                <AutoCompleteBox Grid.Row="4" Grid.Column="2" IsEnabled="{Binding ValidCampaignName}"
+                                 Text="{Binding MissionName}" ItemsSource="{Binding MissionNames}"
+                                 FilterMode="Contains" x:Name="MissionNameBox" MinimumPrefixLength="0" />
+                <TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Text="Output Filename:" />
+                <TextBox Grid.Row="6" Grid.Column="2" Text="{Binding OutputName}" />
+                <TextBlock Grid.Row="8" Grid.Column="0" VerticalAlignment="Center" Text="Simple Vis:" />
+                <CheckBox Grid.Row="8" Grid.Column="2" IsChecked="{Binding FastPvs}" />
             </Grid>
-            <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Campaign Name:" />
-            <AutoCompleteBox Grid.Row="2" Grid.Column="2" IsEnabled="{Binding ValidInstallPath}"
-                             Text="{Binding CampaignName}" ItemsSource="{Binding CampaignNames}"
-                             FilterMode="Contains" x:Name="CampaignNameBox" MinimumPrefixLength="0" />
-            <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Mission Filename:" />
-            <AutoCompleteBox Grid.Row="4" Grid.Column="2" IsEnabled="{Binding ValidCampaignName}"
-                             Text="{Binding MissionName}" ItemsSource="{Binding MissionNames}"
-                             FilterMode="Contains" x:Name="MissionNameBox" MinimumPrefixLength="0" />
-            <TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Text="Output Filename:" />
-            <TextBox Grid.Row="6" Grid.Column="2" Text="{Binding OutputName}" />
-            <TextBlock Grid.Row="8" Grid.Column="0" VerticalAlignment="Center" Text="Simple Vis:" />
-            <CheckBox Grid.Row="8" Grid.Column="2" IsChecked="{Binding FastPvs}" />
-        </Grid>
 
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button Content="Run" Command="{Binding RunCommand}" />
-            <Button Content="Close" Command="{Binding Close}" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="Run" Command="{Binding RunCommand}" />
+                <Button Content="Close" Command="{Binding Close}" />
+            </StackPanel>
         </StackPanel>
-    </StackPanel>
-
+    </Grid>
 </Window>
