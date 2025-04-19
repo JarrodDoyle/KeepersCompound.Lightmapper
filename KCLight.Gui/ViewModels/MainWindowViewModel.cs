@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia;
@@ -10,10 +11,11 @@ using CommunityToolkit.Mvvm.Input;
 using KeepersCompound.LGS;
 using KeepersCompound.Lighting;
 using Serilog;
+using Serilog.Events;
 
 namespace KCLight.Gui.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase, IObserver<LogEvent>
 {
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(RunCommand))]
     private string _installPath = "";
@@ -33,6 +35,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private bool _validMissionName;
     [ObservableProperty] private List<string> _campaignNames = [];
     [ObservableProperty] private List<string> _missionNames = [];
+    [ObservableProperty] private ObservableCollection<string> _logLines = [];
 
     private ResourcePathManager? _pathManager;
 
@@ -90,15 +93,20 @@ public partial class MainWindowViewModel : ViewModelBase
         var outputName = OutputName;
         await Task.Run(() =>
         {
-            if (_pathManager == null)
+            Timing.Reset();
+            Timing.TimeStage("Total", () =>
             {
-                Log.Error("Invalid path manager");
-                throw new Exception("Invalid path manager");
-            }
+                if (_pathManager == null)
+                {
+                    Log.Error("Invalid path manager");
+                    throw new Exception("Invalid path manager");
+                }
 
-            var lightMapper = new LightMapper(_pathManager, CampaignName, MissionName);
-            lightMapper.Light(FastPvs);
-            lightMapper.Save(outputName);
+                var lightMapper = new LightMapper(_pathManager, CampaignName, MissionName);
+                lightMapper.Light(FastPvs);
+                lightMapper.Save(outputName);
+            });
+            Timing.LogAll();
         });
     }
 
@@ -131,5 +139,19 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             desktopApp.Shutdown();
         }
+    }
+
+    public void OnCompleted()
+    {
+    }
+
+    public void OnError(Exception error)
+    {
+    }
+
+    public void OnNext(LogEvent value)
+    {
+        var message = value.RenderMessage();
+        LogLines.Add(message);
     }
 }

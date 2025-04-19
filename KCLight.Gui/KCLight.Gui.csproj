@@ -27,6 +27,7 @@
         </PackageReference>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.1" />
         <PackageReference Include="Romzetron.Avalonia" Version="11.2.1" />
+        <PackageReference Include="Serilog.Sinks.Observable" Version="3.0.0" />
     </ItemGroup>
 
     <ItemGroup>

@@ -9,7 +9,8 @@
         Icon="/Assets/kclight-logo.ico"
         CanResize="False"
         SizeToContent="WidthAndHeight"
-        Title="KCLight.Gui">
+        Title="KCLight.Gui"
+        Loaded="Control_OnLoaded">
 
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
@@ -17,31 +18,51 @@
         <vm:MainWindowViewModel />
     </Design.DataContext>
 
-    <StackPanel Width="480" Margin="8" Spacing="8">
-        <Grid RowDefinitions="*, 8, *, 8, *, 8, *, 8, *" ColumnDefinitions="Auto, 8, *">
-            <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Game Directory:" />
-            <Grid Grid.Row="0" Grid.Column="2" ColumnDefinitions="*, 8, Auto">
-                <TextBox Grid.Row="0" Grid.Column="0" Text="{Binding InstallPath}" />
-                <Button Grid.Row="0" Grid.Column="2" Command="{Binding SelectGameDirectoryCommand}">Browse</Button>
+    <Grid Width="1024" Height="600" Margin="8" RowDefinitions="*" ColumnDefinitions="*, 8, Auto">
+        <Border Grid.Column="0"
+                Background="{DynamicResource UiTheme01}"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource UiTheme05}"
+                CornerRadius="8">
+            <ScrollViewer Name="LogScrollViewer" Margin="4">
+                <ItemsControl Margin="4" ItemsSource="{Binding LogLines}" SizeChanged="Control_OnSizeChanged">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" FontWeight="Light" TextWrapping="WrapWithOverflow" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <Grid Grid.Column="2" Width="300"
+              RowDefinitions="Auto, Auto, 8, Auto, Auto, 8, Auto, Auto, 8, Auto, Auto, 8, Auto, Auto, *, Auto">
+            <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Game Directory:" />
+            <Grid Grid.Row="1" ColumnDefinitions="*, 8, Auto">
+                <TextBox Grid.Column="0" Text="{Binding InstallPath}" />
+                <Button Grid.Column="2" Command="{Binding SelectGameDirectoryCommand}">Browse</Button>
             </Grid>
-            <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Campaign Name:" />
-            <AutoCompleteBox Grid.Row="2" Grid.Column="2" IsEnabled="{Binding ValidInstallPath}"
+
+            <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Campaign Name:" />
+            <AutoCompleteBox Grid.Row="4" IsEnabled="{Binding ValidInstallPath}"
                              Text="{Binding CampaignName}" ItemsSource="{Binding CampaignNames}"
                              FilterMode="Contains" x:Name="CampaignNameBox" MinimumPrefixLength="0" />
-            <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Mission Filename:" />
-            <AutoCompleteBox Grid.Row="4" Grid.Column="2" IsEnabled="{Binding ValidCampaignName}"
+
+            <TextBlock Grid.Row="6" VerticalAlignment="Center" Text="Mission Filename:" />
+            <AutoCompleteBox Grid.Row="7" IsEnabled="{Binding ValidCampaignName}"
                              Text="{Binding MissionName}" ItemsSource="{Binding MissionNames}"
                              FilterMode="Contains" x:Name="MissionNameBox" MinimumPrefixLength="0" />
-            <TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Text="Output Filename:" />
-            <TextBox Grid.Row="6" Grid.Column="2" Text="{Binding OutputName}" />
-            <TextBlock Grid.Row="8" Grid.Column="0" VerticalAlignment="Center" Text="Simple Vis:" />
-            <CheckBox Grid.Row="8" Grid.Column="2" IsChecked="{Binding FastPvs}" />
+
+            <TextBlock Grid.Row="9" VerticalAlignment="Center" Text="Output Filename:" />
+            <TextBox Grid.Row="10" Text="{Binding OutputName}" />
+
+            <TextBlock Grid.Row="12" VerticalAlignment="Center" Text="Simple Vis:" />
+            <CheckBox Grid.Row="13" IsChecked="{Binding FastPvs}" />
+
+            <StackPanel Grid.Row="15" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="Run" Command="{Binding RunCommand}" />
+                <Button Content="Close" Command="{Binding Close}" />
+            </StackPanel>
         </Grid>
-
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button Content="Run" Command="{Binding RunCommand}" />
-            <Button Content="Close" Command="{Binding Close}" />
-        </StackPanel>
-    </StackPanel>
-
+    </Grid>
 </Window>
