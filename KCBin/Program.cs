@@ -1,11 +1,24 @@
 ﻿using DotMake.CommandLine;
+using Serilog;
 
 namespace KCBin;
 
 internal static class Program
 {
+    private static void ConfigureLogger()
+    {
+        const string outputTemplate = "{Timestamp:HH:mm:ss.fff} [{Level}] {Message:lj}{NewLine}{Exception}";
+        var config = new LoggerConfiguration();
+
+        Log.Logger = config
+            .WriteTo.Console(theme: AnsiConsoleTheme.Sixteen, outputTemplate: outputTemplate)
+            .CreateLogger();
+    }
+
     public static void Main(string[] args)
     {
+        ConfigureLogger();
+
         Cli.Run<RootCommand>(args);
     }
 }
