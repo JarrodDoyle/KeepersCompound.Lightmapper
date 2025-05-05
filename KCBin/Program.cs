@@ -87,10 +87,17 @@ public class RootCommand
                 var modelPath = resources.GetResourcePath(ResourceType.Object, modelName);
                 if (modelPath == null)
                 {
+                    Log.Warning("Failed to find model: {Name}", modelName);
                     return;
                 }
 
+                Log.Information("Exporting model: {Name}, {Path}", modelName, modelPath);
                 var modelFile = new ModelFile(modelPath);
+                if (modelFile.Valid == false)
+                {
+                    Log.Warning("Failed to read model file");
+                    return;
+                }
                 var materials = BuildMaterialMap(resources, modelFile);
 
                 var objCount = modelFile.Objects.Length;
@@ -103,7 +110,7 @@ public class RootCommand
                     var mesh = new MeshBuilder<VertexPosition, VertexTexture1>(subObject.Name);
                     var matPolyMap = new Dictionary<int, List<int>>();
 
-                    var polyCount = modelFile.Polygons.Length;
+                    var polyCount = modelFile.Polygons.Count;
                     for (var j = 0; j < polyCount; j++)
                     {
                         var poly = modelFile.Polygons[j];
