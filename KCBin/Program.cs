@@ -70,39 +70,90 @@ public class RootCommand
                     if (modelPath != null)
                     {
                         var modelFile = new ModelFile(modelPath);
-                        modelFile.ApplyJoints([0, 0, 0, 0, 0, 0]);
 
                         var material = new MaterialBuilder()
                             .WithDoubleSide(false)
                             .WithChannelParam(KnownChannel.BaseColor, KnownProperty.RGBA, new Vector4(1, 0, 0, 1));
 
-                        var mesh = new MeshBuilder<VertexPosition>("mesh");
-                        var prim = mesh.UsePrimitive(material);
-
-                        var polyVertices = new List<Vector3>();
-                        foreach (var poly in modelFile.Polygons)
+                        var objCount = modelFile.Objects.Length;
+                        var meshes = new MeshBuilder<VertexPosition>[objCount];
+                        for (var i = 0; i < objCount; i++)
                         {
-                            polyVertices.Clear();
-                            polyVertices.EnsureCapacity(poly.VertexCount);
-                            foreach (var idx in poly.VertexIndices)
+                            var subObject = modelFile.Objects[i];
+
+                            var mesh = new MeshBuilder<VertexPosition>(subObject.Name);
+                            var prim = mesh.UsePrimitive(material);
+                            foreach (var poly in modelFile.Polygons)
                             {
-                                polyVertices.Add(modelFile.Vertices[idx]);
+                                // Discards any polys that don't belong to this object
+                                var v0Index = poly.VertexIndices[0];
+                                if (v0Index < subObject.PointIdx ||
+                                    v0Index >= subObject.PointIdx + subObject.PointCount)
+                                {
+                                    continue;
+                                }
+
+                                for (var j = 1; j < poly.VertexCount - 1; j++)
+                                {
+                                    var v0 = modelFile.Vertices[poly.VertexIndices[0]];
+                                    var v1 = modelFile.Vertices[poly.VertexIndices[j]];
+                                    var v2 = modelFile.Vertices[poly.VertexIndices[j + 1]];
+                                    prim.AddTriangle(
+                                        new VertexPosition(v0.X, v0.Y, v0.Z),
+                                        new VertexPosition(v1.X, v1.Y, v1.Z),
+                                        new VertexPosition(v2.X, v2.Y, v2.Z));
+                                }
                             }
 
-                            for (var i = 1; i < poly.VertexCount - 1; i++)
+                            meshes[i] = mesh;
+                        }
+
+                        // Parentage
+                        var parentIds = new int[objCount];
+                        for (var i = 0; i < objCount; i++)
+                        {
+                            parentIds[i] = -1;
+                        }
+
+                        for (var i = 0; i < objCount; i++)
+                        {
+                            var subObject = modelFile.Objects[i];
+                            var childIdx = subObject.Child;
+                            while (childIdx != -1)
                             {
-                                var v0 = polyVertices[0];
-                                var v1 = polyVertices[i];
-                                var v2 = polyVertices[i + 1];
-                                prim.AddTriangle(
-                                    new VertexPosition(v0.X, v0.Z, -v0.Y),
-                                    new VertexPosition(v1.X, v1.Z, -v1.Y),
-                                    new VertexPosition(v2.X, v2.Z, -v2.Y));
+                                parentIds[childIdx] = i;
+                                childIdx = modelFile.Objects[childIdx].Next;
                             }
                         }
 
+                        // Calculate base transforms for every subobj
+                        var subObjTransforms = new Matrix4x4[objCount];
+                        for (var i = 0; i < objCount; i++)
+                        {
+                            var subObj = modelFile.Objects[i];
+                            subObjTransforms[i] = subObj.Joint == -1
+                                ? Matrix4x4.Identity
+                                : subObj.Transform;
+                        }
+
+                        // Apply sub object transforms
                         var scene = new SceneBuilder();
-                        scene.AddRigidMesh(mesh, AffineTransform.Identity);
+                        for (var i = 0; i < objCount; i++)
+                        {
+                            var transform = subObjTransforms[i];
+
+                            // Build compound transformation
+                            var parentId = parentIds[i];
+                            while (parentId != -1)
+                            {
+                                transform *= subObjTransforms[parentId];
+                                parentId = parentIds[parentId];
+                            }
+
+                            transform *= Matrix4x4.CreateRotationX(float.DegreesToRadians(-90));
+                            scene.AddRigidMesh(meshes[i], AffineTransform.CreateDecomposed(transform));
+                        }
+
                         scene.ToGltf2().SaveGLB("./EXPORTS/test.glb");
                     }
                 }
