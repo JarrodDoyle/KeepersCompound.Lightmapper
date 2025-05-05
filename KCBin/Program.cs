@@ -77,6 +77,7 @@ public class RootCommand
 
                         var objCount = modelFile.Objects.Length;
                         var meshes = new MeshBuilder<VertexPosition>[objCount];
+                        var nodes = new NodeBuilder[objCount];
                         for (var i = 0; i < objCount; i++)
                         {
                             var subObject = modelFile.Objects[i];
@@ -105,55 +106,36 @@ public class RootCommand
                                 }
                             }
 
+                            var transform = subObject.Joint == -1
+                                ? AffineTransform.Identity
+                                : AffineTransform.CreateDecomposed(subObject.Transform);
+                            var node = new NodeBuilder(subObject.Name);
+                            node.SetLocalTransform(transform, false);
+
                             meshes[i] = mesh;
+                            nodes[i] = node;
                         }
-
-                        // Parentage
-                        var parentIds = new int[objCount];
-                        for (var i = 0; i < objCount; i++)
-                        {
-                            parentIds[i] = -1;
-                        }
-
+                        
+                        // Build node hierarchy
                         for (var i = 0; i < objCount; i++)
                         {
                             var subObject = modelFile.Objects[i];
                             var childIdx = subObject.Child;
                             while (childIdx != -1)
                             {
-                                parentIds[childIdx] = i;
+                                nodes[i].AddNode(nodes[childIdx]);
                                 childIdx = modelFile.Objects[childIdx].Next;
                             }
                         }
 
-                        // Calculate base transforms for every subobj
-                        var subObjTransforms = new Matrix4x4[objCount];
-                        for (var i = 0; i < objCount; i++)
-                        {
-                            var subObj = modelFile.Objects[i];
-                            subObjTransforms[i] = subObj.Joint == -1
-                                ? Matrix4x4.Identity
-                                : subObj.Transform;
-                        }
-
-                        // Apply sub object transforms
                         var scene = new SceneBuilder();
                         for (var i = 0; i < objCount; i++)
                         {
-                            var transform = subObjTransforms[i];
-
-                            // Build compound transformation
-                            var parentId = parentIds[i];
-                            while (parentId != -1)
-                            {
-                                transform *= subObjTransforms[parentId];
-                                parentId = parentIds[parentId];
-                            }
-
-                            transform *= Matrix4x4.CreateRotationX(float.DegreesToRadians(-90));
-                            scene.AddRigidMesh(meshes[i], AffineTransform.CreateDecomposed(transform));
+                            scene.AddRigidMesh(meshes[i], nodes[i]);
                         }
-
+                        
+                        // GLTF uses different forward/right/up axes than Dark, but fortunately it's just a simple rotation
+                        scene.ApplyBasisTransform(Matrix4x4.CreateRotationX(float.DegreesToRadians(-90)));
                         scene.ToGltf2().SaveGLB("./EXPORTS/test.glb");
                     }
                 }
