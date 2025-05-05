@@ -74,155 +74,170 @@ public class RootCommand
                 if (pathManager.TryInit(InstallPath) && pathManager.GetCampaignNames().Contains(CampaignName))
                 {
                     var campaign = pathManager.GetCampaign(CampaignName);
-                    var modelPath = campaign.GetResourcePath(ResourceType.Object, ModelName);
-                    if (modelPath != null)
+                    ExportModel(campaign, ModelName);
+                }
+            }
+
+            private void ExportModel(ResourcePathManager.CampaignResources resources, string modelName)
+            {
+                var modelPath = resources.GetResourcePath(ResourceType.Object, modelName);
+                if (modelPath == null)
+                {
+                    return;
+                }
+
+                var modelFile = new ModelFile(modelPath);
+                var materials = BuildMaterialMap(resources, modelFile);
+
+                var objCount = modelFile.Objects.Length;
+                var meshes = new MeshBuilder<VertexPosition, VertexTexture1>[objCount];
+                var nodes = new NodeBuilder[objCount];
+                for (var i = 0; i < objCount; i++)
+                {
+                    var subObject = modelFile.Objects[i];
+
+                    var mesh = new MeshBuilder<VertexPosition, VertexTexture1>(subObject.Name);
+                    var matPolyMap = new Dictionary<int, List<int>>();
+
+                    var polyCount = modelFile.Polygons.Length;
+                    for (var j = 0; j < polyCount; j++)
                     {
-                        var modelFile = new ModelFile(modelPath);
+                        var poly = modelFile.Polygons[j];
 
-                        var defaultMaterial = new MaterialBuilder()
-                            .WithDoubleSide(false)
-                            .WithChannelParam(KnownChannel.BaseColor, KnownProperty.RGBA, new Vector4(1, 1, 1, 1));
-
-                        var materials = new Dictionary<int, MaterialBuilder>();
-                        foreach (var rawMaterial in modelFile.Materials)
+                        // Discards any polys that don't belong to this object
+                        var startIdx = poly.VertexIndices[0];
+                        if (startIdx < subObject.PointIdx ||
+                            startIdx >= subObject.PointIdx + subObject.PointCount)
                         {
-                            var slot = rawMaterial.Slot;
+                            continue;
+                        }
 
-                            if (rawMaterial.Type == 0)
+                        if (matPolyMap.ContainsKey(poly.Data))
+                        {
+                            matPolyMap[poly.Data].Add(j);
+                        }
+                        else
+                        {
+                            matPolyMap[poly.Data] = [j];
+                        }
+                    }
+
+                    foreach (var (materialIdx, polyIdxs) in matPolyMap)
+                    {
+                        var prim = mesh.UsePrimitive(materials[materialIdx]);
+                        foreach (var polyIdx in polyIdxs)
+                        {
+                            var poly = modelFile.Polygons[polyIdx];
+                            for (var j = 1; j < poly.VertexCount - 1; j++)
                             {
-                                var convertedName = ResourcePathManager.ConvertSeparator(rawMaterial.Name);
-                                var resName = Path.GetFileNameWithoutExtension(convertedName);
-                                var path = campaign.GetResourcePath(ResourceType.ObjectTexture, resName);
-                                if (path == null)
+                                if (j < poly.UvIndices.Length)
                                 {
-                                    Log.Warning("Failed to find model texture, adding default material: {Name}, {Slot}",
-                                        resName, slot);
-                                    materials.Add(slot, defaultMaterial);
+                                    prim.AddTriangle(
+                                        new VERTEX(
+                                            modelFile.Vertices[poly.VertexIndices[0]],
+                                            modelFile.Uvs[poly.UvIndices[0]]),
+                                        new VERTEX(
+                                            modelFile.Vertices[poly.VertexIndices[j + 1]],
+                                            modelFile.Uvs[poly.UvIndices[j + 1]]),
+                                        new VERTEX(
+                                            modelFile.Vertices[poly.VertexIndices[j]],
+                                            modelFile.Uvs[poly.UvIndices[j]]));
                                 }
                                 else
                                 {
-                                    var material = new MaterialBuilder()
-                                        .WithDoubleSide(false)
-                                        .WithBaseColor(ImageBuilder.From(new MemoryImage(path), resName));
-                                    Log.Information("Adding texture material: {Name}, {Slot}", resName, slot);
-                                    materials.Add(slot, material);
+                                    prim.AddTriangle(
+                                        new VERTEX(modelFile.Vertices[poly.VertexIndices[0]], Vector2.Zero),
+                                        new VERTEX(modelFile.Vertices[poly.VertexIndices[j + 1]], Vector2.Zero),
+                                        new VERTEX(modelFile.Vertices[poly.VertexIndices[j]], Vector2.Zero));
                                 }
-                            }
-                            else
-                            {
-                                var b = rawMaterial.Handle & 0xff;
-                                var g = (rawMaterial.Handle >> 8) & 0xff;
-                                var r = (rawMaterial.Handle >> 16) & 0xff;
-                                var colour = new Vector4(r, g, b, 255.0f) / 255.0f;
-                                var material = new MaterialBuilder()
-                                    .WithDoubleSide(false)
-                                    .WithBaseColor(colour);
-                                Log.Information("Adding colour material: {Colour}, {Slot}", colour, slot);
-                                materials.Add(slot, material);
                             }
                         }
+                    }
 
-                        var objCount = modelFile.Objects.Length;
-                        var meshes = new MeshBuilder<VertexPosition, VertexTexture1>[objCount];
-                        var nodes = new NodeBuilder[objCount];
-                        for (var i = 0; i < objCount; i++)
-                        {
-                            var subObject = modelFile.Objects[i];
+                    var transform = subObject.Joint == -1
+                        ? AffineTransform.Identity
+                        : AffineTransform.CreateDecomposed(subObject.Transform);
+                    var node = new NodeBuilder(subObject.Name);
+                    node.SetLocalTransform(transform, false);
 
-                            var mesh = new MeshBuilder<VertexPosition, VertexTexture1>(subObject.Name);
-                            var matPolyMap = new Dictionary<int, List<int>>();
+                    meshes[i] = mesh;
+                    nodes[i] = node;
+                }
 
-                            var polyCount = modelFile.Polygons.Length;
-                            for (var j = 0; j < polyCount; j++)
-                            {
-                                var poly = modelFile.Polygons[j];
-
-                                // Discards any polys that don't belong to this object
-                                var startIdx = poly.VertexIndices[0];
-                                if (startIdx < subObject.PointIdx ||
-                                    startIdx >= subObject.PointIdx + subObject.PointCount)
-                                {
-                                    continue;
-                                }
-
-                                if (matPolyMap.ContainsKey(poly.Data))
-                                {
-                                    matPolyMap[poly.Data].Add(j);
-                                }
-                                else
-                                {
-                                    matPolyMap[poly.Data] = [j];
-                                }
-                            }
-
-                            foreach (var (materialIdx, polyIdxs) in matPolyMap)
-                            {
-                                var prim = mesh.UsePrimitive(materials[materialIdx]);
-                                foreach (var polyIdx in polyIdxs)
-                                {
-                                    var poly = modelFile.Polygons[polyIdx];
-                                    for (var j = 1; j < poly.VertexCount - 1; j++)
-                                    {
-                                        if (j < poly.UvIndices.Length)
-                                        {
-                                            prim.AddTriangle(
-                                                new VERTEX(
-                                                    modelFile.Vertices[poly.VertexIndices[0]],
-                                                    modelFile.Uvs[poly.UvIndices[0]]),
-                                                new VERTEX(
-                                                    modelFile.Vertices[poly.VertexIndices[j + 1]],
-                                                    modelFile.Uvs[poly.UvIndices[j + 1]]),
-                                                new VERTEX(
-                                                    modelFile.Vertices[poly.VertexIndices[j]],
-                                                    modelFile.Uvs[poly.UvIndices[j]]));
-                                        }
-                                        else
-                                        {
-                                            prim.AddTriangle(
-                                                new VERTEX(modelFile.Vertices[poly.VertexIndices[0]], Vector2.Zero),
-                                                new VERTEX(modelFile.Vertices[poly.VertexIndices[j + 1]], Vector2.Zero),
-                                                new VERTEX(modelFile.Vertices[poly.VertexIndices[j]], Vector2.Zero));
-                                        }
-                                    }
-                                }
-                            }
-
-                            var transform = subObject.Joint == -1
-                                ? AffineTransform.Identity
-                                : AffineTransform.CreateDecomposed(subObject.Transform);
-                            var node = new NodeBuilder(subObject.Name);
-                            node.SetLocalTransform(transform, false);
-
-                            meshes[i] = mesh;
-                            nodes[i] = node;
-                        }
-
-                        // Build node hierarchy
-                        for (var i = 0; i < objCount; i++)
-                        {
-                            var subObject = modelFile.Objects[i];
-                            var childIdx = subObject.Child;
-                            while (childIdx != -1)
-                            {
-                                nodes[i].AddNode(nodes[childIdx]);
-                                childIdx = modelFile.Objects[childIdx].Next;
-                            }
-                        }
-
-                        var scene = new SceneBuilder();
-                        for (var i = 0; i < objCount; i++)
-                        {
-                            scene.AddRigidMesh(meshes[i], nodes[i]);
-                        }
-
-                        // GLTF uses different forward/right/up axes than Dark, but fortunately it's just a simple rotation
-                        scene.ApplyBasisTransform(Matrix4x4.CreateRotationX(float.DegreesToRadians(-90)));
-
-                        var exportName = Path.GetFileNameWithoutExtension(ModelName);
-                        var exportDir = ExportDir ?? Path.GetDirectoryName(modelPath);
-                        scene.ToGltf2().SaveGLB($"{exportDir}/{exportName}.glb");
+                // Build node hierarchy
+                for (var i = 0; i < objCount; i++)
+                {
+                    var subObject = modelFile.Objects[i];
+                    var childIdx = subObject.Child;
+                    while (childIdx != -1)
+                    {
+                        nodes[i].AddNode(nodes[childIdx]);
+                        childIdx = modelFile.Objects[childIdx].Next;
                     }
                 }
+
+                var scene = new SceneBuilder();
+                for (var i = 0; i < objCount; i++)
+                {
+                    scene.AddRigidMesh(meshes[i], nodes[i]);
+                }
+
+                // GLTF uses different forward/right/up axes than Dark, but fortunately it's just a simple rotation
+                scene.ApplyBasisTransform(Matrix4x4.CreateRotationX(float.DegreesToRadians(-90)));
+
+                var exportName = Path.GetFileNameWithoutExtension(modelName);
+                var exportDir = ExportDir ?? Path.GetDirectoryName(modelPath);
+                scene.ToGltf2().SaveGLB($"{exportDir}/{exportName}.glb");
+            }
+
+            private static Dictionary<int, MaterialBuilder> BuildMaterialMap(
+                ResourcePathManager.CampaignResources resources,
+                ModelFile modelFile)
+            {
+                var defaultMaterial = new MaterialBuilder()
+                    .WithDoubleSide(false)
+                    .WithChannelParam(KnownChannel.BaseColor, KnownProperty.RGBA, new Vector4(1, 1, 1, 1));
+
+                var materials = new Dictionary<int, MaterialBuilder>();
+                foreach (var rawMaterial in modelFile.Materials)
+                {
+                    var slot = rawMaterial.Slot;
+
+                    if (rawMaterial.Type == 0)
+                    {
+                        var convertedName = ResourcePathManager.ConvertSeparator(rawMaterial.Name);
+                        var resName = Path.GetFileNameWithoutExtension(convertedName);
+                        var path = resources.GetResourcePath(ResourceType.ObjectTexture, resName);
+                        if (path == null)
+                        {
+                            Log.Warning("Failed to find model texture, adding default material: {Name}, {Slot}",
+                                resName, slot);
+                            materials.Add(slot, defaultMaterial);
+                        }
+                        else
+                        {
+                            var material = new MaterialBuilder()
+                                .WithDoubleSide(false)
+                                .WithBaseColor(ImageBuilder.From(new MemoryImage(path), resName));
+                            Log.Information("Adding texture material: {Name}, {Slot}", resName, slot);
+                            materials.Add(slot, material);
+                        }
+                    }
+                    else
+                    {
+                        var b = rawMaterial.Handle & 0xff;
+                        var g = (rawMaterial.Handle >> 8) & 0xff;
+                        var r = (rawMaterial.Handle >> 16) & 0xff;
+                        var colour = new Vector4(r, g, b, 255.0f) / 255.0f;
+                        var material = new MaterialBuilder()
+                            .WithDoubleSide(false)
+                            .WithBaseColor(colour);
+                        Log.Information("Adding colour material: {Colour}, {Slot}", colour, slot);
+                        materials.Add(slot, material);
+                    }
+                }
+
+                return materials;
             }
         }
     }
