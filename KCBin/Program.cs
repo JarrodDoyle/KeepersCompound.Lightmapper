@@ -192,6 +192,10 @@ public class RootCommand
 
                 var exportName = Path.GetFileNameWithoutExtension(modelName);
                 var exportDir = ExportDir ?? Path.GetDirectoryName(modelPath);
+                if (!Directory.Exists(exportDir))
+                {
+                    Directory.CreateDirectory(exportDir);
+                }
                 scene.ToGltf2().SaveGLB($"{exportDir}/{exportName}.glb");
             }
 
