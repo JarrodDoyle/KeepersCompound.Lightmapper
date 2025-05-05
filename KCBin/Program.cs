@@ -157,8 +157,8 @@ public class RootCommand
                                     for (var j = 1; j < poly.VertexCount - 1; j++)
                                     {
                                         var v0 = modelFile.Vertices[poly.VertexIndices[0]];
-                                        var v1 = modelFile.Vertices[poly.VertexIndices[j]];
-                                        var v2 = modelFile.Vertices[poly.VertexIndices[j + 1]];
+                                        var v1 = modelFile.Vertices[poly.VertexIndices[j + 1]];
+                                        var v2 = modelFile.Vertices[poly.VertexIndices[j]];
                                         prim.AddTriangle(
                                             new VertexPosition(v0.X, v0.Y, v0.Z),
                                             new VertexPosition(v1.X, v1.Y, v1.Z),
