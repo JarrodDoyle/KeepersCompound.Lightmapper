@@ -75,7 +75,7 @@ public class RootCommand
             {
                 var tmpDir = Directory.CreateTempSubdirectory("KCBin");
                 var pathManager = new ResourcePathManager(tmpDir.FullName);
-                if (pathManager.TryInit(InstallPath) && pathManager.GetCampaignNames().Contains(CampaignName))
+                if (pathManager.TryInit(InstallPath) && (CampaignName == "" || pathManager.GetCampaignNames().Contains(CampaignName)))
                 {
                     var campaign = pathManager.GetCampaign(CampaignName);
                     ExportModel(campaign, ModelName);
