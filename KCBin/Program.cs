@@ -62,6 +62,11 @@ public class RootCommand
             [CliArgument(Description = "The name of the model")]
             public required string ModelName { get; set; }
 
+            [CliOption(
+                Description = "Folder to export model to. If not set models will be exported alongside the original."
+            )]
+            public string? ExportDir { get; set; } = null;
+
             public void Run()
             {
                 var tmpDir = Directory.CreateTempSubdirectory("KCBin");
@@ -214,7 +219,8 @@ public class RootCommand
                         scene.ApplyBasisTransform(Matrix4x4.CreateRotationX(float.DegreesToRadians(-90)));
 
                         var exportName = Path.GetFileNameWithoutExtension(ModelName);
-                        scene.ToGltf2().SaveGLB($"./EXPORTS/{exportName}.glb");
+                        var exportDir = ExportDir ?? Path.GetDirectoryName(modelPath);
+                        scene.ToGltf2().SaveGLB($"{exportDir}/{exportName}.glb");
                     }
                 }
             }
