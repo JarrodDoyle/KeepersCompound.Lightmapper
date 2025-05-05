@@ -212,7 +212,9 @@ public class RootCommand
 
                         // GLTF uses different forward/right/up axes than Dark, but fortunately it's just a simple rotation
                         scene.ApplyBasisTransform(Matrix4x4.CreateRotationX(float.DegreesToRadians(-90)));
-                        scene.ToGltf2().SaveGLB("./EXPORTS/test.glb");
+
+                        var exportName = Path.GetFileNameWithoutExtension(ModelName);
+                        scene.ToGltf2().SaveGLB($"./EXPORTS/{exportName}.glb");
                     }
                 }
             }
