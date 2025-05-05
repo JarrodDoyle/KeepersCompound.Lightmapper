@@ -9,6 +9,8 @@ using SharpGLTF.Materials;
 using SharpGLTF.Memory;
 using SharpGLTF.Scenes;
 using SharpGLTF.Transforms;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace KCBin;
 
@@ -53,6 +55,8 @@ public class RootCommand
         [CliCommand(Description = "Export a model")]
         public class ExportCommand
         {
+            private readonly MaterialBuilder _defaultMaterial = MaterialBuilder.CreateDefault();
+
             [CliArgument(Description = "The path to the root Thief installation.")]
             public required string InstallPath { get; set; }
 
@@ -124,7 +128,8 @@ public class RootCommand
 
                     foreach (var (materialIdx, polyIdxs) in matPolyMap)
                     {
-                        var prim = mesh.UsePrimitive(materials[materialIdx]);
+                        var mat = materials.GetValueOrDefault(materialIdx, _defaultMaterial);
+                        var prim = mesh.UsePrimitive(mat);
                         foreach (var polyIdx in polyIdxs)
                         {
                             var poly = modelFile.Polygons[polyIdx];
@@ -190,14 +195,10 @@ public class RootCommand
                 scene.ToGltf2().SaveGLB($"{exportDir}/{exportName}.glb");
             }
 
-            private static Dictionary<int, MaterialBuilder> BuildMaterialMap(
+            private Dictionary<int, MaterialBuilder> BuildMaterialMap(
                 ResourcePathManager.CampaignResources resources,
                 ModelFile modelFile)
             {
-                var defaultMaterial = new MaterialBuilder()
-                    .WithDoubleSide(false)
-                    .WithChannelParam(KnownChannel.BaseColor, KnownProperty.RGBA, new Vector4(1, 1, 1, 1));
-
                 var materials = new Dictionary<int, MaterialBuilder>();
                 foreach (var rawMaterial in modelFile.Materials)
                 {
@@ -212,15 +213,24 @@ public class RootCommand
                         {
                             Log.Warning("Failed to find model texture, adding default material: {Name}, {Slot}",
                                 resName, slot);
-                            materials.Add(slot, defaultMaterial);
+                            materials.Add(slot, _defaultMaterial);
                         }
                         else
                         {
-                            var material = new MaterialBuilder()
-                                .WithDoubleSide(false)
-                                .WithBaseColor(ImageBuilder.From(new MemoryImage(path), resName));
-                            Log.Information("Adding texture material: {Name}, {Slot}", resName, slot);
-                            materials.Add(slot, material);
+                            if (TryLoadImage(path, out var memoryImage))
+                            {
+                                var material = new MaterialBuilder()
+                                    .WithDoubleSide(false)
+                                    .WithBaseColor(ImageBuilder.From(memoryImage, resName));
+                                Log.Information("Adding texture material: {Name}, {Slot}", resName, slot);
+                                materials.Add(slot, material);
+                            }
+                            else
+                            {
+                                Log.Warning("Unsupported model texture format, adding default material: {Name}, {Slot}",
+                                    resName, slot);
+                                materials.Add(slot, _defaultMaterial);
+                            }
                         }
                     }
                     else
@@ -238,6 +248,31 @@ public class RootCommand
                 }
 
                 return materials;
+            }
+
+            private static bool TryLoadImage(string path, out MemoryImage memoryImage)
+            {
+                var ext = Path.GetExtension(path).ToLower();
+                switch (ext)
+                {
+                    case ".jpg":
+                    case ".jpeg":
+                    case ".png":
+                    case ".dds":
+                        memoryImage = new MemoryImage(path);
+                        return true;
+                    case ".gif":
+                        var gif = new GifDecoder(path).GetImage(0);
+                        using (var image = Image.LoadPixelData<Rgba32>(gif.GetRgbaBytes(), gif.Width, gif.Height))
+                        {
+                            var memoryStream = new MemoryStream();
+                            image.SaveAsPng(memoryStream);
+                            memoryImage = new MemoryImage(memoryStream.GetBuffer());
+                            return true;
+                        }
+                }
+
+                return false;
             }
         }
     }
