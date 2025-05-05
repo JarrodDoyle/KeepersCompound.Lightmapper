@@ -60,10 +60,10 @@ public class RootCommand
             [CliArgument(Description = "The path to the root Thief installation.")]
             public required string InstallPath { get; set; }
 
-            [CliArgument(Description = "The folder name of the fan mission. For OMs this is blank.")]
-            public required string CampaignName { get; set; }
+            [CliOption(Description = "The folder name of a fan mission.")]
+            public string? FanMission { get; set; } = null;
 
-            [CliOption(Description = "The name of the model")]
+            [CliOption(Description = "The name of the model.")]
             public string? ModelName { get; set; } = null;
 
             [CliOption(
@@ -75,10 +75,15 @@ public class RootCommand
             {
                 var tmpDir = Directory.CreateTempSubdirectory("KCBin");
                 var pathManager = new ResourcePathManager(tmpDir.FullName);
-                if (pathManager.TryInit(InstallPath) &&
-                    (CampaignName == "" || pathManager.GetCampaignNames().Contains(CampaignName)))
+                if (pathManager.TryInit(InstallPath))
                 {
-                    var campaign = pathManager.GetCampaign(CampaignName);
+                    if (FanMission != null && !pathManager.GetCampaignNames().Contains(FanMission))
+                    {
+                        Log.Warning("Couldn't find fan mission folder.");
+                        return;
+                    }
+
+                    var campaign = pathManager.GetCampaign(FanMission ?? "");
                     Log.Information("Loaded campaign :)");
                     if (ModelName != null)
                     {
