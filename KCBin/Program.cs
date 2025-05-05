@@ -22,6 +22,9 @@ internal static class Program
     {
         const string outputTemplate = "{Timestamp:HH:mm:ss.fff} [{Level}] {Message:lj}{NewLine}{Exception}";
         var config = new LoggerConfiguration();
+#if DEBUG
+        config.MinimumLevel.Debug();
+#endif
 
         Log.Logger = config
             .WriteTo.Console(theme: AnsiConsoleTheme.Sixteen, outputTemplate: outputTemplate)
@@ -84,18 +87,22 @@ public class RootCommand
                     }
 
                     var campaign = pathManager.GetCampaign(FanMission ?? "");
-                    Log.Information("Loaded campaign :)");
+                    var modelCount = 0;
                     if (ModelName != null)
                     {
                         ExportModel(campaign, ModelName);
+                        modelCount++;
                     }
                     else
                     {
                         foreach (var modelName in campaign.GetResourceNames(ResourceType.Object))
                         {
                             ExportModel(campaign, modelName);
+                            modelCount++;
                         }
                     }
+
+                    Log.Information("Exported {Count} models.", modelCount);
                 }
             }
 
@@ -108,7 +115,7 @@ public class RootCommand
                     return;
                 }
 
-                Log.Information("Exporting model: {Name}, {Path}", modelName, modelPath);
+                Log.Information("Exporting model: {Name}", modelName);
                 var modelFile = new ModelFile(modelPath);
                 if (modelFile.Valid == false)
                 {
@@ -252,12 +259,12 @@ public class RootCommand
                                 var material = new MaterialBuilder()
                                     .WithDoubleSide(false)
                                     .WithBaseColor(ImageBuilder.From(memoryImage, resName));
-                                Log.Information("Adding texture material: {Name}, {Slot}", resName, slot);
+                                Log.Debug("Adding texture material: {Name}, {Slot}", resName, slot);
                                 materials.Add(slot, material);
                             }
                             else
                             {
-                                Log.Warning("Unsupported model texture format, adding default material: {Name}, {Slot}",
+                                Log.Debug("Unsupported model texture format, adding default material: {Name}, {Slot}",
                                     resName, slot);
                                 materials.Add(slot, _defaultMaterial);
                             }
@@ -272,7 +279,7 @@ public class RootCommand
                         var material = new MaterialBuilder()
                             .WithDoubleSide(false)
                             .WithBaseColor(colour);
-                        Log.Information("Adding colour material: {Colour}, {Slot}", colour, slot);
+                        Log.Debug("Adding colour material: {Colour}, {Slot}", colour, slot);
                         materials.Add(slot, material);
                     }
                 }
