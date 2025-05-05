@@ -52,7 +52,7 @@ public class RootCommand
         {
         }
 
-        [CliCommand(Description = "Export a model")]
+        [CliCommand(Description = "Export models to .GLB")]
         public class ExportCommand
         {
             private readonly MaterialBuilder _defaultMaterial = MaterialBuilder.CreateDefault();
@@ -63,8 +63,8 @@ public class RootCommand
             [CliArgument(Description = "The folder name of the fan mission. For OMs this is blank.")]
             public required string CampaignName { get; set; }
 
-            [CliArgument(Description = "The name of the model")]
-            public required string ModelName { get; set; }
+            [CliOption(Description = "The name of the model")]
+            public string? ModelName { get; set; } = null;
 
             [CliOption(
                 Description = "Folder to export model to. If not set models will be exported alongside the original."
@@ -75,10 +75,22 @@ public class RootCommand
             {
                 var tmpDir = Directory.CreateTempSubdirectory("KCBin");
                 var pathManager = new ResourcePathManager(tmpDir.FullName);
-                if (pathManager.TryInit(InstallPath) && (CampaignName == "" || pathManager.GetCampaignNames().Contains(CampaignName)))
+                if (pathManager.TryInit(InstallPath) &&
+                    (CampaignName == "" || pathManager.GetCampaignNames().Contains(CampaignName)))
                 {
                     var campaign = pathManager.GetCampaign(CampaignName);
-                    ExportModel(campaign, ModelName);
+                    Log.Information("Loaded campaign :)");
+                    if (ModelName != null)
+                    {
+                        ExportModel(campaign, ModelName);
+                    }
+                    else
+                    {
+                        foreach (var modelName in campaign.GetResourceNames(ResourceType.Object))
+                        {
+                            ExportModel(campaign, modelName);
+                        }
+                    }
                 }
             }
 
@@ -98,6 +110,7 @@ public class RootCommand
                     Log.Warning("Failed to read model file");
                     return;
                 }
+
                 var materials = BuildMaterialMap(resources, modelFile);
 
                 var objCount = modelFile.Objects.Length;
@@ -203,6 +216,7 @@ public class RootCommand
                 {
                     Directory.CreateDirectory(exportDir);
                 }
+
                 scene.ToGltf2().SaveGLB($"{exportDir}/{exportName}.glb");
             }
 
