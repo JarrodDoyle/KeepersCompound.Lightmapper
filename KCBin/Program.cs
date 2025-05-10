@@ -197,6 +197,15 @@ public class RootCommand
                     var node = new NodeBuilder(subObject.Name);
                     node.SetLocalTransform(transform, false);
 
+                    // Add vhots as empty nodes
+                    for (var j = 0; j < subObject.VhotCount; j++)
+                    {
+                        var v = modelFile.VHots[subObject.VhotIdx + j];
+                        var vhotNode = new NodeBuilder(v.Id.ToString());
+                        vhotNode.SetLocalTransform(new AffineTransform(null, null, v.Position), false);
+                        node.AddNode(vhotNode);
+                    }
+
                     meshes[i] = mesh;
                     nodes[i] = node;
                 }
