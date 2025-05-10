@@ -256,7 +256,7 @@ public class RootCommand
                         {
                             if (TryLoadImage(path, out var memoryImage))
                             {
-                                var material = new MaterialBuilder()
+                                var material = new MaterialBuilder(resName)
                                     .WithDoubleSide(false)
                                     .WithBaseColor(ImageBuilder.From(memoryImage, resName));
                                 Log.Debug("Adding texture material: {Name}, {Slot}", resName, slot);
