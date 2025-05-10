@@ -14,7 +14,7 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace KCBin;
 
-using VERTEX = VertexBuilder<VertexPosition, VertexTexture1, VertexEmpty>;
+using VERTEX = VertexBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty>;
 
 internal static class Program
 {
@@ -126,13 +126,13 @@ public class RootCommand
                 var materials = BuildMaterialMap(resources, modelFile);
 
                 var objCount = modelFile.Objects.Length;
-                var meshes = new MeshBuilder<VertexPosition, VertexTexture1>[objCount];
+                var meshes = new MeshBuilder<VertexPositionNormal, VertexTexture1>[objCount];
                 var nodes = new NodeBuilder[objCount];
                 for (var i = 0; i < objCount; i++)
                 {
                     var subObject = modelFile.Objects[i];
 
-                    var mesh = new MeshBuilder<VertexPosition, VertexTexture1>(subObject.Name);
+                    var mesh = new MeshBuilder<VertexPositionNormal, VertexTexture1>(subObject.Name);
                     var matPolyMap = new Dictionary<int, List<int>>();
 
                     var polyCount = modelFile.Polygons.Count;
@@ -165,28 +165,22 @@ public class RootCommand
                         foreach (var polyIdx in polyIdxs)
                         {
                             var poly = modelFile.Polygons[polyIdx];
+                            var vertices = new Vector3[poly.VertexCount];
+                            var normal = modelFile.Normals[poly.Normal];
+                            var uvs = new Vector2[poly.VertexCount];
+                            for (var j = 0; j < poly.VertexCount; j++)
+                            {
+                                vertices[j] = modelFile.Vertices[poly.VertexIndices[j]];
+                                uvs[j] = j < poly.UvIndices.Length ? modelFile.Uvs[poly.UvIndices[j]] : Vector2.Zero;
+                            }
+
                             for (var j = 1; j < poly.VertexCount - 1; j++)
                             {
-                                if (j < poly.UvIndices.Length)
-                                {
-                                    prim.AddTriangle(
-                                        new VERTEX(
-                                            modelFile.Vertices[poly.VertexIndices[0]],
-                                            modelFile.Uvs[poly.UvIndices[0]]),
-                                        new VERTEX(
-                                            modelFile.Vertices[poly.VertexIndices[j + 1]],
-                                            modelFile.Uvs[poly.UvIndices[j + 1]]),
-                                        new VERTEX(
-                                            modelFile.Vertices[poly.VertexIndices[j]],
-                                            modelFile.Uvs[poly.UvIndices[j]]));
-                                }
-                                else
-                                {
-                                    prim.AddTriangle(
-                                        new VERTEX(modelFile.Vertices[poly.VertexIndices[0]], Vector2.Zero),
-                                        new VERTEX(modelFile.Vertices[poly.VertexIndices[j + 1]], Vector2.Zero),
-                                        new VERTEX(modelFile.Vertices[poly.VertexIndices[j]], Vector2.Zero));
-                                }
+                                prim.AddTriangle(
+                                    new VERTEX(new VertexPositionNormal(vertices[0], normal), uvs[0]),
+                                    new VERTEX(new VertexPositionNormal(vertices[j + 1], normal), uvs[j + 1]),
+                                    new VERTEX(new VertexPositionNormal(vertices[j], normal), uvs[j])
+                                );
                             }
                         }
                     }
