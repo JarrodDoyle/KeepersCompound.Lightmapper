@@ -45,17 +45,17 @@ To use the CLI, open a console in the KCTools folder and run `KCTools light --he
 light: Compute lightmaps for a NewDark .MIS/.COW
 
 Usage:
-  KCTools light <install-path> <campaign-name> <mission-name> [options]
+  KCTools light <install-path> <mission-name> [options]
 
 Arguments:
-  <install-path>   The path to the root Thief installation. [required]
-  <campaign-name>  The folder name of the fan mission. For OMs this is blank. [required]
-  <mission-name>   The name of the mission file including extension. [required]
+  <install-path>  The path to the root Thief installation. [required]
+  <mission-name>  Mission filename including extension. [required]
 
 Options:
-  -f, --fast-pvs     Use a fast PVS calculation with looser cell light indices. [default: False]
-  -o, --output-name  Name of output file excluding extension. [default: kc_lit]
-  -?, -h, --help     Show help and usage information
+  -c, --campaign-name  Fan mission folder name. Uses OMs if not specified.
+  -o, --output-name    Name of output file excluding extension. Overwrites existing mission if not specified.
+  -s, --simple-vis     Use a simpler Light to Cell visibility calculation. Only use for debugging. [default: False]
+  -?, -h, --help       Show help and usage information
 ```
 
 ## Model Export
@@ -78,10 +78,10 @@ Arguments:
   <install-path>  The path to the root Thief installation. [required]
 
 Options:
-  -f, --fan-mission  The folder name of a fan mission.
-  -m, --model-name   The name of the model.
-  -e, --export-dir   Folder to export model to. If not set models will be exported alongside the original.
-  -?, -h, --help     Show help and usage information
+  -c, --campaign-name     The folder name of a fan mission.
+  -m, --model-name        The name of the model.
+  -o, --output-directory  Folder to output exported models to. If not set models will be exported alongside the original.
+  -?, -h, --help          Show help and usage information
 ```
 
 ## Building
