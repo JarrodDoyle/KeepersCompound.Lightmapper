@@ -231,7 +231,7 @@ public class ModelFile
         public uint UvOffset { get; }
         public uint VHotOffset { get; }
         public uint VertexOffset { get; }
-        public uint LightOffset { get; }
+        public uint VertexNormalOffset { get; }
         public uint FaceNormalOffset { get; }
         public uint PolygonOffset { get; }
         public uint NodeOffset { get; }
@@ -262,7 +262,7 @@ public class ModelFile
             UvOffset = reader.ReadUInt32();
             VHotOffset = reader.ReadUInt32();
             VertexOffset = reader.ReadUInt32();
-            LightOffset = reader.ReadUInt32();
+            VertexNormalOffset = reader.ReadUInt32();
             FaceNormalOffset = reader.ReadUInt32();
             PolygonOffset = reader.ReadUInt32();
             NodeOffset = reader.ReadUInt32();
