@@ -6,6 +6,190 @@ namespace KeepersCompound.LGS;
 // TODO: Remove all the things that don't actually need to be stored
 public class ModelFile
 {
+    public enum VhotId
+    {
+        LightPosition = 1,
+        LightDirection = 8,
+        Anchor = 2,
+        Particle1 = 3,
+        Particle2 = 4,
+        Particle3 = 5,
+        Particle4 = 6,
+        Particle5 = 7
+    }
+
+    public ModelFile(string filename)
+    {
+        if (!File.Exists(filename))
+        {
+            return;
+        }
+
+        using MemoryStream stream = new(File.ReadAllBytes(filename));
+        using BinaryReader reader = new(stream, Encoding.UTF8, false);
+
+        if (stream.Length < 8)
+        {
+            return;
+        }
+
+        BinHeader = new BHeader(reader);
+        if (BinHeader.Signature != "LGMD" || BinHeader.Version < 3)
+        {
+            return;
+        }
+
+        Header = new MHeader(reader, BinHeader.Version);
+        stream.Seek(Header.VertexOffset, SeekOrigin.Begin);
+        Vertices = new Vector3[Header.VertexCount];
+        for (var i = 0; i < Vertices.Length; i++)
+        {
+            Vertices[i] = reader.ReadVec3();
+        }
+
+        stream.Seek(Header.UvOffset, SeekOrigin.Begin);
+        Uvs = new Vector2[(Header.VHotOffset - Header.UvOffset) / 8];
+        for (var i = 0; i < Uvs.Length; i++)
+        {
+            Uvs[i] = reader.ReadVec2();
+        }
+
+        stream.Seek(Header.NormalOffset, SeekOrigin.Begin);
+        Normals = new Vector3[(Header.PolygonOffset - Header.NormalOffset) / 12];
+        for (var i = 0; i < Normals.Length; i++)
+        {
+            Normals[i] = reader.ReadVec3();
+        }
+
+        stream.Seek(Header.PolygonOffset, SeekOrigin.Begin);
+        Polygons = [];
+        for (var i = 0; i < Header.PolygonCount; i++)
+        {
+            Polygons.Add(new Polygon(reader, BinHeader.Version));
+            if (stream.Position >= Header.NodeOffset)
+            {
+                break;
+            }
+        }
+
+        stream.Seek(Header.MaterialOffset, SeekOrigin.Begin);
+        Materials = new Material[Header.MaterialCount];
+        for (var i = 0; i < Materials.Length; i++)
+        {
+            Materials[i] = new Material(reader);
+        }
+
+        stream.Seek(Header.VHotOffset, SeekOrigin.Begin);
+        VHots = new VHot[Header.VHotCount];
+        for (var i = 0; i < VHots.Length; i++)
+        {
+            VHots[i] = new VHot(reader);
+        }
+
+        stream.Seek(Header.ObjectOffset, SeekOrigin.Begin);
+        Objects = new SubObject[Header.ObjectCount];
+        for (var i = 0; i < Objects.Length; i++)
+        {
+            Objects[i] = new SubObject(reader);
+        }
+
+        Valid = true;
+    }
+
+    public bool Valid { get; private set; }
+    public BHeader BinHeader { get; set; }
+    public MHeader Header { get; set; }
+    public Vector3[] Vertices { get; }
+    public Vector2[] Uvs { get; }
+    public Vector3[] Normals { get; }
+    public List<Polygon> Polygons { get; }
+    public Material[] Materials { get; }
+    public VHot[] VHots { get; }
+    public SubObject[] Objects { get; }
+
+    // TODO: Apply transforms to normals and stuff
+    public void ApplyJoints(float[] joints)
+    {
+        // Build map of objects to their parent id
+        var objCount = Objects.Length;
+        var parentIds = new int[objCount];
+        for (var i = 0; i < objCount; i++)
+        {
+            parentIds[i] = -1;
+        }
+
+        for (var i = 0; i < objCount; i++)
+        {
+            var subObj = Objects[i];
+            var childIdx = subObj.Child;
+            while (childIdx != -1)
+            {
+                parentIds[childIdx] = i;
+                childIdx = Objects[childIdx].Next;
+            }
+        }
+
+        // Calculate base transforms for every subobj (including joint)
+        var subObjTransforms = new Matrix4x4[objCount];
+        for (var i = 0; i < objCount; i++)
+        {
+            var subObj = Objects[i];
+            var objTrans = Matrix4x4.Identity;
+            if (subObj.Joint != -1)
+            {
+                var ang = subObj.Joint >= joints.Length ? 0 : float.DegreesToRadians(joints[subObj.Joint]);
+                // TODO: Is this correct? Should I use a manual rotation matrix?
+                var jointRot = Matrix4x4.CreateFromYawPitchRoll(0, ang, 0);
+                objTrans = jointRot * subObj.Transform;
+            }
+
+            subObjTransforms[i] = objTrans;
+        }
+
+        // Apply sub object transforms
+        for (var i = 0; i < objCount; i++)
+        {
+            var subObj = Objects[i];
+            var transform = subObjTransforms[i];
+
+            // Build compound transformation
+            var parentId = parentIds[i];
+            while (parentId != -1)
+            {
+                transform *= subObjTransforms[parentId];
+                parentId = parentIds[parentId];
+            }
+
+            for (var j = 0; j < subObj.VhotCount; j++)
+            {
+                var v = VHots[subObj.VhotIdx + j];
+                v.Position = Vector3.Transform(v.Position, transform);
+                VHots[subObj.VhotIdx + j] = v;
+            }
+
+            for (var j = 0; j < subObj.PointCount; j++)
+            {
+                var v = Vertices[subObj.PointIdx + j];
+                Vertices[subObj.PointIdx + j] = Vector3.Transform(v, transform);
+            }
+        }
+    }
+
+    public bool TryGetVhot(VhotId id, out VHot vhot)
+    {
+        foreach (var v in VHots)
+        {
+            if (v.Id == (int)id)
+            {
+                vhot = v;
+                return true;
+            }
+        }
+
+        vhot = new VHot();
+        return false;
+    }
+
     public readonly struct BHeader
     {
         public string Signature { get; }
@@ -202,18 +386,6 @@ public class ModelFile
         }
     }
 
-    public enum VhotId
-    {
-        LightPosition = 1,
-        LightDirection = 8,
-        Anchor = 2,
-        Particle1 = 3,
-        Particle2 = 4,
-        Particle3 = 5,
-        Particle4 = 6,
-        Particle5 = 7,
-    }
-
     public struct VHot
     {
         public int Id;
@@ -224,159 +396,5 @@ public class ModelFile
             Id = reader.ReadInt32();
             Position = reader.ReadVec3();
         }
-    }
-
-    public BHeader BinHeader { get; set; }
-    public MHeader Header { get; set; }
-    public Vector3[] Vertices { get; }
-    public Vector2[] Uvs { get; }
-    public Vector3[] Normals { get; }
-    public Polygon[] Polygons { get; }
-    public Material[] Materials { get; }
-    public VHot[] VHots { get; }
-    public SubObject[] Objects { get; }
-
-    public ModelFile(string filename)
-    {
-        if (!File.Exists(filename)) return;
-
-        using MemoryStream stream = new(File.ReadAllBytes(filename));
-        using BinaryReader reader = new(stream, Encoding.UTF8, false);
-
-        BinHeader = new BHeader(reader);
-        if (BinHeader.Signature != "LGMD") return;
-
-        Header = new MHeader(reader, BinHeader.Version);
-        stream.Seek(Header.VertexOffset, SeekOrigin.Begin);
-        Vertices = new Vector3[Header.VertexCount];
-        for (var i = 0; i < Vertices.Length; i++)
-        {
-            Vertices[i] = reader.ReadVec3();
-        }
-
-        stream.Seek(Header.UvOffset, SeekOrigin.Begin);
-        Uvs = new Vector2[(Header.VHotOffset - Header.UvOffset) / 8];
-        for (var i = 0; i < Uvs.Length; i++)
-        {
-            Uvs[i] = reader.ReadVec2();
-        }
-
-        stream.Seek(Header.NormalOffset, SeekOrigin.Begin);
-        Normals = new Vector3[(Header.PolygonOffset - Header.NormalOffset) / 12];
-        for (var i = 0; i < Normals.Length; i++)
-        {
-            Normals[i] = reader.ReadVec3();
-        }
-
-        stream.Seek(Header.PolygonOffset, SeekOrigin.Begin);
-        Polygons = new Polygon[Header.PolygonCount];
-        for (var i = 0; i < Polygons.Length; i++)
-        {
-            Polygons[i] = new Polygon(reader, BinHeader.Version);
-        }
-
-        stream.Seek(Header.MaterialOffset, SeekOrigin.Begin);
-        Materials = new Material[Header.MaterialCount];
-        for (var i = 0; i < Materials.Length; i++)
-        {
-            Materials[i] = new Material(reader);
-        }
-
-        stream.Seek(Header.VHotOffset, SeekOrigin.Begin);
-        VHots = new VHot[Header.VHotCount];
-        for (var i = 0; i < VHots.Length; i++)
-        {
-            VHots[i] = new VHot(reader);
-        }
-
-        stream.Seek(Header.ObjectOffset, SeekOrigin.Begin);
-        Objects = new SubObject[Header.ObjectCount];
-        for (var i = 0; i < Objects.Length; i++)
-        {
-            Objects[i] = new SubObject(reader);
-        }
-    }
-
-    // TODO: Apply transforms to normals and stuff
-    public void ApplyJoints(float[] joints)
-    {
-        // Build map of objects to their parent id
-        var objCount = Objects.Length;
-        var parentIds = new int[objCount];
-        for (var i = 0; i < objCount; i++)
-        {
-            parentIds[i] = -1;
-        }
-
-        for (var i = 0; i < objCount; i++)
-        {
-            var subObj = Objects[i];
-            var childIdx = subObj.Child;
-            while (childIdx != -1)
-            {
-                parentIds[childIdx] = i;
-                childIdx = Objects[childIdx].Next;
-            }
-        }
-
-        // Calculate base transforms for every subobj (including joint)
-        var subObjTransforms = new Matrix4x4[objCount];
-        for (var i = 0; i < objCount; i++)
-        {
-            var subObj = Objects[i];
-            var objTrans = Matrix4x4.Identity;
-            if (subObj.Joint != -1)
-            {
-                var ang = subObj.Joint >= joints.Length ? 0 : float.DegreesToRadians(joints[subObj.Joint]);
-                // TODO: Is this correct? Should I use a manual rotation matrix?
-                var jointRot = Matrix4x4.CreateFromYawPitchRoll(0, ang, 0);
-                objTrans = jointRot * subObj.Transform;
-            }
-
-            subObjTransforms[i] = objTrans;
-        }
-
-        // Apply sub object transforms
-        for (var i = 0; i < objCount; i++)
-        {
-            var subObj = Objects[i];
-            var transform = subObjTransforms[i];
-
-            // Build compound transformation
-            var parentId = parentIds[i];
-            while (parentId != -1)
-            {
-                transform *= subObjTransforms[parentId];
-                parentId = parentIds[parentId];
-            }
-
-            for (var j = 0; j < subObj.VhotCount; j++)
-            {
-                var v = VHots[subObj.VhotIdx + j];
-                v.Position = Vector3.Transform(v.Position, transform);
-                VHots[subObj.VhotIdx + j] = v;
-            }
-
-            for (var j = 0; j < subObj.PointCount; j++)
-            {
-                var v = Vertices[subObj.PointIdx + j];
-                Vertices[subObj.PointIdx + j] = Vector3.Transform(v, transform);
-            }
-        }
-    }
-
-    public bool TryGetVhot(VhotId id, out VHot vhot)
-    {
-        foreach (var v in VHots)
-        {
-            if (v.Id == (int)id)
-            {
-                vhot = v;
-                return true;
-            }
-        }
-
-        vhot = new VHot();
-        return false;
     }
 }
