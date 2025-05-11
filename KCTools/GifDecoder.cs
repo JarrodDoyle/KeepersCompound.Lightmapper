@@ -1,7 +1,7 @@
 using System.Text;
 using KeepersCompound.LGS;
 
-namespace KCBin;
+namespace KCTools;
 
 public class GifDecoder
 {
