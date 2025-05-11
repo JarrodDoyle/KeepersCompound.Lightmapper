@@ -17,7 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\lightmapper\KeepersCompound.LGS\KeepersCompound.LGS.csproj" />
+      <ProjectReference Include="..\KeepersCompound.LGS\KeepersCompound.LGS.csproj" />
     </ItemGroup>
 
 </Project>
