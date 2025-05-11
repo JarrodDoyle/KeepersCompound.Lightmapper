@@ -174,8 +174,8 @@ public class RootCommand
 
                         // Discards any polys that don't belong to this object
                         var startIdx = poly.VertexIndices[0];
-                        if (startIdx < subObject.PointIdx ||
-                            startIdx >= subObject.PointIdx + subObject.PointCount)
+                        if (startIdx < subObject.VertexStartIdx ||
+                            startIdx >= subObject.VertexStartIdx + subObject.VertexCount)
                         {
                             continue;
                         }
@@ -198,7 +198,7 @@ public class RootCommand
                         {
                             var poly = modelFile.Polygons[polyIdx];
                             var vertices = new Vector3[poly.VertexCount];
-                            var normal = modelFile.Normals[poly.Normal];
+                            var normal = modelFile.FaceNormals[poly.Normal];
                             var uvs = new Vector2[poly.VertexCount];
                             for (var j = 0; j < poly.VertexCount; j++)
                             {
@@ -217,7 +217,7 @@ public class RootCommand
                         }
                     }
 
-                    var transform = subObject.Joint == -1
+                    var transform = subObject.JointIdx == -1
                         ? AffineTransform.Identity
                         : AffineTransform.CreateDecomposed(subObject.Transform);
                     var node = new NodeBuilder(subObject.Name);
@@ -226,7 +226,7 @@ public class RootCommand
                     // Add vhots as empty nodes
                     for (var j = 0; j < subObject.VhotCount; j++)
                     {
-                        var v = modelFile.VHots[subObject.VhotIdx + j];
+                        var v = modelFile.VHots[subObject.VhotStartIdx + j];
                         var vhotNode = new NodeBuilder(v.Id.ToString());
                         vhotNode.SetLocalTransform(new AffineTransform(null, null, v.Position), false);
                         node.AddNode(vhotNode);

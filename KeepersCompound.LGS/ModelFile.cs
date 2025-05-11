@@ -18,6 +18,24 @@ public class ModelFile
         Particle5 = 7
     }
 
+    public enum JointType
+    {
+        None,
+        Rotate,
+        Slide,
+    }
+
+    [Flags]
+    public enum PolygonType
+    {
+        None = 0x00,
+        Solid = 0x01,
+        Wireframe = 0x02,
+        Textured = 0x03,
+        VertexNormals = 0x18,
+        Paletted = 0x20,
+    }
+
     public ModelFile(string filename)
     {
         if (!File.Exists(filename))
@@ -54,11 +72,11 @@ public class ModelFile
             Uvs[i] = reader.ReadVec2();
         }
 
-        stream.Seek(Header.NormalOffset, SeekOrigin.Begin);
-        Normals = new Vector3[(Header.PolygonOffset - Header.NormalOffset) / 12];
-        for (var i = 0; i < Normals.Length; i++)
+        stream.Seek(Header.FaceNormalOffset, SeekOrigin.Begin);
+        FaceNormals = new Vector3[(Header.PolygonOffset - Header.FaceNormalOffset) / 12];
+        for (var i = 0; i < FaceNormals.Length; i++)
         {
-            Normals[i] = reader.ReadVec3();
+            FaceNormals[i] = reader.ReadVec3();
         }
 
         stream.Seek(Header.PolygonOffset, SeekOrigin.Begin);
@@ -101,7 +119,7 @@ public class ModelFile
     public MHeader Header { get; set; }
     public Vector3[] Vertices { get; }
     public Vector2[] Uvs { get; }
-    public Vector3[] Normals { get; }
+    public Vector3[] FaceNormals { get; }
     public List<Polygon> Polygons { get; }
     public Material[] Materials { get; }
     public VHot[] VHots { get; }
@@ -135,9 +153,9 @@ public class ModelFile
         {
             var subObj = Objects[i];
             var objTrans = Matrix4x4.Identity;
-            if (subObj.Joint != -1)
+            if (subObj.JointIdx != -1)
             {
-                var ang = subObj.Joint >= joints.Length ? 0 : float.DegreesToRadians(joints[subObj.Joint]);
+                var ang = subObj.JointIdx >= joints.Length ? 0 : float.DegreesToRadians(joints[subObj.JointIdx]);
                 // TODO: Is this correct? Should I use a manual rotation matrix?
                 var jointRot = Matrix4x4.CreateFromYawPitchRoll(0, ang, 0);
                 objTrans = jointRot * subObj.Transform;
@@ -162,15 +180,15 @@ public class ModelFile
 
             for (var j = 0; j < subObj.VhotCount; j++)
             {
-                var v = VHots[subObj.VhotIdx + j];
+                var v = VHots[subObj.VhotStartIdx + j];
                 v.Position = Vector3.Transform(v.Position, transform);
-                VHots[subObj.VhotIdx + j] = v;
+                VHots[subObj.VhotStartIdx + j] = v;
             }
 
-            for (var j = 0; j < subObj.PointCount; j++)
+            for (var j = 0; j < subObj.VertexCount; j++)
             {
-                var v = Vertices[subObj.PointIdx + j];
-                Vertices[subObj.PointIdx + j] = Vector3.Transform(v, transform);
+                var v = Vertices[subObj.VertexStartIdx + j];
+                Vertices[subObj.VertexStartIdx + j] = Vector3.Transform(v, transform);
             }
         }
     }
@@ -179,7 +197,7 @@ public class ModelFile
     {
         foreach (var v in VHots)
         {
-            if (v.Id == (int)id)
+            if (v.Id == id)
             {
                 vhot = v;
                 return true;
@@ -224,8 +242,8 @@ public class ModelFile
         public uint UvOffset { get; }
         public uint VHotOffset { get; }
         public uint VertexOffset { get; }
-        public uint LightOffset { get; }
-        public uint NormalOffset { get; }
+        public uint VertexNormalOffset { get; }
+        public uint FaceNormalOffset { get; }
         public uint PolygonOffset { get; }
         public uint NodeOffset { get; }
 
@@ -255,8 +273,8 @@ public class ModelFile
             UvOffset = reader.ReadUInt32();
             VHotOffset = reader.ReadUInt32();
             VertexOffset = reader.ReadUInt32();
-            LightOffset = reader.ReadUInt32();
-            NormalOffset = reader.ReadUInt32();
+            VertexNormalOffset = reader.ReadUInt32();
+            FaceNormalOffset = reader.ReadUInt32();
             PolygonOffset = reader.ReadUInt32();
             NodeOffset = reader.ReadUInt32();
             ModelSize = reader.ReadUInt32();
@@ -279,29 +297,29 @@ public class ModelFile
     public struct SubObject
     {
         public string Name;
-        public byte Type;
-        public int Joint;
+        public JointType JointType;
+        public int JointIdx;
         public float MinJointValue;
         public float MaxJointValue;
         public Matrix4x4 Transform;
         public short Child;
         public short Next;
-        public ushort VhotIdx;
+        public ushort VhotStartIdx;
         public ushort VhotCount;
-        public ushort PointIdx;
-        public ushort PointCount;
-        public ushort LightIdx;
-        public ushort LightCount;
-        public ushort NormalIdx;
-        public ushort NormalCount;
-        public ushort NodeIdx;
+        public ushort VertexStartIdx;
+        public ushort VertexCount;
+        public ushort VertexNormalStartIdx;
+        public ushort VertexNormalCount;
+        public ushort FaceNormalStartIdx;
+        public ushort FaceNormalCount;
+        public ushort NodeStartIdx;
         public ushort NodeCount;
 
         public SubObject(BinaryReader reader)
         {
             Name = reader.ReadNullString(8);
-            Type = reader.ReadByte();
-            Joint = reader.ReadInt32();
+            JointType = (JointType)reader.ReadByte();
+            JointIdx = reader.ReadInt32();
             MinJointValue = reader.ReadSingle();
             MaxJointValue = reader.ReadSingle();
             var v1 = reader.ReadVec3();
@@ -312,15 +330,15 @@ public class ModelFile
                 1);
             Child = reader.ReadInt16();
             Next = reader.ReadInt16();
-            VhotIdx = reader.ReadUInt16();
+            VhotStartIdx = reader.ReadUInt16();
             VhotCount = reader.ReadUInt16();
-            PointIdx = reader.ReadUInt16();
-            PointCount = reader.ReadUInt16();
-            LightIdx = reader.ReadUInt16();
-            LightCount = reader.ReadUInt16();
-            NormalIdx = reader.ReadUInt16();
-            NormalCount = reader.ReadUInt16();
-            NodeIdx = reader.ReadUInt16();
+            VertexStartIdx = reader.ReadUInt16();
+            VertexCount = reader.ReadUInt16();
+            VertexNormalStartIdx = reader.ReadUInt16();
+            VertexNormalCount = reader.ReadUInt16();
+            FaceNormalStartIdx = reader.ReadUInt16();
+            FaceNormalCount = reader.ReadUInt16();
+            NodeStartIdx = reader.ReadUInt16();
             NodeCount = reader.ReadUInt16();
         }
     }
@@ -329,12 +347,12 @@ public class ModelFile
     {
         public ushort Index;
         public ushort Data;
-        public byte Type;
+        public PolygonType Type;
         public byte VertexCount;
         public ushort Normal;
         public float D;
         public ushort[] VertexIndices;
-        public ushort[] LightIndices;
+        public ushort[] VertexNormalIndices;
         public ushort[] UvIndices;
         public byte Material;
 
@@ -342,7 +360,7 @@ public class ModelFile
         {
             Index = reader.ReadUInt16();
             Data = reader.ReadUInt16();
-            Type = reader.ReadByte();
+            Type = (PolygonType)reader.ReadByte();
             VertexCount = reader.ReadByte();
             Normal = reader.ReadUInt16();
             D = reader.ReadSingle();
@@ -352,13 +370,13 @@ public class ModelFile
                 VertexIndices[i] = reader.ReadUInt16();
             }
 
-            LightIndices = new ushort[VertexCount];
+            VertexNormalIndices = new ushort[VertexCount];
             for (var i = 0; i < VertexCount; i++)
             {
-                LightIndices[i] = reader.ReadUInt16();
+                VertexNormalIndices[i] = reader.ReadUInt16();
             }
 
-            UvIndices = new ushort[Type == 0x1B ? VertexCount : 0];
+            UvIndices = new ushort[(Type & PolygonType.Textured) != 0 ? VertexCount : 0];
             for (var i = 0; i < UvIndices.Length; i++)
             {
                 UvIndices[i] = reader.ReadUInt16();
@@ -388,12 +406,12 @@ public class ModelFile
 
     public struct VHot
     {
-        public int Id;
+        public VhotId Id;
         public Vector3 Position;
 
         public VHot(BinaryReader reader)
         {
-            Id = reader.ReadInt32();
+            Id = (VhotId)reader.ReadInt32();
             Position = reader.ReadVec3();
         }
     }
