@@ -174,8 +174,8 @@ public class RootCommand
 
                         // Discards any polys that don't belong to this object
                         var startIdx = poly.VertexIndices[0];
-                        if (startIdx < subObject.PointIdx ||
-                            startIdx >= subObject.PointIdx + subObject.PointCount)
+                        if (startIdx < subObject.VertexStartIdx ||
+                            startIdx >= subObject.VertexStartIdx + subObject.VertexCount)
                         {
                             continue;
                         }
@@ -226,7 +226,7 @@ public class RootCommand
                     // Add vhots as empty nodes
                     for (var j = 0; j < subObject.VhotCount; j++)
                     {
-                        var v = modelFile.VHots[subObject.VhotIdx + j];
+                        var v = modelFile.VHots[subObject.VhotStartIdx + j];
                         var vhotNode = new NodeBuilder(v.Id.ToString());
                         vhotNode.SetLocalTransform(new AffineTransform(null, null, v.Position), false);
                         node.AddNode(vhotNode);

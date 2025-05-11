@@ -169,15 +169,15 @@ public class ModelFile
 
             for (var j = 0; j < subObj.VhotCount; j++)
             {
-                var v = VHots[subObj.VhotIdx + j];
+                var v = VHots[subObj.VhotStartIdx + j];
                 v.Position = Vector3.Transform(v.Position, transform);
-                VHots[subObj.VhotIdx + j] = v;
+                VHots[subObj.VhotStartIdx + j] = v;
             }
 
-            for (var j = 0; j < subObj.PointCount; j++)
+            for (var j = 0; j < subObj.VertexCount; j++)
             {
-                var v = Vertices[subObj.PointIdx + j];
-                Vertices[subObj.PointIdx + j] = Vector3.Transform(v, transform);
+                var v = Vertices[subObj.VertexStartIdx + j];
+                Vertices[subObj.VertexStartIdx + j] = Vector3.Transform(v, transform);
             }
         }
     }
@@ -293,15 +293,15 @@ public class ModelFile
         public Matrix4x4 Transform;
         public short Child;
         public short Next;
-        public ushort VhotIdx;
+        public ushort VhotStartIdx;
         public ushort VhotCount;
-        public ushort PointIdx;
-        public ushort PointCount;
-        public ushort LightIdx;
-        public ushort LightCount;
-        public ushort NormalIdx;
-        public ushort NormalCount;
-        public ushort NodeIdx;
+        public ushort VertexStartIdx;
+        public ushort VertexCount;
+        public ushort VertexNormalStartIdx;
+        public ushort VertexNormalCount;
+        public ushort FaceNormalStartIdx;
+        public ushort FaceNormalCount;
+        public ushort NodeStartIdx;
         public ushort NodeCount;
 
         public SubObject(BinaryReader reader)
@@ -319,15 +319,15 @@ public class ModelFile
                 1);
             Child = reader.ReadInt16();
             Next = reader.ReadInt16();
-            VhotIdx = reader.ReadUInt16();
+            VhotStartIdx = reader.ReadUInt16();
             VhotCount = reader.ReadUInt16();
-            PointIdx = reader.ReadUInt16();
-            PointCount = reader.ReadUInt16();
-            LightIdx = reader.ReadUInt16();
-            LightCount = reader.ReadUInt16();
-            NormalIdx = reader.ReadUInt16();
-            NormalCount = reader.ReadUInt16();
-            NodeIdx = reader.ReadUInt16();
+            VertexStartIdx = reader.ReadUInt16();
+            VertexCount = reader.ReadUInt16();
+            VertexNormalStartIdx = reader.ReadUInt16();
+            VertexNormalCount = reader.ReadUInt16();
+            FaceNormalStartIdx = reader.ReadUInt16();
+            FaceNormalCount = reader.ReadUInt16();
+            NodeStartIdx = reader.ReadUInt16();
             NodeCount = reader.ReadUInt16();
         }
     }
