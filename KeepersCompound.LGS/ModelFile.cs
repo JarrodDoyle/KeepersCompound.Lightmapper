@@ -18,6 +18,13 @@ public class ModelFile
         Particle5 = 7
     }
 
+    public enum JointType
+    {
+        None,
+        Rotate,
+        Slide,
+    }
+
     public ModelFile(string filename)
     {
         if (!File.Exists(filename))
@@ -279,7 +286,7 @@ public class ModelFile
     public struct SubObject
     {
         public string Name;
-        public byte Type;
+        public JointType JointType;
         public int JointIdx;
         public float MinJointValue;
         public float MaxJointValue;
@@ -300,7 +307,7 @@ public class ModelFile
         public SubObject(BinaryReader reader)
         {
             Name = reader.ReadNullString(8);
-            Type = reader.ReadByte();
+            JointType = (JointType)reader.ReadByte();
             JointIdx = reader.ReadInt32();
             MinJointValue = reader.ReadSingle();
             MaxJointValue = reader.ReadSingle();
