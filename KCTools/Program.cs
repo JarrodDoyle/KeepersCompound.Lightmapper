@@ -51,17 +51,17 @@ public class RootCommand
         [CliArgument(Description = "The path to the root Thief installation.")]
         public required string InstallPath { get; set; }
 
-        [CliArgument(Description = "The folder name of the fan mission. For OMs this is blank.")]
-        public required string CampaignName { get; set; }
-
-        [CliArgument(Description = "The name of the mission file including extension.")]
+        [CliArgument(Description = "Mission filename including extension.")]
         public required string MissionName { get; set; }
 
-        [CliOption(Description = "Use a fast PVS calculation with looser cell light indices.")]
-        public bool FastPvs { get; set; } = false;
+        [CliOption(Description = "Fan mission folder name. Uses OMs if not specified.")]
+        public string? CampaignName { get; set; } = null;
 
-        [CliOption(Description = "Name of output file excluding extension.")]
-        public string OutputName { get; set; } = "kc_lit";
+        [CliOption(Description = "Name of output file excluding extension. Overwrites existing mission if not specified.")]
+        public string? OutputName { get; set; } = null;
+
+        [CliOption(Description = "Use a simpler Light to Cell visibility calculation. Only use for debugging.")]
+        public bool SimpleVis { get; set; } = false;
 
         public void Run()
         {
@@ -76,9 +76,9 @@ public class RootCommand
                     throw new Exception("Failed to configure path manager");
                 }
 
-                var lightMapper = new LightMapper(pathManager, CampaignName, MissionName);
-                lightMapper.Light(FastPvs);
-                lightMapper.Save(OutputName);
+                var lightMapper = new LightMapper(pathManager, CampaignName ?? "", MissionName);
+                lightMapper.Light(SimpleVis);
+                lightMapper.Save(OutputName ?? Path.GetFileNameWithoutExtension(MissionName));
             });
             Timing.LogAll();
         }
@@ -96,15 +96,15 @@ public class RootCommand
             public required string InstallPath { get; set; }
 
             [CliOption(Description = "The folder name of a fan mission.")]
-            public string? FanMission { get; set; } = null;
+            public string? CampaignName { get; set; } = null;
 
             [CliOption(Description = "The name of the model.")]
             public string? ModelName { get; set; } = null;
 
             [CliOption(
-                Description = "Folder to export model to. If not set models will be exported alongside the original."
+                Description = "Folder to output exported models to. If not set models will be exported alongside the original."
             )]
-            public string? ExportDir { get; set; } = null;
+            public string? OutputDirectory { get; set; } = null;
 
             public void Run()
             {
@@ -112,13 +112,13 @@ public class RootCommand
                 var pathManager = new ResourcePathManager(tmpDir.FullName);
                 if (pathManager.TryInit(InstallPath))
                 {
-                    if (FanMission != null && !pathManager.GetCampaignNames().Contains(FanMission))
+                    if (CampaignName != null && !pathManager.GetCampaignNames().Contains(CampaignName))
                     {
                         Log.Warning("Couldn't find fan mission folder.");
                         return;
                     }
 
-                    var campaign = pathManager.GetCampaign(FanMission ?? "");
+                    var campaign = pathManager.GetCampaign(CampaignName ?? "");
                     var modelCount = 0;
                     if (ModelName != null)
                     {
@@ -258,7 +258,7 @@ public class RootCommand
                 scene.ApplyBasisTransform(Matrix4x4.CreateRotationX(float.DegreesToRadians(-90)));
 
                 var exportName = Path.GetFileNameWithoutExtension(modelName);
-                var exportDir = ExportDir ?? Path.GetDirectoryName(modelPath);
+                var exportDir = OutputDirectory ?? Path.GetDirectoryName(modelPath);
                 if (!Directory.Exists(exportDir))
                 {
                     Directory.CreateDirectory(exportDir);
