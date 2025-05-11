@@ -341,7 +341,7 @@ public class ModelFile
         public ushort Normal;
         public float D;
         public ushort[] VertexIndices;
-        public ushort[] LightIndices;
+        public ushort[] VertexNormalIndices;
         public ushort[] UvIndices;
         public byte Material;
 
@@ -359,10 +359,10 @@ public class ModelFile
                 VertexIndices[i] = reader.ReadUInt16();
             }
 
-            LightIndices = new ushort[VertexCount];
+            VertexNormalIndices = new ushort[VertexCount];
             for (var i = 0; i < VertexCount; i++)
             {
-                LightIndices[i] = reader.ReadUInt16();
+                VertexNormalIndices[i] = reader.ReadUInt16();
             }
 
             UvIndices = new ushort[Type == 0x1B ? VertexCount : 0];
