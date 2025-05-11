@@ -198,7 +198,7 @@ public class RootCommand
                         {
                             var poly = modelFile.Polygons[polyIdx];
                             var vertices = new Vector3[poly.VertexCount];
-                            var normal = modelFile.Normals[poly.Normal];
+                            var normal = modelFile.FaceNormals[poly.Normal];
                             var uvs = new Vector2[poly.VertexCount];
                             for (var j = 0; j < poly.VertexCount; j++)
                             {

@@ -61,11 +61,11 @@ public class ModelFile
             Uvs[i] = reader.ReadVec2();
         }
 
-        stream.Seek(Header.NormalOffset, SeekOrigin.Begin);
-        Normals = new Vector3[(Header.PolygonOffset - Header.NormalOffset) / 12];
-        for (var i = 0; i < Normals.Length; i++)
+        stream.Seek(Header.FaceNormalOffset, SeekOrigin.Begin);
+        FaceNormals = new Vector3[(Header.PolygonOffset - Header.FaceNormalOffset) / 12];
+        for (var i = 0; i < FaceNormals.Length; i++)
         {
-            Normals[i] = reader.ReadVec3();
+            FaceNormals[i] = reader.ReadVec3();
         }
 
         stream.Seek(Header.PolygonOffset, SeekOrigin.Begin);
@@ -108,7 +108,7 @@ public class ModelFile
     public MHeader Header { get; set; }
     public Vector3[] Vertices { get; }
     public Vector2[] Uvs { get; }
-    public Vector3[] Normals { get; }
+    public Vector3[] FaceNormals { get; }
     public List<Polygon> Polygons { get; }
     public Material[] Materials { get; }
     public VHot[] VHots { get; }
@@ -232,7 +232,7 @@ public class ModelFile
         public uint VHotOffset { get; }
         public uint VertexOffset { get; }
         public uint LightOffset { get; }
-        public uint NormalOffset { get; }
+        public uint FaceNormalOffset { get; }
         public uint PolygonOffset { get; }
         public uint NodeOffset { get; }
 
@@ -263,7 +263,7 @@ public class ModelFile
             VHotOffset = reader.ReadUInt32();
             VertexOffset = reader.ReadUInt32();
             LightOffset = reader.ReadUInt32();
-            NormalOffset = reader.ReadUInt32();
+            FaceNormalOffset = reader.ReadUInt32();
             PolygonOffset = reader.ReadUInt32();
             NodeOffset = reader.ReadUInt32();
             ModelSize = reader.ReadUInt32();
