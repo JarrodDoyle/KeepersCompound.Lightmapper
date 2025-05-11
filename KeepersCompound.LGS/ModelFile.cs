@@ -25,6 +25,17 @@ public class ModelFile
         Slide,
     }
 
+    [Flags]
+    public enum PolygonType
+    {
+        None = 0x00,
+        Solid = 0x01,
+        Wireframe = 0x02,
+        Textured = 0x03,
+        VertexNormals = 0x18,
+        Paletted = 0x20,
+    }
+
     public ModelFile(string filename)
     {
         if (!File.Exists(filename))
@@ -336,7 +347,7 @@ public class ModelFile
     {
         public ushort Index;
         public ushort Data;
-        public byte Type;
+        public PolygonType Type;
         public byte VertexCount;
         public ushort Normal;
         public float D;
@@ -349,7 +360,7 @@ public class ModelFile
         {
             Index = reader.ReadUInt16();
             Data = reader.ReadUInt16();
-            Type = reader.ReadByte();
+            Type = (PolygonType)reader.ReadByte();
             VertexCount = reader.ReadByte();
             Normal = reader.ReadUInt16();
             D = reader.ReadSingle();
@@ -365,7 +376,7 @@ public class ModelFile
                 VertexNormalIndices[i] = reader.ReadUInt16();
             }
 
-            UvIndices = new ushort[Type == 0x1B ? VertexCount : 0];
+            UvIndices = new ushort[(Type & PolygonType.Textured) != 0 ? VertexCount : 0];
             for (var i = 0; i < UvIndices.Length; i++)
             {
                 UvIndices[i] = reader.ReadUInt16();
