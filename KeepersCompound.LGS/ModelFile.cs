@@ -135,9 +135,9 @@ public class ModelFile
         {
             var subObj = Objects[i];
             var objTrans = Matrix4x4.Identity;
-            if (subObj.Joint != -1)
+            if (subObj.JointIdx != -1)
             {
-                var ang = subObj.Joint >= joints.Length ? 0 : float.DegreesToRadians(joints[subObj.Joint]);
+                var ang = subObj.JointIdx >= joints.Length ? 0 : float.DegreesToRadians(joints[subObj.JointIdx]);
                 // TODO: Is this correct? Should I use a manual rotation matrix?
                 var jointRot = Matrix4x4.CreateFromYawPitchRoll(0, ang, 0);
                 objTrans = jointRot * subObj.Transform;
@@ -280,7 +280,7 @@ public class ModelFile
     {
         public string Name;
         public byte Type;
-        public int Joint;
+        public int JointIdx;
         public float MinJointValue;
         public float MaxJointValue;
         public Matrix4x4 Transform;
@@ -301,7 +301,7 @@ public class ModelFile
         {
             Name = reader.ReadNullString(8);
             Type = reader.ReadByte();
-            Joint = reader.ReadInt32();
+            JointIdx = reader.ReadInt32();
             MinJointValue = reader.ReadSingle();
             MaxJointValue = reader.ReadSingle();
             var v1 = reader.ReadVec3();
