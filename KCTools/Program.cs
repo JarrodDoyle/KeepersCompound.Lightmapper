@@ -293,6 +293,7 @@ public class RootCommand
                             {
                                 var material = new MaterialBuilder(resName)
                                     .WithDoubleSide(false)
+                                    .WithAlpha(AlphaMode.MASK)
                                     .WithBaseColor(ImageBuilder.From(memoryImage, resName));
                                 Log.Debug("Adding texture material: {Name}, {Slot}", resName, slot);
                                 materials.Add(slot, material);
