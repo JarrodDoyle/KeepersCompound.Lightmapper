@@ -186,7 +186,7 @@ public class ModelFile
     {
         foreach (var v in VHots)
         {
-            if (v.Id == (int)id)
+            if (v.Id == id)
             {
                 vhot = v;
                 return true;
@@ -395,12 +395,12 @@ public class ModelFile
 
     public struct VHot
     {
-        public int Id;
+        public VhotId Id;
         public Vector3 Position;
 
         public VHot(BinaryReader reader)
         {
-            Id = reader.ReadInt32();
+            Id = (VhotId)reader.ReadInt32();
             Position = reader.ReadVec3();
         }
     }
