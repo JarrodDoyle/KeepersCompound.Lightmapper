@@ -64,6 +64,9 @@ public class RootCommand
         [CliOption(Description = "Use a simpler Light to Cell visibility calculation. Only use for debugging.")]
         public bool SimpleVis { get; set; } = false;
 
+        [CliOption(Description = "Report light configuration problems without performing any lighting.")]
+        public bool Inspect { get; set; } = false;
+
         [CliOption(Description = "Disable terminal output.")]
         public bool Quiet { get; set; } = false;
 
@@ -83,8 +86,15 @@ public class RootCommand
                 }
 
                 var lightMapper = new LightMapper(pathManager, CampaignName ?? "", MissionName);
-                lightMapper.Light(SimpleVis);
-                lightMapper.Save(OutputName ?? Path.GetFileNameWithoutExtension(MissionName));
+                if (Inspect)
+                {
+                    lightMapper.Inspect();
+                }
+                else
+                {
+                    lightMapper.Light(SimpleVis);
+                    lightMapper.Save(OutputName ?? Path.GetFileNameWithoutExtension(MissionName));
+                }
             });
             Timing.LogAll();
         }

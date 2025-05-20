@@ -123,6 +123,8 @@ public class LightMapper
         }
 
         Timing.TimeStage("Gather Lights", () => BuildLightList(settings));
+        Timing.TimeStage("Validate Lights", () => ValidateLightConfigurations(settings));
+        Timing.TimeStage("Build Lighting Table", BuildLightingTable);
         Timing.TimeStage("Set Light Visibility", () => SetCellLightIndices(settings));
         Timing.TimeStage("Trace Scene", () => TraceScene(settings));
         Timing.TimeStage("Update AnimLight Cell Mapping", SetAnimLightCellMaps);
@@ -137,6 +139,25 @@ public class LightMapper
         {
             rendParams.SunlightMode = SunlightMode.QuadObjcastShadows;
         }
+    }
+
+    public void Inspect()
+    {
+        if (!_mission.TryGetChunk<LmParams>("LM_PARAM", out var lmParams))
+        {
+            return;
+        }
+
+        if (lmParams.AnimLightCutoff > 0)
+        {
+            Log.Warning(
+                "Non-zero anim_light_cutoff ({Cutoff}). AnimLight lightmap shadow radius may not match lightgem shadow radius.",
+                lmParams.AnimLightCutoff);
+        }
+
+        var settings = new Settings();
+        Timing.TimeStage("Gather Lights", () => BuildLightList(settings));
+        Timing.TimeStage("Validate Lights", () => ValidateLightConfigurations(settings));
     }
 
     public void Save(string missionName)
@@ -216,14 +237,10 @@ public class LightMapper
     {
         _lights.Clear();
 
-        // Get the chunks we need
-        if (!_mission.TryGetChunk<WorldRep>("WREXT", out var worldRep) ||
-            !_mission.TryGetChunk<BrList>("BRLIST", out var brList))
+        if (!_mission.TryGetChunk<BrList>("BRLIST", out var brList))
         {
             return;
         }
-
-        worldRep.LightingTable.Reset();
 
         // TODO: Calculate the actual effective radius of infinite lights
         // potentially do the same for all lights and lower their radius if necessary?
@@ -239,9 +256,15 @@ public class LightMapper
                     break;
             }
         }
+    }
 
-        ValidateLightConfigurations(settings);
-
+    private void BuildLightingTable()
+    {
+        if (!_mission.TryGetChunk<WorldRep>("WREXT", out var worldRep))
+        {
+            return;
+        }
+        
         worldRep.LightingTable.Reset();
         foreach (var light in _lights)
         {
