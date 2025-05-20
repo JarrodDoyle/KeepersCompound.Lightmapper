@@ -141,6 +141,25 @@ public class LightMapper
         }
     }
 
+    public void Inspect()
+    {
+        if (!_mission.TryGetChunk<LmParams>("LM_PARAM", out var lmParams))
+        {
+            return;
+        }
+
+        if (lmParams.AnimLightCutoff > 0)
+        {
+            Log.Warning(
+                "Non-zero anim_light_cutoff ({Cutoff}). AnimLight lightmap shadow radius may not match lightgem shadow radius.",
+                lmParams.AnimLightCutoff);
+        }
+
+        var settings = new Settings();
+        Timing.TimeStage("Gather Lights", () => BuildLightList(settings));
+        Timing.TimeStage("Validate Lights", () => ValidateLightConfigurations(settings));
+    }
+
     public void Save(string missionName)
     {
         var ext = Path.GetExtension(_misPath);
