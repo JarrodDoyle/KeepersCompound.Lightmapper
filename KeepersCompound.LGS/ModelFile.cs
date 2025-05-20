@@ -376,7 +376,7 @@ public class ModelFile
                 VertexNormalIndices[i] = reader.ReadUInt16();
             }
 
-            UvIndices = new ushort[(Type & PolygonType.Textured) != 0 ? VertexCount : 0];
+            UvIndices = new ushort[(Type & PolygonType.Textured) == PolygonType.Textured ? VertexCount : 0];
             for (var i = 0; i < UvIndices.Length; i++)
             {
                 UvIndices[i] = reader.ReadUInt16();
