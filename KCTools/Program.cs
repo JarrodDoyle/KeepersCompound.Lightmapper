@@ -19,7 +19,7 @@ using VERTEX = VertexBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty>;
 
 internal static class Program
 {
-    private static void ConfigureLogger()
+    internal static void ConfigureLogger(bool quiet)
     {
         const string outputTemplate = "{Timestamp:HH:mm:ss.fff} [{Level}] {Message:lj}{NewLine}{Exception}";
         var logPath = $"{AppDomain.CurrentDomain.BaseDirectory}/logs/{DateTime.Now:yyyyMMdd_HHmmss}.log";
@@ -28,16 +28,17 @@ internal static class Program
         config.MinimumLevel.Debug();
 #endif
 
-        Log.Logger = config
-            .WriteTo.Console(theme: AnsiConsoleTheme.Sixteen, outputTemplate: outputTemplate)
-            .WriteTo.File(logPath, outputTemplate: outputTemplate)
-            .CreateLogger();
+        if (!quiet)
+        {
+            config.WriteTo.Console(theme: AnsiConsoleTheme.Sixteen, outputTemplate: outputTemplate);
+        }
+
+        config.WriteTo.File(logPath, outputTemplate: outputTemplate);
+        Log.Logger = config.CreateLogger();
     }
 
     public static void Main(string[] args)
     {
-        ConfigureLogger();
-
         Cli.Run<RootCommand>(args);
     }
 }
@@ -63,8 +64,13 @@ public class RootCommand
         [CliOption(Description = "Use a simpler Light to Cell visibility calculation. Only use for debugging.")]
         public bool SimpleVis { get; set; } = false;
 
+        [CliOption(Description = "Disable terminal output.")]
+        public bool Quiet { get; set; } = false;
+
         public void Run()
         {
+            Program.ConfigureLogger(Quiet);
+
             Timing.Reset();
             Timing.TimeStage("Total", () =>
             {
@@ -106,8 +112,13 @@ public class RootCommand
             )]
             public string? OutputDirectory { get; set; } = null;
 
+            [CliOption(Description = "Disable terminal output.")]
+            public bool Quiet { get; set; } = false;
+
             public void Run()
             {
+                Program.ConfigureLogger(Quiet);
+
                 var tmpDir = Directory.CreateTempSubdirectory("KCBin");
                 var pathManager = new ResourcePathManager(tmpDir.FullName);
                 if (pathManager.TryInit(InstallPath))
