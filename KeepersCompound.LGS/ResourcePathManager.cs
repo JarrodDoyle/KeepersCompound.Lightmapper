@@ -157,11 +157,6 @@ public class ResourcePathManager
             return false;
         }
 
-        if (!DirContainsThiefExe(installPath))
-        {
-            return false;
-        }
-
         // TODO: Should these paths be stored?
         if (!TryGetConfigPaths(installPath, out var configPaths))
         {
@@ -351,31 +346,6 @@ public class ResourcePathManager
         }
 
         return pathMap;
-    }
-
-    /// <summary>
-    /// Determine if the given directory contains a Thief executable at the top level.
-    /// </summary>
-    /// <param name="dir">The directory to search</param>
-    /// <returns><c>true</c> if a Thief executable was found, <c>false</c> otherwise.</returns>
-    private static bool DirContainsThiefExe(string dir)
-    {
-        var searchOptions = new EnumerationOptions
-        {
-            MatchCasing = MatchCasing.CaseInsensitive
-        };
-
-        foreach (var path in Directory.GetFiles(dir, "*.exe", searchOptions))
-        {
-            var baseName = Path.GetFileName(path).ToLower();
-            if (baseName.Contains("thief"))
-            {
-                return true;
-            }
-        }
-
-        Log.Error("No Thief executable found in {InstallPath}. Is this the right directory?", dir);
-        return false;
     }
 
     /// <summary>
