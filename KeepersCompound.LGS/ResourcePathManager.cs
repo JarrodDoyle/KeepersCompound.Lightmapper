@@ -13,9 +13,7 @@ internal enum ConfigFile
     Cam,
     CamExt,
     CamMod,
-    Game,
     Install,
-    User,
     ConfigFileCount
 }
 
@@ -65,45 +63,48 @@ public class ResourcePathManager
             return map.TryGetValue(name.ToLower(), out var resourcePath) ? resourcePath : null;
         }
 
-        public void Initialise(string misPath, string resPath)
+        public void Initialise(string[] resPaths)
         {
-            foreach (var path in Directory.GetFiles(misPath))
+            foreach (var dir in resPaths)
             {
-                var convertedPath = ConvertSeparator(path);
-                var ext = Path.GetExtension(convertedPath).ToLower();
-                if (ext == ".mis" || ext == ".cow")
+                foreach (var path in Directory.GetFiles(dir))
                 {
-                    var baseName = Path.GetFileName(convertedPath).ToLower();
-                    _missionPathMap[baseName] = convertedPath;
+                    var convertedPath = ConvertSeparator(path);
+                    var ext = Path.GetExtension(convertedPath).ToLower();
+                    if (ext == ".mis" || ext == ".cow")
+                    {
+                        var baseName = Path.GetFileName(convertedPath).ToLower();
+                        _missionPathMap[baseName] = convertedPath;
+                    }
                 }
-            }
 
-            var texPaths = GetTexturePaths(resPath);
-            var objPaths = GetObjectPaths(resPath);
-            var objTexPaths = GetObjectTexturePaths(resPath);
-            Log.Information(
-                "Found {TexCount} textures, {ObjCount} objects, {ObjTexCount} object textures for campaign: {CampaignName}",
-                texPaths.Count, objPaths.Count, objTexPaths.Count, Name);
+                var texPaths = GetTexturePaths(dir);
+                var objPaths = GetObjectPaths(dir);
+                var objTexPaths = GetObjectTexturePaths(dir);
+                Log.Information(
+                    "Found {TexCount} textures, {ObjCount} objects, {ObjTexCount} object textures for campaign: {CampaignName}",
+                    texPaths.Count, objPaths.Count, objTexPaths.Count, Name);
 
-            foreach (var (resName, path) in texPaths)
-            {
-                _texturePathMap[resName] = path;
-            }
+                foreach (var (resName, path) in texPaths)
+                {
+                    _texturePathMap[resName] = path;
+                }
 
-            foreach (var (resName, path) in objPaths)
-            {
-                _objectPathMap[resName] = path;
-            }
+                foreach (var (resName, path) in objPaths)
+                {
+                    _objectPathMap[resName] = path;
+                }
 
-            foreach (var (resName, path) in objTexPaths)
-            {
-                _objectTexturePathMap[resName] = path;
+                foreach (var (resName, path) in objTexPaths)
+                {
+                    _objectTexturePathMap[resName] = path;
+                }
             }
 
             Initialised = true;
         }
 
-        public void Initialise(string misPath, string resPath, CampaignResources parent)
+        public void Initialise(string[] resPaths, CampaignResources parent)
         {
             foreach (var (resName, path) in parent._texturePathMap)
             {
@@ -120,7 +121,7 @@ public class ResourcePathManager
                 _objectTexturePathMap[resName] = path;
             }
 
-            Initialise(misPath, resPath);
+            Initialise(resPaths);
         }
     }
 
@@ -157,11 +158,6 @@ public class ResourcePathManager
             return false;
         }
 
-        if (!DirContainsThiefExe(installPath))
-        {
-            return false;
-        }
-
         // TODO: Should these paths be stored?
         if (!TryGetConfigPaths(installPath, out var configPaths))
         {
@@ -170,22 +166,15 @@ public class ResourcePathManager
 
         // We need to know where all the texture and object resources are
         var installCfgLines = File.ReadAllLines(configPaths[(int)ConfigFile.Install]);
-        if (!FindConfigVar(installCfgLines, "resname_base", out var resPaths))
+        var resnamePaths = GetValidInstallPaths(installPath, installCfgLines, "resname_base");
+        if (resnamePaths.Count == 0)
         {
-            Log.Error("Failed to find `resname_base` in install config");
             return false;
         }
 
         var zipPaths = new List<string>();
-        foreach (var resPath in resPaths.Split('+'))
+        foreach (var dir in resnamePaths)
         {
-            var dir = Path.Join(installPath, ConvertSeparator(resPath));
-            if (!Directory.Exists(dir))
-            {
-                Log.Warning("Install config references non-existent `resname_base`: {Path}", dir);
-                continue;
-            }
-
             foreach (var path in Directory.GetFiles(dir))
             {
                 var name = Path.GetFileName(path).ToLower();
@@ -207,16 +196,16 @@ public class ResourcePathManager
             ZipFile.OpenRead(zipPath).ExtractToDirectory(extractPath, true);
         }
 
-        if (!FindConfigVar(installCfgLines, "load_path", out var omsPath))
+        var omPaths = GetValidInstallPaths(installPath, installCfgLines, "load_path");
+        if (omPaths.Count == 0)
         {
-            Log.Error("Failed to find `load_path` in install config");
             return false;
         }
 
-        omsPath = Path.Join(installPath, ConvertSeparator(omsPath));
+        omPaths.Add(_extractionPath);
         _omResources = new CampaignResources();
         _omResources.Name = "";
-        _omResources.Initialise(omsPath, _extractionPath);
+        _omResources.Initialise([..omPaths]);
 
         var camModLines = File.ReadAllLines(configPaths[(int)ConfigFile.CamMod]);
         FindConfigVar(camModLines, "fm_path", out var fmsPath, "FMs");
@@ -226,12 +215,15 @@ public class ResourcePathManager
         // Build up the map of FM campaigns. These are uninitialised, we just want
         // to have their name
         _fmResources = new Dictionary<string, CampaignResources>();
-        foreach (var dir in Directory.GetDirectories(_fmsDir))
+        if (Directory.Exists(_fmsDir))
         {
-            var name = Path.GetFileName(dir);
-            var fmResource = new CampaignResources();
-            fmResource.Name = name;
-            _fmResources.Add(name, fmResource);
+            foreach (var dir in Directory.GetDirectories(_fmsDir))
+            {
+                var name = Path.GetFileName(dir);
+                var fmResource = new CampaignResources();
+                fmResource.Name = name;
+                _fmResources.Add(name, fmResource);
+            }
         }
 
         Initialised = true;
@@ -266,7 +258,7 @@ public class ResourcePathManager
         if (!campaign.Initialised)
         {
             var fmPath = Path.Join(_fmsDir, campaignName);
-            campaign.Initialise(fmPath, fmPath, _omResources);
+            campaign.Initialise([fmPath], _omResources);
         }
 
         return campaign;
@@ -354,31 +346,6 @@ public class ResourcePathManager
     }
 
     /// <summary>
-    /// Determine if the given directory contains a Thief executable at the top level.
-    /// </summary>
-    /// <param name="dir">The directory to search</param>
-    /// <returns><c>true</c> if a Thief executable was found, <c>false</c> otherwise.</returns>
-    private static bool DirContainsThiefExe(string dir)
-    {
-        var searchOptions = new EnumerationOptions
-        {
-            MatchCasing = MatchCasing.CaseInsensitive
-        };
-
-        foreach (var path in Directory.GetFiles(dir, "*.exe", searchOptions))
-        {
-            var baseName = Path.GetFileName(path).ToLower();
-            if (baseName.Contains("thief"))
-            {
-                return true;
-            }
-        }
-
-        Log.Error("No Thief executable found in {InstallPath}. Is this the right directory?", dir);
-        return false;
-    }
-
-    /// <summary>
     /// Get an array of all the Dark config file paths.
     /// </summary>
     /// <param name="installPath">Root directory of the Thief installation.</param>
@@ -457,17 +424,9 @@ public class ResourcePathManager
         foreach (var path in Directory.GetFiles(includePath, "*.cfg", searchOptions))
         {
             var name = Path.GetFileName(path).ToLower();
-            if (name == $"{gameName}.cfg")
-            {
-                configPaths[(int)ConfigFile.Game] = path;
-            }
-            else if (name == installCfgName.ToLower())
+            if (name == installCfgName.ToLower())
             {
                 configPaths[(int)ConfigFile.Install] = path;
-            }
-            else if (name == userCfgName.ToLower())
-            {
-                configPaths[(int)ConfigFile.User] = path;
             }
         }
 
@@ -508,5 +467,30 @@ public class ResourcePathManager
         }
 
         return false;
+    }
+
+    private static List<string> GetValidInstallPaths(string rootPath, string[] lines, string varName)
+    {
+        var validPaths = new List<string>();
+
+        if (!FindConfigVar(lines, varName, out var paths))
+        {
+            Log.Error("Failed to find {VarName} in install config", varName);
+            return validPaths;
+        }
+
+        foreach (var path in paths.Split('+'))
+        {
+            var dir = Path.Join(rootPath, ConvertSeparator(path));
+            if (!Directory.Exists(dir))
+            {
+                Log.Warning("Install config references non-existent {VarName}: {Path}", varName, dir);
+                continue;
+            }
+
+            validPaths.Add(dir);
+        }
+
+        return validPaths;
     }
 }

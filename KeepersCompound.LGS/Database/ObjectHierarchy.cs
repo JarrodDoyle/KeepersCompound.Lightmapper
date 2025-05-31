@@ -1,4 +1,5 @@
 using KeepersCompound.LGS.Database.Chunks;
+using Serilog;
 
 namespace KeepersCompound.LGS.Database;
 
@@ -34,51 +35,69 @@ public class ObjectHierarchy
     {
         _objects = new Dictionary<int, DarkObject>();
 
-        T GetMergedChunk<T>(string name) where T : IMergeable
+        bool TryGetMergedChunk<T>(string name, out T mergedChunk) where T : IMergeable
         {
             if (!db.TryGetChunk<T>(name, out var chunk))
             {
-                throw new ArgumentException($"No chunk with name ({name}) found", nameof(name));
+                mergedChunk = default;
+                return false;
             }
 
             if (gam != null && gam.TryGetChunk<T>(name, out var gamChunk))
             {
                 gamChunk.Merge(chunk);
-                return gamChunk;
+                mergedChunk = gamChunk;
+            }
+            else
+            {
+                mergedChunk = chunk;
             }
 
-            return chunk;
+            return true;
+
         }
 
         // Add parentages
-        var metaPropLinks = GetMergedChunk<LinkChunk>("L$MetaProp");
-        var metaPropLinkData = GetMergedChunk<LinkDataMetaProp>("LD$MetaProp");
-        var length = metaPropLinks.Links.Count;
-        for (var i = 0; i < length; i++)
+        var metaPropExists = TryGetMergedChunk<LinkChunk>("L$MetaProp", out var metaPropLinks);
+        var metaPropLinkDataExists = TryGetMergedChunk<LinkDataMetaProp>("LD$MetaProp", out var metaPropLinkData);
+        if (!metaPropExists || !metaPropLinkDataExists)
         {
-            var link = metaPropLinks.Links[i];
-            var linkData = metaPropLinkData.LinkDatas[i];
-            var childId = link.Source;
-            var parentId = link.Destination;
-            if (!_objects.ContainsKey(childId))
+            Log.Error("Failed to get `MetaProp` chunks. Can't construct object hierarchy parentage.");
+        }
+        else
+        {
+            var length = metaPropLinks.Links.Count;
+            for (var i = 0; i < length; i++)
             {
-                _objects.Add(childId, new DarkObject(childId));
-            }
+                var link = metaPropLinks.Links[i];
+                var linkData = metaPropLinkData.LinkDatas[i];
+                var childId = link.Source;
+                var parentId = link.Destination;
+                if (!_objects.ContainsKey(childId))
+                {
+                    _objects.Add(childId, new DarkObject(childId));
+                }
 
-            if (!_objects.ContainsKey(parentId))
-            {
-                _objects.Add(parentId, new DarkObject(parentId));
-            }
+                if (!_objects.ContainsKey(parentId))
+                {
+                    _objects.Add(parentId, new DarkObject(parentId));
+                }
 
-            if (linkData.Priority == 0)
-            {
-                _objects[childId].ParentId = parentId;
+                if (linkData.Priority == 0)
+                {
+                    _objects[childId].ParentId = parentId;
+                }
             }
         }
 
         void AddProp<T>(string name) where T : Property, new()
         {
-            var chunk = GetMergedChunk<PropertyChunk<T>>(name);
+            if (!TryGetMergedChunk<PropertyChunk<T>>(name, out var chunk))
+            {
+                Log.Warning("Can't add property {ChunkName} to hierarchy. Chunk doesn't exist.", name);
+                return;
+            }
+
             foreach (var prop in chunk.Properties)
             {
                 var id = prop.ObjectId;
