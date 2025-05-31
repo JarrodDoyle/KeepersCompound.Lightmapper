@@ -215,12 +215,15 @@ public class ResourcePathManager
         // Build up the map of FM campaigns. These are uninitialised, we just want
         // to have their name
         _fmResources = new Dictionary<string, CampaignResources>();
-        foreach (var dir in Directory.GetDirectories(_fmsDir))
+        if (Directory.Exists(_fmsDir))
         {
-            var name = Path.GetFileName(dir);
-            var fmResource = new CampaignResources();
-            fmResource.Name = name;
-            _fmResources.Add(name, fmResource);
+            foreach (var dir in Directory.GetDirectories(_fmsDir))
+            {
+                var name = Path.GetFileName(dir);
+                var fmResource = new CampaignResources();
+                fmResource.Name = name;
+                _fmResources.Add(name, fmResource);
+            }
         }
 
         Initialised = true;
