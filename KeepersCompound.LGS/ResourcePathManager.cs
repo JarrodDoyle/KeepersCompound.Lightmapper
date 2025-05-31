@@ -13,9 +13,7 @@ internal enum ConfigFile
     Cam,
     CamExt,
     CamMod,
-    Game,
     Install,
-    User,
     ConfigFileCount
 }
 
@@ -427,17 +425,9 @@ public class ResourcePathManager
         foreach (var path in Directory.GetFiles(includePath, "*.cfg", searchOptions))
         {
             var name = Path.GetFileName(path).ToLower();
-            if (name == $"{gameName}.cfg")
-            {
-                configPaths[(int)ConfigFile.Game] = path;
-            }
-            else if (name == installCfgName.ToLower())
+            if (name == installCfgName.ToLower())
             {
                 configPaths[(int)ConfigFile.Install] = path;
-            }
-            else if (name == userCfgName.ToLower())
-            {
-                configPaths[(int)ConfigFile.User] = path;
             }
         }
 
