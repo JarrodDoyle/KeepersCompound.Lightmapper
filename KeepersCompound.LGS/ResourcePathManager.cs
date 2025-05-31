@@ -163,22 +163,15 @@ public class ResourcePathManager
 
         // We need to know where all the texture and object resources are
         var installCfgLines = File.ReadAllLines(configPaths[(int)ConfigFile.Install]);
-        if (!FindConfigVar(installCfgLines, "resname_base", out var resPaths))
+        var resnamePaths = GetValidInstallPaths(installPath, installCfgLines, "resname_base");
+        if (resnamePaths.Count == 0)
         {
-            Log.Error("Failed to find `resname_base` in install config");
             return false;
         }
 
         var zipPaths = new List<string>();
-        foreach (var resPath in resPaths.Split('+'))
+        foreach (var dir in resnamePaths)
         {
-            var dir = Path.Join(installPath, ConvertSeparator(resPath));
-            if (!Directory.Exists(dir))
-            {
-                Log.Warning("Install config references non-existent `resname_base`: {Path}", dir);
-                continue;
-            }
-
             foreach (var path in Directory.GetFiles(dir))
             {
                 var name = Path.GetFileName(path).ToLower();
@@ -468,5 +461,30 @@ public class ResourcePathManager
         }
 
         return false;
+    }
+
+    private static List<string> GetValidInstallPaths(string rootPath, string[] lines, string varName)
+    {
+        var validPaths = new List<string>();
+
+        if (!FindConfigVar(lines, varName, out var paths))
+        {
+            Log.Error("Failed to find {VarName} in install config", varName);
+            return validPaths;
+        }
+
+        foreach (var path in paths.Split('+'))
+        {
+            var dir = Path.Join(rootPath, ConvertSeparator(path));
+            if (!Directory.Exists(dir))
+            {
+                Log.Warning("Install config references non-existent {VarName}: {Path}", varName, dir);
+                continue;
+            }
+
+            validPaths.Add(dir);
+        }
+
+        return validPaths;
     }
 }
