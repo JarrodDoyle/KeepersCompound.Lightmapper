@@ -63,45 +63,48 @@ public class ResourcePathManager
             return map.TryGetValue(name.ToLower(), out var resourcePath) ? resourcePath : null;
         }
 
-        public void Initialise(string misPath, string resPath)
+        public void Initialise(string[] resPaths)
         {
-            foreach (var path in Directory.GetFiles(misPath))
+            foreach (var dir in resPaths)
             {
-                var convertedPath = ConvertSeparator(path);
-                var ext = Path.GetExtension(convertedPath).ToLower();
-                if (ext == ".mis" || ext == ".cow")
+                foreach (var path in Directory.GetFiles(dir))
                 {
-                    var baseName = Path.GetFileName(convertedPath).ToLower();
-                    _missionPathMap[baseName] = convertedPath;
+                    var convertedPath = ConvertSeparator(path);
+                    var ext = Path.GetExtension(convertedPath).ToLower();
+                    if (ext == ".mis" || ext == ".cow")
+                    {
+                        var baseName = Path.GetFileName(convertedPath).ToLower();
+                        _missionPathMap[baseName] = convertedPath;
+                    }
                 }
-            }
 
-            var texPaths = GetTexturePaths(resPath);
-            var objPaths = GetObjectPaths(resPath);
-            var objTexPaths = GetObjectTexturePaths(resPath);
-            Log.Information(
-                "Found {TexCount} textures, {ObjCount} objects, {ObjTexCount} object textures for campaign: {CampaignName}",
-                texPaths.Count, objPaths.Count, objTexPaths.Count, Name);
+                var texPaths = GetTexturePaths(dir);
+                var objPaths = GetObjectPaths(dir);
+                var objTexPaths = GetObjectTexturePaths(dir);
+                Log.Information(
+                    "Found {TexCount} textures, {ObjCount} objects, {ObjTexCount} object textures for campaign: {CampaignName}",
+                    texPaths.Count, objPaths.Count, objTexPaths.Count, Name);
 
-            foreach (var (resName, path) in texPaths)
-            {
-                _texturePathMap[resName] = path;
-            }
+                foreach (var (resName, path) in texPaths)
+                {
+                    _texturePathMap[resName] = path;
+                }
 
-            foreach (var (resName, path) in objPaths)
-            {
-                _objectPathMap[resName] = path;
-            }
+                foreach (var (resName, path) in objPaths)
+                {
+                    _objectPathMap[resName] = path;
+                }
 
-            foreach (var (resName, path) in objTexPaths)
-            {
-                _objectTexturePathMap[resName] = path;
+                foreach (var (resName, path) in objTexPaths)
+                {
+                    _objectTexturePathMap[resName] = path;
+                }
             }
 
             Initialised = true;
         }
 
-        public void Initialise(string misPath, string resPath, CampaignResources parent)
+        public void Initialise(string[] resPaths, CampaignResources parent)
         {
             foreach (var (resName, path) in parent._texturePathMap)
             {
@@ -118,7 +121,7 @@ public class ResourcePathManager
                 _objectTexturePathMap[resName] = path;
             }
 
-            Initialise(misPath, resPath);
+            Initialise(resPaths);
         }
     }
 
@@ -193,16 +196,16 @@ public class ResourcePathManager
             ZipFile.OpenRead(zipPath).ExtractToDirectory(extractPath, true);
         }
 
-        if (!FindConfigVar(installCfgLines, "load_path", out var omsPath))
+        var omPaths = GetValidInstallPaths(installPath, installCfgLines, "load_path");
+        if (omPaths.Count == 0)
         {
-            Log.Error("Failed to find `load_path` in install config");
             return false;
         }
 
-        omsPath = Path.Join(installPath, ConvertSeparator(omsPath));
+        omPaths.Add(_extractionPath);
         _omResources = new CampaignResources();
         _omResources.Name = "";
-        _omResources.Initialise(omsPath, _extractionPath);
+        _omResources.Initialise([..omPaths]);
 
         var camModLines = File.ReadAllLines(configPaths[(int)ConfigFile.CamMod]);
         FindConfigVar(camModLines, "fm_path", out var fmsPath, "FMs");
@@ -252,7 +255,7 @@ public class ResourcePathManager
         if (!campaign.Initialised)
         {
             var fmPath = Path.Join(_fmsDir, campaignName);
-            campaign.Initialise(fmPath, fmPath, _omResources);
+            campaign.Initialise([fmPath], _omResources);
         }
 
         return campaign;
