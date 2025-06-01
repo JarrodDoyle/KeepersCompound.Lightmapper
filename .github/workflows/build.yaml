@@ -8,6 +8,29 @@ on:
       - main
 
 jobs:
+  build-dromed:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Build Windows
+        run: dotnet publish KCTools/KCTools.csproj -c Release --property:PublishDir=${{ github.workspace }}/release/dromed/Tools/KCTools -r win-x64 --nologo
+      - name: Copy DromEd Scripts
+        shell: pwsh
+        run: Copy-Item -Path DromedScripts\* -Destination ${{ github.workspace }}\release\dromed -Recurse -Force
+      - name: Upload DromEd
+        uses: actions/upload-artifact@v4
+        with:
+          name: dromed_win_64
+          path: |
+            ${{ github.workspace }}/release/dromed/
+            !${{ github.workspace }}/release/dromed/Tools/KCTools/*.pdb
   build-win-x64:
     runs-on: windows-latest
     steps:
