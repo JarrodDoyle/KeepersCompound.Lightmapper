@@ -169,6 +169,7 @@ public class ResourcePathManager
         var resnamePaths = GetValidInstallPaths(installPath, installCfgLines, "resname_base");
         if (resnamePaths.Count == 0)
         {
+            Log.Error("No valid {Var} found", "resname_base");
             return false;
         }
 

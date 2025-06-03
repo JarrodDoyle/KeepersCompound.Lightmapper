@@ -85,7 +85,7 @@ public class RootCommand
                 if (!pathManager.TryInit(InstallPath))
                 {
                     Log.Error("Failed to configure path manager");
-                    throw new Exception("Failed to configure path manager");
+                    return;
                 }
 
                 if (AutoCampaign)
