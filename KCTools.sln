@@ -11,8 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeepersCompound.Lighting", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KCLight.Gui", "KCLight.Gui\KCLight.Gui.csproj", "{5219BE09-630C-410A-AD37-0E3DD334DA23}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DromedHelper", "DromedHelper\DromedHelper.csproj", "{62847D8A-3C57-4206-B0D2-AAFCD811DE86}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,9 +36,5 @@ Global
 		{5219BE09-630C-410A-AD37-0E3DD334DA23}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5219BE09-630C-410A-AD37-0E3DD334DA23}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5219BE09-630C-410A-AD37-0E3DD334DA23}.Release|Any CPU.Build.0 = Release|Any CPU
-		{62847D8A-3C57-4206-B0D2-AAFCD811DE86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{62847D8A-3C57-4206-B0D2-AAFCD811DE86}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{62847D8A-3C57-4206-B0D2-AAFCD811DE86}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{62847D8A-3C57-4206-B0D2-AAFCD811DE86}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
