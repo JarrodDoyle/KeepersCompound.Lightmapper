@@ -1,1 +1,1 @@
-Tools\KCTools\DromedHelper.exe
+Tools\KCTools\KCTools.exe light . "KCLight.cow" -a
