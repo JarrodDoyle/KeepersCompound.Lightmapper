@@ -70,6 +70,9 @@ public class RootCommand
         [CliOption(Description = "Disable terminal output.")]
         public bool Quiet { get; set; } = false;
 
+        [CliOption(Description = "Automatically obtain campaign name from `DromEd.log`. Overrides `--campaign-name`.")]
+        public bool AutoCampaign { get; set; } = false;
+
         public void Run()
         {
             Program.ConfigureLogger(Quiet);
@@ -85,6 +88,11 @@ public class RootCommand
                     throw new Exception("Failed to configure path manager");
                 }
 
+                if (AutoCampaign)
+                {
+                    CampaignFromDromedLog();
+                }
+
                 var lightMapper = new LightMapper(pathManager, CampaignName ?? "", MissionName);
                 if (Inspect)
                 {
@@ -97,6 +105,35 @@ public class RootCommand
                 }
             });
             Timing.LogAll();
+        }
+
+        private void CampaignFromDromedLog()
+        {
+            try
+            {
+                Log.Information("Opening `DromEd.log`");
+
+                var path = $"{InstallPath}/DromEd.log";
+                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var sr = new StreamReader(fs);
+
+                while (!sr.EndOfStream)
+                {
+                    var line = sr.ReadLine();
+                    if (line == null || !line.StartsWith(": FM Path: "))
+                    {
+                        continue;
+                    }
+
+                    CampaignName = line[11..].Split(@"\").Last();
+                    Log.Information("Obtained campaign name: {CampaignName}", CampaignName);
+                    break;
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error("Failed to automatically obtain campaign name.");
+            }
         }
     }
     
