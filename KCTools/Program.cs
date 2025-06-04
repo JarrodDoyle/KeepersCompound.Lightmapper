@@ -275,7 +275,7 @@ public class RootCommand
                         }
                     }
 
-                    var transform = subObject.JointIdx == -1
+                    var transform = subObject.JointType == ModelFile.JointType.None || subObject.JointIdx == -1
                         ? AffineTransform.Identity
                         : AffineTransform.CreateDecomposed(subObject.Transform);
                     var node = new NodeBuilder(subObject.Name);

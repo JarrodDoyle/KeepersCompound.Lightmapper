@@ -153,12 +153,18 @@ public class ModelFile
         {
             var subObj = Objects[i];
             var objTrans = Matrix4x4.Identity;
-            if (subObj.JointIdx != -1)
+
+            if (subObj.JointType == JointType.Rotate && subObj.JointIdx != -1)
             {
                 var ang = subObj.JointIdx >= joints.Length ? 0 : float.DegreesToRadians(joints[subObj.JointIdx]);
-                // TODO: Is this correct? Should I use a manual rotation matrix?
                 var jointRot = Matrix4x4.CreateFromYawPitchRoll(0, ang, 0);
                 objTrans = jointRot * subObj.Transform;
+            }
+            else if (subObj.JointType == JointType.Slide && subObj.JointIdx != -1)
+            {
+                var dist = subObj.JointIdx >= joints.Length ? 0 : joints[subObj.JointIdx];
+                var translation = Matrix4x4.CreateTranslation(dist, 0, 0);
+                objTrans = translation * subObj.Transform;
             }
 
             subObjTransforms[i] = objTrans;
