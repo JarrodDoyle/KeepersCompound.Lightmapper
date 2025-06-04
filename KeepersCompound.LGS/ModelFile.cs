@@ -153,7 +153,9 @@ public class ModelFile
         {
             var subObj = Objects[i];
             var objTrans = Matrix4x4.Identity;
-            if (subObj.JointIdx != -1)
+
+            // TODO: Slide joints!
+            if (subObj.JointType == JointType.Rotate && subObj.JointIdx != -1)
             {
                 var ang = subObj.JointIdx >= joints.Length ? 0 : float.DegreesToRadians(joints[subObj.JointIdx]);
                 // TODO: Is this correct? Should I use a manual rotation matrix?
