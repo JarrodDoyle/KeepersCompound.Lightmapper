@@ -82,7 +82,7 @@ public class RootCommand
             {
                 var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
                 var pathManager = new ResourcePathManager(tmpDir.FullName);
-                if (!pathManager.TryInit(InstallPath))
+                if (!Timing.TimeStage("Resource Path Gathering", () => pathManager.TryInit(InstallPath)))
                 {
                     Log.Error("Failed to configure path manager");
                     return;
@@ -90,7 +90,7 @@ public class RootCommand
 
                 if (AutoCampaign)
                 {
-                    CampaignFromDromedLog();
+                    Timing.TimeStage("Auto-detecting Campaign", CampaignFromDromedLog);
                 }
 
                 var lightMapper = new LightMapper(pathManager, CampaignName ?? "", MissionName);
