@@ -126,8 +126,14 @@ public class RootCommand
                     }
 
                     CampaignName = line[11..].Split(@"\").Last();
+                    
+                    // We don't early out here because we want to get the last occurence of an FM load
+                    // If FMSel is configured to be returned to after closing DromEd then multiple FM loads can happen
+                }
+
+                if (CampaignName != null)
+                {
                     Log.Information("Obtained campaign name: {CampaignName}", CampaignName);
-                    break;
                 }
             }
             catch (Exception e)
