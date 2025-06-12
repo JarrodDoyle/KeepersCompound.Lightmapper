@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text;
 using DotMake.CommandLine;
 using KeepersCompound.LGS;
 using KeepersCompound.LGS.Resources;
@@ -198,50 +199,46 @@ public class RootCommand
             {
                 Program.ConfigureLogger(Quiet);
 
-                var tmpDir = Directory.CreateTempSubdirectory("KCBin");
-                var pathManager = new ResourcePathManager(tmpDir.FullName);
-                if (pathManager.TryInit(InstallPath))
+                var context = Timing.TimeStage("Initialise install context", () => new InstallContext(InstallPath));
+                if (!context.Valid)
                 {
-                    if (CampaignName != null && !pathManager.GetCampaignNames().Contains(CampaignName))
-                    {
-                        Log.Warning("Couldn't find fan mission folder.");
-                        return;
-                    }
-
-                    var campaign = pathManager.GetCampaign(CampaignName ?? "");
-                    var modelCount = 0;
-                    if (ModelName != null)
-                    {
-                        ExportModel(campaign, ModelName);
-                        modelCount++;
-                    }
-                    else
-                    {
-                        foreach (var modelName in campaign.GetResourceNames(ResourceType.Object))
-                        {
-                            ExportModel(campaign, modelName);
-                            modelCount++;
-                        }
-                    }
-
-                    Log.Information("Exported {Count} models.", modelCount);
-                }
-            }
-
-            private void ExportModel(ResourcePathManager.CampaignResources resources, string modelName)
-            {
-                var modelPath = resources.GetResourcePath(ResourceType.Object, modelName);
-                if (modelPath == null)
-                {
-                    Log.Warning("Failed to find model: {Name}", modelName);
+                    Log.Error("Invalid install context");
                     return;
                 }
 
-                Log.Information("Exporting model: {Name}", modelName);
-                var modelFile = new ModelFile(modelPath);
-                if (modelFile.Valid == false)
+                var loadPaths = context.LoadPaths;
+                if (CampaignName != null)
                 {
-                    Log.Warning("Failed to read model file");
+                    loadPaths.Insert(0, Path.Join(context.FmsDir, CampaignName));
+                }
+
+                var resources = new ResourceManager();
+                Timing.TimeStage("Resource Path Gathering", () => resources.InitWithPaths([..loadPaths]));
+
+                var modelCount = 0;
+                if (ModelName != null)
+                {
+                    ExportModel(resources, $"obj/{ModelName}.bin");
+                    modelCount++;
+                }
+                else
+                {
+                    foreach (var modelName in resources.ObjectNames)
+                    {
+                        ExportModel(resources, modelName);
+                        modelCount++;
+                    }
+                }
+
+                Log.Information("Exported {Count} models.", modelCount);
+            }
+
+            private void ExportModel(ResourceManager resources, string modelName)
+            {
+                Log.Information("Exporting model: {Name}", modelName);
+                if (!resources.TryGetModel(modelName, out var modelFile))
+                {
+                    Log.Error("Failed to load model: {Name}", modelName);
                     return;
                 }
 
@@ -348,7 +345,7 @@ public class RootCommand
                 scene.ApplyBasisTransform(Matrix4x4.CreateRotationX(float.DegreesToRadians(-90)));
 
                 var exportName = Path.GetFileNameWithoutExtension(modelName);
-                var exportDir = OutputDirectory ?? Path.GetDirectoryName(modelPath);
+                var exportDir = OutputDirectory ?? $"{AppDomain.CurrentDomain.BaseDirectory}/models/";
                 if (!Directory.Exists(exportDir))
                 {
                     Directory.CreateDirectory(exportDir);
@@ -358,7 +355,7 @@ public class RootCommand
             }
 
             private Dictionary<int, MaterialBuilder> BuildMaterialMap(
-                ResourcePathManager.CampaignResources resources,
+                ResourceManager resources,
                 ModelFile modelFile)
             {
                 var materials = new Dictionary<int, MaterialBuilder>();
@@ -368,10 +365,8 @@ public class RootCommand
 
                     if (rawMaterial.Type == 0)
                     {
-                        var convertedName = ResourcePathManager.ConvertSeparator(rawMaterial.Name);
-                        var resName = Path.GetFileNameWithoutExtension(convertedName);
-                        var path = resources.GetResourcePath(ResourceType.ObjectTexture, resName);
-                        if (path == null)
+                        var resName = PathUtils.ConvertSeparator(Path.GetFileNameWithoutExtension(rawMaterial.Name));
+                        if (!resources.TryGetObjectTextureVirtualPath(resName, out var virtualPath))
                         {
                             Log.Warning("Failed to find model texture, adding default material: {Name}, {Slot}",
                                 resName, slot);
@@ -379,7 +374,7 @@ public class RootCommand
                         }
                         else
                         {
-                            if (TryLoadImage(path, out var memoryImage))
+                            if (TryLoadImage(resources, virtualPath, out var memoryImage))
                             {
                                 var material = new MaterialBuilder(resName)
                                     .WithDoubleSide(false)
@@ -413,26 +408,32 @@ public class RootCommand
                 return materials;
             }
 
-            private static bool TryLoadImage(string path, out MemoryImage memoryImage)
+            private static bool TryLoadImage(ResourceManager resources, string virtualPath, out MemoryImage memoryImage)
             {
-                var ext = Path.GetExtension(path).ToLower();
+                if (!resources.TryGetFileMemoryStream(virtualPath, out var stream))
+                {
+                    return false;
+                }
+
+                var ext = Path.GetExtension(virtualPath).ToLower();
                 switch (ext)
                 {
                     case ".jpg":
                     case ".jpeg":
                     case ".png":
                     case ".dds":
-                        memoryImage = new MemoryImage(path);
+                        memoryImage = new MemoryImage(stream.GetBuffer());
                         return true;
                     case ".gif":
-                        var gif = new GifDecoder(path).GetImage(0);
-                        using (var image = Image.LoadPixelData<Rgba32>(gif.GetRgbaBytes(), gif.Width, gif.Height))
-                        {
-                            var memoryStream = new MemoryStream();
-                            image.SaveAsPng(memoryStream);
-                            memoryImage = new MemoryImage(memoryStream.GetBuffer());
-                            return true;
-                        }
+                    {
+                        using BinaryReader reader = new(stream, Encoding.UTF8, false);
+                        var gif = new GifDecoder(reader).GetImage(0);
+                        using var image = Image.LoadPixelData<Rgba32>(gif.GetRgbaBytes(), gif.Width, gif.Height);
+                        var memoryStream = new MemoryStream();
+                        image.SaveAsPng(memoryStream);
+                        memoryImage = new MemoryImage(memoryStream.GetBuffer());
+                        return true;
+                    }
                 }
 
                 return false;
