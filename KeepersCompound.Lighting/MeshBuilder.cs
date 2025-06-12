@@ -101,18 +101,18 @@ public class MeshBuilder
                 continue;
             }
 
-            model.ApplyJoints(joints);
-
             // Calculate base model transform
-            var transform = Matrix4x4.CreateScale(scaleProp?.Value ?? Vector3.One);
-            transform *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.Angle.X));
-            transform *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.Angle.Y));
-            transform *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.Angle.Z));
-            transform *= Matrix4x4.CreateTranslation(brush.Position - model.Header.Center);
+            var baseTransform = Matrix4x4.CreateScale(scaleProp?.Value ?? Vector3.One);
+            baseTransform *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.Angle.X));
+            baseTransform *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.Angle.Y));
+            baseTransform *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.Angle.Z));
+            baseTransform *= Matrix4x4.CreateTranslation(brush.Position - model.Header.Center);
 
             // for each polygon slam its vertices and indices :)
+            var objTransforms = model.GetObjectTransforms(baseTransform, joints);
             foreach (var poly in model.Polygons)
             {
+                var transform = objTransforms[poly.SubObjectId];
                 polyVertices.Clear();
                 polyVertices.EnsureCapacity(poly.VertexCount);
                 foreach (var idx in poly.VertexIndices)

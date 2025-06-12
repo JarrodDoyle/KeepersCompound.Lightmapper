@@ -104,6 +104,35 @@ public class ModelFile
         }
 
         Valid = true;
+
+        // Build map of poly to subobject
+        for (var i = 0; i < Polygons.Count; i++)
+        {
+            var poly = Polygons[i];
+            var startIdx = poly.VertexIndices[0];
+            for (var j = 0; j < Objects.Length; j++)
+            {
+                var obj = Objects[j];
+                if (obj.VertexStartIdx <= startIdx && startIdx < obj.VertexStartIdx + obj.VertexCount)
+                {
+                    poly.SubObjectId = j;
+                    Polygons[i] = poly;
+                    break;
+                }
+            }
+        }
+
+        // Build map of vhot to subobject
+        for (var i = 0; i < Objects.Length; i++)
+        {
+            var obj = Objects[i];
+            for (var j = 0; j < obj.VhotCount; j++)
+            {
+                var vhot = VHots[obj.VhotStartIdx + j];
+                vhot.SubObjectId = i;
+                VHots[obj.VhotStartIdx + j] = vhot;
+            }
+        }
     }
 
     public bool Valid { get; private set; }
@@ -117,8 +146,7 @@ public class ModelFile
     public VHot[] VHots { get; }
     public SubObject[] Objects { get; }
 
-    // TODO: Apply transforms to normals and stuff
-    public void ApplyJoints(float[] joints)
+    public Matrix4x4[] GetObjectTransforms(Matrix4x4 baseTransform, float[] joints)
     {
         // Build map of objects to their parent id
         var objCount = Objects.Length;
@@ -162,10 +190,10 @@ public class ModelFile
             subObjTransforms[i] = objTrans;
         }
 
-        // Apply sub object transforms
+        // Final transforms are composed by climbing the hierarchy and applying parent transforms
+        var transforms = new Matrix4x4[objCount];
         for (var i = 0; i < objCount; i++)
         {
-            var subObj = Objects[i];
             var transform = subObjTransforms[i];
 
             // Build compound transformation
@@ -176,19 +204,11 @@ public class ModelFile
                 parentId = parentIds[parentId];
             }
 
-            for (var j = 0; j < subObj.VhotCount; j++)
-            {
-                var v = VHots[subObj.VhotStartIdx + j];
-                v.Position = Vector3.Transform(v.Position, transform);
-                VHots[subObj.VhotStartIdx + j] = v;
-            }
-
-            for (var j = 0; j < subObj.VertexCount; j++)
-            {
-                var v = Vertices[subObj.VertexStartIdx + j];
-                Vertices[subObj.VertexStartIdx + j] = Vector3.Transform(v, transform);
-            }
+            transform *= baseTransform;
+            transforms[i] = transform;
         }
+
+        return transforms;
     }
 
     public bool TryGetVhot(VhotId id, out VHot vhot)
@@ -354,6 +374,8 @@ public class ModelFile
         public ushort[] UvIndices;
         public byte Material;
 
+        public int SubObjectId = -1;
+
         public Polygon(BinaryReader reader, int version)
         {
             Index = reader.ReadUInt16();
@@ -406,6 +428,8 @@ public class ModelFile
     {
         public VhotId Id;
         public Vector3 Position;
+        
+        public int SubObjectId = -1;
 
         public VHot(BinaryReader reader)
         {

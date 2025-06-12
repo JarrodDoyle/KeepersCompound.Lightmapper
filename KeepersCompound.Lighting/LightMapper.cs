@@ -401,16 +401,19 @@ public class LightMapper
             var modelName = $"obj/{propModelName.Value}.bin";
             if (_resources.TryGetModel(modelName, out var model))
             {
-                model.ApplyJoints(joints);
+                // We don't need to apply a base transform here because we're applying it later
+                var transforms = model.GetObjectTransforms(Matrix4x4.Identity, joints);
 
                 if (model.TryGetVhot(ModelFile.VhotId.LightPosition, out var vhot))
                 {
-                    vhotLightPos = vhot.Position - model.Header.Center;
+                    var transform = vhot.SubObjectId != -1 ? transforms[vhot.SubObjectId] : Matrix4x4.Identity;
+                    vhotLightPos = Vector3.Transform(vhot.Position, transform) - model.Header.Center;
                 }
 
                 if (model.TryGetVhot(ModelFile.VhotId.LightDirection, out vhot))
                 {
-                    vhotLightDir = vhot.Position - model.Header.Center - vhotLightPos;
+                    var transform = vhot.SubObjectId != -1 ? transforms[vhot.SubObjectId] : Matrix4x4.Identity;
+                    vhotLightDir = Vector3.Transform(vhot.Position, transform) - model.Header.Center - vhotLightPos;
                 }
             }
         }
