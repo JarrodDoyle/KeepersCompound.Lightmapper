@@ -38,6 +38,10 @@ public class ResourceManager
         ObjectNames = _vfs.GetFilesInFolder("obj", [".bin"], false);
         ObjectTextureNames = _vfs.GetFilesInFolder("obj/txt", txtExtensions, false);
         ObjectTextureNames.UnionWith(_vfs.GetFilesInFolder("obj/txt16", txtExtensions, false));
+
+        Log.Information(
+            "Found {DbFiles} mis/gam/cow, {Textures} textures, {Objects} objects, {ObjectTextures} object textures",
+            DbFileNames.Count, TextureNames.Count, ObjectNames.Count, ObjectTextureNames.Count);
     }
 
     public bool TryGetModel(string name, [MaybeNullWhen(false)] out ModelFile model)
@@ -72,7 +76,7 @@ public class ResourceManager
         mission = null;
         return false;
     }
-    
+
     public bool TryGetFilePath(string virtualPath, out string osPath)
     {
         return _vfs.TryGetFilePath(virtualPath, out osPath);
