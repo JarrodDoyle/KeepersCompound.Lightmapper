@@ -20,7 +20,7 @@ public class VirtualFileSystem
         _folders.Clear();
     }
 
-    public bool Mount(string mountPoint, string path)
+    public bool Mount(string mountPoint, string path, bool recursive)
     {
         if (!Path.Exists(path))
         {
@@ -30,9 +30,40 @@ public class VirtualFileSystem
 
         if (Directory.Exists(path))
         {
-            MountDirectory(mountPoint, path);
+            MountDirectory(mountPoint, path, recursive);
+            return true;
         }
-        else
+
+        if (!recursive)
+        {
+            return false;
+        }
+
+        try
+        {
+            MountZip(mountPoint, path);
+            return true;
+        }
+        catch
+        {
+            Log.Warning("Failed to mount file: {Path}", path);
+            return false;
+        }
+    }
+
+    public bool Mount(string mountPoint, string path, HashSet<string> validExtensions, bool recursive)
+    {
+        if (!Path.Exists(path))
+        {
+            Log.Warning("Cannot mount non-existent path: {Path}", path);
+            return false;
+        }
+
+        if (Directory.Exists(path))
+        {
+            MountDirectory(mountPoint, path, recursive);
+        }
+        else if (recursive)
         {
             try
             {
@@ -43,6 +74,10 @@ public class VirtualFileSystem
                 Log.Warning("Failed to mount file: {Path}", path);
                 return false;
             }
+        }
+        else
+        {
+            return false;
         }
 
         return true;
@@ -105,9 +140,10 @@ public class VirtualFileSystem
         }).ToHashSet();
     }
 
-    private void MountDirectory(string mountPoint, string path)
+    private void MountDirectory(string mountPoint, string path, bool recursive)
     {
-        foreach (var osPath in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
+        var searchOptions = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+        foreach (var osPath in Directory.GetFiles(path, "*", searchOptions))
         {
             var virtualPath = NormaliseFilePath(Path.GetRelativePath(path, osPath));
             var ext = Path.GetExtension(virtualPath).ToLower();

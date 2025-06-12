@@ -54,15 +54,7 @@ public partial class MainWindowViewModel : ViewModelBase, IObserver<LogEvent>
         }
 
         ValidateCampaignName();
-
-        var loadPaths = _context.LoadPaths;
-        if (ValidCampaignName)
-        {
-            loadPaths.Insert(0, Path.Join(_context.FmsDir, CampaignName));
-        }
-
-        _resources.InitWithPaths([..loadPaths]);
-
+        _resources.Initialise(_context, ValidCampaignName ? CampaignName : null);
         UpdateMissionNames();
         ValidateMissionName();
     }
@@ -70,15 +62,7 @@ public partial class MainWindowViewModel : ViewModelBase, IObserver<LogEvent>
     partial void OnCampaignNameChanged(string value)
     {
         ValidateCampaignName();
-
-        var loadPaths = _context.LoadPaths;
-        if (ValidCampaignName)
-        {
-            loadPaths.Insert(0, Path.Join(_context.FmsDir, CampaignName));
-        }
-
-        _resources.InitWithPaths([..loadPaths]);
-
+        _resources.Initialise(_context, ValidCampaignName ? CampaignName : null);
         UpdateMissionNames();
         ValidateMissionName();
     }

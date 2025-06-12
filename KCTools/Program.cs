@@ -94,14 +94,8 @@ public class RootCommand
                     Timing.TimeStage("Auto-detecting Campaign", CampaignFromDromedLog);
                 }
 
-                var loadPaths = context.LoadPaths;
-                if (CampaignName != null)
-                {
-                    loadPaths.Insert(0, Path.Join(context.FmsDir, CampaignName));
-                }
-
                 var resources = new ResourceManager();
-                Timing.TimeStage("Resource Path Gathering", () => resources.InitWithPaths([..loadPaths]));
+                Timing.TimeStage("Resource Path Gathering", () => resources.Initialise(context, CampaignName));
 
                 var (loaded, mission) = Timing.TimeStage("Load Mission File", () =>
                 {
@@ -206,14 +200,8 @@ public class RootCommand
                     return;
                 }
 
-                var loadPaths = context.LoadPaths;
-                if (CampaignName != null)
-                {
-                    loadPaths.Insert(0, Path.Join(context.FmsDir, CampaignName));
-                }
-
                 var resources = new ResourceManager();
-                Timing.TimeStage("Resource Path Gathering", () => resources.InitWithPaths([..loadPaths]));
+                Timing.TimeStage("Resource Path Gathering", () => resources.Initialise(context, CampaignName));
 
                 var modelCount = 0;
                 if (ModelName != null)

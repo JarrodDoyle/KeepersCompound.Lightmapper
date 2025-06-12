@@ -23,22 +23,34 @@ public class ResourceManager
         _modelCache.Clear();
     }
 
-    public void InitWithPaths(string[] paths)
+    public void Initialise(InstallContext context, string? campaignName)
     {
         Reset();
 
-        // The path order is a priority order, so we load in reverse
-        for (var i = 0; i < paths.Length; i++)
+        for (var i = 0; i < context.LoadPaths.Count; i++)
         {
-            var path = paths[^(i + 1)];
-            _vfs.Mount("", path);
+            var path =  context.LoadPaths[^(i + 1)];
+            _vfs.Mount("", path, [".mis", ".gam", ".cow"], false);
         }
+
+        for (var i = 0; i < context.ResPaths.Count; i++)
+        {
+            var path =  context.ResPaths[^(i + 1)];
+            _vfs.Mount("", path, true);
+        }
+
+        if (campaignName != null && context.Fms.Contains(campaignName))
+        {
+            _vfs.Mount("", Path.Join(context.FmsDir, campaignName), true);
+        }
+
         DbFileNames = _vfs.GetFilesInFolder("", [".mis", ".cow", ".gam"], false);
         TextureNames = _vfs.GetFilesInFolder("fam", _textureExtensions, true);
         ObjectNames = _vfs.GetFilesInFolder("obj", [".bin"], false);
         ObjectTextureNames = _vfs.GetFilesInFolder("obj/txt", _textureExtensions, false);
         ObjectTextureNames.UnionWith(_vfs.GetFilesInFolder("obj/txt16", _textureExtensions, false));
 
+        Log.Information("Virtual file system has {Count} files", _vfs.FileCount);
         Log.Information(
             "Found {DbFiles} mis/gam/cow, {Textures} textures, {Objects} objects, {ObjectTextures} object textures",
             DbFileNames.Count, TextureNames.Count, ObjectNames.Count, ObjectTextureNames.Count);

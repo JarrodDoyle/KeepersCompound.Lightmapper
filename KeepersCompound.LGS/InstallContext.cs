@@ -15,11 +15,14 @@ public class InstallContext
 {
     public bool Valid { get; init; }
     public string FmsDir { get; init; } = "";
-    public List<string> Fms { get; init; } = new();
-    public List<string> LoadPaths { get; init; } = new();
+    public string RootDir { get; init; }
+    public List<string> Fms { get; init; } = [];
+    public List<string> LoadPaths { get; init; } = [];
+    public List<string> ResPaths { get; init; } = [];
 
     public InstallContext(string installPath)
     {
+        RootDir = installPath;
         if (!Directory.Exists(installPath))
         {
             Log.Error("Install directory does not exist: {Path}", installPath);
@@ -33,22 +36,19 @@ public class InstallContext
 
         // We need to know where all the resources are
         var installCfgLines = File.ReadAllLines(configPaths[(int)ConfigFile.Install]);
-        var resnamePaths = GetValidInstallPaths(installPath, installCfgLines, "resname_base");
-        if (resnamePaths.Count == 0)
+        ResPaths = GetValidInstallPaths(installPath, installCfgLines, "resname_base");
+        if (ResPaths.Count == 0)
         {
             Log.Error("No valid {Var} found", "resname_base");
             return;
         }
 
-        var omPaths = GetValidInstallPaths(installPath, installCfgLines, "load_path");
-        if (omPaths.Count == 0)
+        LoadPaths = GetValidInstallPaths(installPath, installCfgLines, "load_path");
+        if (LoadPaths.Count == 0)
         {
             Log.Error("No valid {Var} found", "load_path");
             return;
         }
-
-        LoadPaths.AddRange(resnamePaths);
-        LoadPaths.AddRange(omPaths);
 
         var camModLines = File.ReadAllLines(configPaths[(int)ConfigFile.CamMod]);
         FindConfigVar(camModLines, "fm_path", out var fmsPath, "FMs");
