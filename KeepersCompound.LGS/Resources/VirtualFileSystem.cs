@@ -61,13 +61,13 @@ public class VirtualFileSystem
 
         if (Directory.Exists(path))
         {
-            MountDirectory(mountPoint, path, recursive);
+            MountDirectory(mountPoint, path, validExtensions, recursive);
         }
         else if (recursive)
         {
             try
             {
-                MountZip(mountPoint, path);
+                MountZip(mountPoint, path, validExtensions);
             }
             catch
             {
@@ -166,6 +166,32 @@ public class VirtualFileSystem
         }
     }
 
+    private void MountDirectory(string mountPoint, string path, HashSet<string> validExtensions, bool recursive)
+    {
+        var searchOptions = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+        foreach (var osPath in Directory.GetFiles(path, "*", searchOptions))
+        {
+            var virtualPath = NormaliseFilePath(Path.GetRelativePath(path, osPath));
+            var ext = Path.GetExtension(virtualPath).ToLower();
+            if (ext == ".crf")
+            {
+                try
+                {
+                    MountZip(Path.Join(mountPoint, Path.GetDirectoryName(virtualPath) ?? ""), osPath);
+                }
+                catch
+                {
+                    Log.Warning("Failed to mount CRF: {Path}", path);
+                }
+            }
+            else if (validExtensions.Contains(ext))
+            {
+                RegisterParentDirectories(virtualPath);
+                _files[virtualPath] = new OsVirtualFile(virtualPath, osPath);
+            }
+        }
+    }
+
     private void MountZip(string mountPoint, string path)
     {
         mountPoint = Path.Join(mountPoint, Path.GetFileNameWithoutExtension(path));
@@ -176,6 +202,30 @@ public class VirtualFileSystem
             // There's no built-in way to check if an entry is a directory
             if (entry.FullName.Last() == '/')
                 continue;
+
+            var virtualPath = NormaliseFilePath(Path.Join(mountPoint, entry.FullName));
+            RegisterParentDirectories(virtualPath);
+
+            _files[virtualPath] = new ZipVirtualFile(virtualPath, archive, entry.FullName);
+        }
+    }
+
+    private void MountZip(string mountPoint, string path, HashSet<string> validExtensions)
+    {
+        mountPoint = Path.Join(mountPoint, Path.GetFileNameWithoutExtension(path));
+
+        var archive = ZipFile.OpenRead(path);
+        foreach (var entry in archive.Entries)
+        {
+            // There's no built-in way to check if an entry is a directory
+            if (entry.FullName.Last() == '/')
+                continue;
+
+            var ext = Path.GetExtension(entry.FullName).ToLower();
+            if (!validExtensions.Contains(ext))
+            {
+                continue;
+            }
 
             var virtualPath = NormaliseFilePath(Path.Join(mountPoint, entry.FullName));
             RegisterParentDirectories(virtualPath);
