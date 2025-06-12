@@ -150,16 +150,18 @@ public class VirtualFileSystem
 
     private static string NormaliseFilePath(string path)
     {
+        path = PathUtils.ConvertSeparator(path);
         if (!path.StartsWith('/'))
         {
             path = "/" + path;
         }
 
-        return PathUtils.ConvertSeparator(path);
+        return path;
     }
 
     private static string NormaliseFolderPath(string path)
     {
+        path = PathUtils.ConvertSeparator(path);
         if (!path.EndsWith('/'))
         {
             path += "/";
