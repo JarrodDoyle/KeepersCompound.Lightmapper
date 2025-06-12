@@ -36,17 +36,9 @@ public class ModelFile
         Paletted = 0x20,
     }
 
-    public ModelFile(string filename)
+    public ModelFile(BinaryReader reader)
     {
-        if (!File.Exists(filename))
-        {
-            return;
-        }
-
-        using MemoryStream stream = new(File.ReadAllBytes(filename));
-        using BinaryReader reader = new(stream, Encoding.UTF8, false);
-
-        if (stream.Length < 8)
+        if (reader.BaseStream.Length < 8)
         {
             return;
         }
@@ -58,53 +50,53 @@ public class ModelFile
         }
 
         Header = new MHeader(reader, BinHeader.Version);
-        stream.Seek(Header.VertexOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.VertexOffset, SeekOrigin.Begin);
         Vertices = new Vector3[Header.VertexCount];
         for (var i = 0; i < Vertices.Length; i++)
         {
             Vertices[i] = reader.ReadVec3();
         }
 
-        stream.Seek(Header.UvOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.UvOffset, SeekOrigin.Begin);
         Uvs = new Vector2[(Header.VHotOffset - Header.UvOffset) / 8];
         for (var i = 0; i < Uvs.Length; i++)
         {
             Uvs[i] = reader.ReadVec2();
         }
 
-        stream.Seek(Header.FaceNormalOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.FaceNormalOffset, SeekOrigin.Begin);
         FaceNormals = new Vector3[(Header.PolygonOffset - Header.FaceNormalOffset) / 12];
         for (var i = 0; i < FaceNormals.Length; i++)
         {
             FaceNormals[i] = reader.ReadVec3();
         }
 
-        stream.Seek(Header.PolygonOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.PolygonOffset, SeekOrigin.Begin);
         Polygons = [];
         for (var i = 0; i < Header.PolygonCount; i++)
         {
             Polygons.Add(new Polygon(reader, BinHeader.Version));
-            if (stream.Position >= Header.NodeOffset)
+            if (reader.BaseStream.Position >= Header.NodeOffset)
             {
                 break;
             }
         }
 
-        stream.Seek(Header.MaterialOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.MaterialOffset, SeekOrigin.Begin);
         Materials = new Material[Header.MaterialCount];
         for (var i = 0; i < Materials.Length; i++)
         {
             Materials[i] = new Material(reader);
         }
 
-        stream.Seek(Header.VHotOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.VHotOffset, SeekOrigin.Begin);
         VHots = new VHot[Header.VHotCount];
         for (var i = 0; i < VHots.Length; i++)
         {
             VHots[i] = new VHot(reader);
         }
 
-        stream.Seek(Header.ObjectOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.ObjectOffset, SeekOrigin.Begin);
         Objects = new SubObject[Header.ObjectCount];
         for (var i = 0; i < Objects.Length; i++)
         {
@@ -112,6 +104,35 @@ public class ModelFile
         }
 
         Valid = true;
+
+        // Build map of poly to subobject
+        for (var i = 0; i < Polygons.Count; i++)
+        {
+            var poly = Polygons[i];
+            var startIdx = poly.VertexIndices[0];
+            for (var j = 0; j < Objects.Length; j++)
+            {
+                var obj = Objects[j];
+                if (obj.VertexStartIdx <= startIdx && startIdx < obj.VertexStartIdx + obj.VertexCount)
+                {
+                    poly.SubObjectId = j;
+                    Polygons[i] = poly;
+                    break;
+                }
+            }
+        }
+
+        // Build map of vhot to subobject
+        for (var i = 0; i < Objects.Length; i++)
+        {
+            var obj = Objects[i];
+            for (var j = 0; j < obj.VhotCount; j++)
+            {
+                var vhot = VHots[obj.VhotStartIdx + j];
+                vhot.SubObjectId = i;
+                VHots[obj.VhotStartIdx + j] = vhot;
+            }
+        }
     }
 
     public bool Valid { get; private set; }
@@ -125,8 +146,7 @@ public class ModelFile
     public VHot[] VHots { get; }
     public SubObject[] Objects { get; }
 
-    // TODO: Apply transforms to normals and stuff
-    public void ApplyJoints(float[] joints)
+    public Matrix4x4[] GetObjectTransforms(Matrix4x4 baseTransform, float[] joints)
     {
         // Build map of objects to their parent id
         var objCount = Objects.Length;
@@ -170,10 +190,10 @@ public class ModelFile
             subObjTransforms[i] = objTrans;
         }
 
-        // Apply sub object transforms
+        // Final transforms are composed by climbing the hierarchy and applying parent transforms
+        var transforms = new Matrix4x4[objCount];
         for (var i = 0; i < objCount; i++)
         {
-            var subObj = Objects[i];
             var transform = subObjTransforms[i];
 
             // Build compound transformation
@@ -184,19 +204,11 @@ public class ModelFile
                 parentId = parentIds[parentId];
             }
 
-            for (var j = 0; j < subObj.VhotCount; j++)
-            {
-                var v = VHots[subObj.VhotStartIdx + j];
-                v.Position = Vector3.Transform(v.Position, transform);
-                VHots[subObj.VhotStartIdx + j] = v;
-            }
-
-            for (var j = 0; j < subObj.VertexCount; j++)
-            {
-                var v = Vertices[subObj.VertexStartIdx + j];
-                Vertices[subObj.VertexStartIdx + j] = Vector3.Transform(v, transform);
-            }
+            transform *= baseTransform;
+            transforms[i] = transform;
         }
+
+        return transforms;
     }
 
     public bool TryGetVhot(VhotId id, out VHot vhot)
@@ -362,6 +374,8 @@ public class ModelFile
         public ushort[] UvIndices;
         public byte Material;
 
+        public int SubObjectId = -1;
+
         public Polygon(BinaryReader reader, int version)
         {
             Index = reader.ReadUInt16();
@@ -414,6 +428,8 @@ public class ModelFile
     {
         public VhotId Id;
         public Vector3 Position;
+        
+        public int SubObjectId = -1;
 
         public VHot(BinaryReader reader)
         {

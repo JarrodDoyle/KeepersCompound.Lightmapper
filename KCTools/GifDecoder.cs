@@ -9,16 +9,8 @@ public class GifDecoder
     private readonly Header _header;
     private readonly ImageData[] _images;
 
-    public GifDecoder(string path)
+    public GifDecoder(BinaryReader reader)
     {
-        if (!File.Exists(path))
-        {
-            throw new FileNotFoundException();
-        }
-
-        using MemoryStream stream = new(File.ReadAllBytes(path));
-        using BinaryReader reader = new(stream, Encoding.UTF8, false);
-
         _header = new Header(reader);
         _globalColors = ReadColorTable(reader, _header.HasGlobalColorTable ? _header.GlobalColorTableSize : 0);
         var images = new List<ImageData>();
@@ -48,7 +40,7 @@ public class GifDecoder
                     eof = true;
                     break;
                 default:
-                    throw new InvalidDataException($"Unknown block identifier in GIF file: {id} at {stream.Position}");
+                    throw new InvalidDataException($"Unknown block identifier in GIF file: {id} at {reader.BaseStream.Position}");
             }
 
             if (eof)

@@ -2,6 +2,7 @@ using System.Numerics;
 using KeepersCompound.LGS;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
+using KeepersCompound.LGS.Resources;
 using Serilog;
 
 namespace KeepersCompound.Lighting;
@@ -62,7 +63,7 @@ public class MeshBuilder
     public void AddObjectPolys(
         BrList brushList,
         ObjectHierarchy hierarchy,
-        ResourcePathManager.CampaignResources campaignResources)
+        ResourceManager resources)
     {
         var polyVertices = new List<Vector3>();
         foreach (var brush in brushList.Brushes)
@@ -92,27 +93,26 @@ public class MeshBuilder
 
             // Let's try and place an object :)
             // TODO: Handle failing to find model more gracefully
-            var modelName = modelNameProp.Value.ToLower() + ".bin";
-            var modelPath = campaignResources.GetResourcePath(ResourceType.Object, modelName);
-            if (modelPath == null)
+            // var modelName = modelNameProp.Value.ToLower() + ".bin";
+            var modelName = $"obj/{modelNameProp.Value}.bin";
+            if (!resources.TryGetModel(modelName, out var model))
             {
                 Log.Warning("Failed to find model file: {Name}", modelName);
                 continue;
             }
 
-            var model = new ModelFile(modelPath);
-            model.ApplyJoints(joints);
-
             // Calculate base model transform
-            var transform = Matrix4x4.CreateScale(scaleProp?.Value ?? Vector3.One);
-            transform *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.Angle.X));
-            transform *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.Angle.Y));
-            transform *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.Angle.Z));
-            transform *= Matrix4x4.CreateTranslation(brush.Position - model.Header.Center);
+            var baseTransform = Matrix4x4.CreateScale(scaleProp?.Value ?? Vector3.One);
+            baseTransform *= Matrix4x4.CreateRotationX(float.DegreesToRadians(brush.Angle.X));
+            baseTransform *= Matrix4x4.CreateRotationY(float.DegreesToRadians(brush.Angle.Y));
+            baseTransform *= Matrix4x4.CreateRotationZ(float.DegreesToRadians(brush.Angle.Z));
+            baseTransform *= Matrix4x4.CreateTranslation(brush.Position - model.Header.Center);
 
             // for each polygon slam its vertices and indices :)
+            var objTransforms = model.GetObjectTransforms(baseTransform, joints);
             foreach (var poly in model.Polygons)
             {
+                var transform = objTransforms[poly.SubObjectId];
                 polyVertices.Clear();
                 polyVertices.EnsureCapacity(poly.VertexCount);
                 foreach (var idx in poly.VertexIndices)

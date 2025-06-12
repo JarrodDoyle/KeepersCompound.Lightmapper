@@ -84,21 +84,10 @@ public class DbFile
     public TableOfContents Toc { get; }
     public Dictionary<string, IChunk> Chunks { get; set; }
 
-    public DbFile(string filename)
+    public DbFile(BinaryReader reader)
     {
-        Log.Information("Loading DbFile: {Path}", filename);
-
-        if (!File.Exists(filename))
-        {
-            Log.Error("Failed to load DbFile. File does not exist.");
-            throw new FileNotFoundException();
-        }
-
-        using MemoryStream stream = new(File.ReadAllBytes(filename));
-        using BinaryReader reader = new(stream, Encoding.UTF8, false);
-
         Header = new(reader);
-        stream.Seek(Header.TocOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.TocOffset, SeekOrigin.Begin);
         Toc = new(reader);
 
         Chunks = new Dictionary<string, IChunk>();

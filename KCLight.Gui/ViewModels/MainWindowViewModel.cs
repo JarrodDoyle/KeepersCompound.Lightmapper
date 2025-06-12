@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -9,6 +10,7 @@ using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using KeepersCompound.LGS;
+using KeepersCompound.LGS.Resources;
 using KeepersCompound.Lighting;
 using Serilog;
 using Serilog.Events;
@@ -33,26 +35,26 @@ public partial class MainWindowViewModel : ViewModelBase, IObserver<LogEvent>
     [ObservableProperty] private bool _validInstallPath;
     [ObservableProperty] private bool _validCampaignName;
     [ObservableProperty] private bool _validMissionName;
-    [ObservableProperty] private List<string> _campaignNames = [];
-    [ObservableProperty] private List<string> _missionNames = [];
+    [ObservableProperty] private ObservableCollection<string> _campaignNames = [];
+    [ObservableProperty] private ObservableCollection<string> _missionNames = [];
     [ObservableProperty] private ObservableCollection<string> _logLines = [];
 
-    private ResourcePathManager? _pathManager;
+    private InstallContext? _context;
+    private ResourceManager _resources = new();
 
     partial void OnInstallPathChanged(string value)
     {
-        var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
-        var pathManager = new ResourcePathManager(tmpDir.FullName);
-
-        ValidInstallPath = pathManager.TryInit(InstallPath);
-        if (ValidInstallPath)
+        _context = new InstallContext(InstallPath);
+        CampaignNames = new ObservableCollection<string>(_context.Fms);
+        ValidInstallPath = _context.Valid;
+        if (!ValidInstallPath)
         {
-            Log.Information("Path manager initialised successfully");
-            _pathManager = pathManager;
-            CampaignNames = _pathManager.GetCampaignNames();
+            Log.Error("Invalid install context");
+            return;
         }
 
         ValidateCampaignName();
+        _resources.Initialise(_context, ValidCampaignName ? CampaignName : null);
         UpdateMissionNames();
         ValidateMissionName();
     }
@@ -60,6 +62,7 @@ public partial class MainWindowViewModel : ViewModelBase, IObserver<LogEvent>
     partial void OnCampaignNameChanged(string value)
     {
         ValidateCampaignName();
+        _resources.Initialise(_context, ValidCampaignName ? CampaignName : null);
         UpdateMissionNames();
         ValidateMissionName();
     }
@@ -81,9 +84,23 @@ public partial class MainWindowViewModel : ViewModelBase, IObserver<LogEvent>
 
     private void UpdateMissionNames()
     {
-        if (ValidCampaignName)
+        if (!ValidCampaignName)
         {
-            MissionNames = _pathManager?.GetCampaign(CampaignName).GetResourceNames(ResourceType.Mission) ?? [];
+            return;
+        }
+
+        var dbNames = _resources.DbFileNames.ToList();
+        dbNames.Sort();
+
+        MissionNames.Clear();
+        foreach (var dbName in dbNames)
+        {
+            var fileName = Path.GetFileName(dbName);
+            var ext = Path.GetExtension(dbName).ToLower();
+            if (ext is ".mis" or ".cow")
+            {
+                MissionNames.Add(fileName.ToLower());
+            }
         }
     }
 
@@ -96,15 +113,32 @@ public partial class MainWindowViewModel : ViewModelBase, IObserver<LogEvent>
             Timing.Reset();
             Timing.TimeStage("Total", () =>
             {
-                if (_pathManager == null)
+                if (_context == null)
                 {
-                    Log.Error("Invalid path manager");
-                    throw new Exception("Invalid path manager");
+                    Log.Error("Invalid install context");
+                    return;
                 }
 
-                var lightMapper = new LightMapper(_pathManager, CampaignName, MissionName);
+                var (loaded, mission) = Timing.TimeStage("Load Mission File", () =>
+                {
+                    var loaded = _resources.TryGetDbFile(MissionName, out var mission);
+                    return (loaded, mission);
+                });
+
+                if (!loaded || mission == null)
+                {
+                    return;
+                }
+
+                var lightMapper = new LightMapper(_resources, mission);
                 lightMapper.Light(FastPvs);
-                lightMapper.Save(outputName);
+                if (_resources.TryGetFilePath(MissionName, out var misPath))
+                {
+                    var folder = Path.GetDirectoryName(misPath);
+                    var misName = OutputName + Path.GetExtension(misPath);
+                    var savePath = Path.Join(folder, misName);
+                    Timing.TimeStage("Save Mission File", () => mission.Save(savePath));
+                }
             });
             Timing.LogAll();
         });
