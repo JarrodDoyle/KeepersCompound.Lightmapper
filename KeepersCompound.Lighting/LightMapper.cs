@@ -39,7 +39,6 @@ public class LightMapper
     }
 
     private ResourceManager _resources;
-    private string _misPath;
     private DbFile _mission;
     private ObjectHierarchy _hierarchy;
     private Raytracer _scene;
