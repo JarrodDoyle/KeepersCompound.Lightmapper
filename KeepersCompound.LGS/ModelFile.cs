@@ -36,17 +36,9 @@ public class ModelFile
         Paletted = 0x20,
     }
 
-    public ModelFile(string filename)
+    public ModelFile(BinaryReader reader)
     {
-        if (!File.Exists(filename))
-        {
-            return;
-        }
-
-        using MemoryStream stream = new(File.ReadAllBytes(filename));
-        using BinaryReader reader = new(stream, Encoding.UTF8, false);
-
-        if (stream.Length < 8)
+        if (reader.BaseStream.Length < 8)
         {
             return;
         }
@@ -58,53 +50,53 @@ public class ModelFile
         }
 
         Header = new MHeader(reader, BinHeader.Version);
-        stream.Seek(Header.VertexOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.VertexOffset, SeekOrigin.Begin);
         Vertices = new Vector3[Header.VertexCount];
         for (var i = 0; i < Vertices.Length; i++)
         {
             Vertices[i] = reader.ReadVec3();
         }
 
-        stream.Seek(Header.UvOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.UvOffset, SeekOrigin.Begin);
         Uvs = new Vector2[(Header.VHotOffset - Header.UvOffset) / 8];
         for (var i = 0; i < Uvs.Length; i++)
         {
             Uvs[i] = reader.ReadVec2();
         }
 
-        stream.Seek(Header.FaceNormalOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.FaceNormalOffset, SeekOrigin.Begin);
         FaceNormals = new Vector3[(Header.PolygonOffset - Header.FaceNormalOffset) / 12];
         for (var i = 0; i < FaceNormals.Length; i++)
         {
             FaceNormals[i] = reader.ReadVec3();
         }
 
-        stream.Seek(Header.PolygonOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.PolygonOffset, SeekOrigin.Begin);
         Polygons = [];
         for (var i = 0; i < Header.PolygonCount; i++)
         {
             Polygons.Add(new Polygon(reader, BinHeader.Version));
-            if (stream.Position >= Header.NodeOffset)
+            if (reader.BaseStream.Position >= Header.NodeOffset)
             {
                 break;
             }
         }
 
-        stream.Seek(Header.MaterialOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.MaterialOffset, SeekOrigin.Begin);
         Materials = new Material[Header.MaterialCount];
         for (var i = 0; i < Materials.Length; i++)
         {
             Materials[i] = new Material(reader);
         }
 
-        stream.Seek(Header.VHotOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.VHotOffset, SeekOrigin.Begin);
         VHots = new VHot[Header.VHotCount];
         for (var i = 0; i < VHots.Length; i++)
         {
             VHots[i] = new VHot(reader);
         }
 
-        stream.Seek(Header.ObjectOffset, SeekOrigin.Begin);
+        reader.BaseStream.Seek(Header.ObjectOffset, SeekOrigin.Begin);
         Objects = new SubObject[Header.ObjectCount];
         for (var i = 0; i < Objects.Length; i++)
         {

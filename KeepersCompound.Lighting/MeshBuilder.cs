@@ -2,6 +2,7 @@ using System.Numerics;
 using KeepersCompound.LGS;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
+using KeepersCompound.LGS.Resources;
 using Serilog;
 
 namespace KeepersCompound.Lighting;
@@ -62,7 +63,7 @@ public class MeshBuilder
     public void AddObjectPolys(
         BrList brushList,
         ObjectHierarchy hierarchy,
-        ResourcePathManager.CampaignResources campaignResources)
+        ResourceManager resources)
     {
         var polyVertices = new List<Vector3>();
         foreach (var brush in brushList.Brushes)
@@ -92,15 +93,14 @@ public class MeshBuilder
 
             // Let's try and place an object :)
             // TODO: Handle failing to find model more gracefully
-            var modelName = modelNameProp.Value.ToLower() + ".bin";
-            var modelPath = campaignResources.GetResourcePath(ResourceType.Object, modelName);
-            if (modelPath == null)
+            // var modelName = modelNameProp.Value.ToLower() + ".bin";
+            var modelName = $"obj/{modelNameProp.Value}.bin";
+            if (!resources.TryGetModel(modelName, out var model))
             {
                 Log.Warning("Failed to find model file: {Name}", modelName);
                 continue;
             }
 
-            var model = new ModelFile(modelPath);
             model.ApplyJoints(joints);
 
             // Calculate base model transform

@@ -2,6 +2,7 @@ using System.Numerics;
 using KeepersCompound.LGS;
 using KeepersCompound.LGS.Database;
 using KeepersCompound.LGS.Database.Chunks;
+using KeepersCompound.LGS.Resources;
 using Serilog;
 using TinyEmbree;
 
@@ -37,7 +38,7 @@ public class LightMapper
         }
     }
 
-    private ResourcePathManager.CampaignResources _campaign;
+    private ResourceManager _resources;
     private string _misPath;
     private DbFile _mission;
     private ObjectHierarchy _hierarchy;
@@ -46,11 +47,10 @@ public class LightMapper
     private List<Light> _lights;
     private CastSurfaceType[] _triangleTypeMap;
 
-    public LightMapper(ResourcePathManager pathManager, string campaignName, string missionName)
+    public LightMapper(ResourceManager resources, DbFile mission)
     {
-        _campaign = pathManager.GetCampaign(campaignName);
-        _misPath = _campaign.GetResourcePath(ResourceType.Mission, missionName);
-        _mission = Timing.TimeStage("Load Mission File", () => new DbFile(_misPath));
+        _resources = resources;
+        _mission = mission;
         _hierarchy = Timing.TimeStage("Build Object Hierarchy", BuildHierarchy);
         _lights = [];
 
@@ -160,14 +160,6 @@ public class LightMapper
         Timing.TimeStage("Validate Lights", () => ValidateLightConfigurations(settings));
     }
 
-    public void Save(string missionName)
-    {
-        var ext = Path.GetExtension(_misPath);
-        var dir = Path.GetDirectoryName(_misPath);
-        var savePath = Path.Join(dir, missionName + ext);
-        Timing.TimeStage("Save Mission File", () => _mission.Save(savePath));
-    }
-
     private bool VerifyRequiredChunksExist()
     {
         var requiredChunkNames = new[]
@@ -199,13 +191,9 @@ public class LightMapper
             return new ObjectHierarchy(_mission);
         }
 
-        var dir = Path.GetDirectoryName(_misPath);
-        var options = new EnumerationOptions { MatchCasing = MatchCasing.CaseInsensitive };
-        var name = gamFile.FileName;
-        var paths = Directory.GetFiles(dir!, name, options);
-        if (paths.Length > 0)
+        if (_resources.TryGetDbFile(gamFile.FileName, out var gamesys))
         {
-            return new ObjectHierarchy(_mission, new DbFile(paths[0]));
+            return new ObjectHierarchy(_mission, gamesys);
         }
 
         Log.Warning("Failed to find GameSys");
@@ -227,7 +215,7 @@ public class LightMapper
         meshBuilder.AddWorldRepPolys(worldRep);
         var noObjMesh = meshBuilder.Build();
 
-        meshBuilder.AddObjectPolys(brList, _hierarchy, _campaign);
+        meshBuilder.AddObjectPolys(brList, _hierarchy, _resources);
         var fullMesh = meshBuilder.Build();
 
         return (noObjMesh, fullMesh);
@@ -410,11 +398,9 @@ public class LightMapper
         var vhotLightDir = -Vector3.UnitZ;
         if (propModelName != null)
         {
-            var resName = $"{propModelName.Value.ToLower()}.bin";
-            var modelPath = _campaign.GetResourcePath(ResourceType.Object, resName);
-            if (modelPath != null)
+            var modelName = $"obj/{propModelName.Value}.bin";
+            if (_resources.TryGetModel(modelName, out var model))
             {
-                var model = new ModelFile(modelPath);
                 model.ApplyJoints(joints);
 
                 if (model.TryGetVhot(ModelFile.VhotId.LightPosition, out var vhot))

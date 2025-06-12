@@ -1,6 +1,7 @@
 using System.Numerics;
 using DotMake.CommandLine;
 using KeepersCompound.LGS;
+using KeepersCompound.LGS.Resources;
 using KeepersCompound.Lighting;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -80,11 +81,10 @@ public class RootCommand
             Timing.Reset();
             Timing.TimeStage("Total", () =>
             {
-                var tmpDir = Directory.CreateTempSubdirectory("KCLightmapper");
-                var pathManager = new ResourcePathManager(tmpDir.FullName);
-                if (!Timing.TimeStage("Resource Path Gathering", () => pathManager.TryInit(InstallPath)))
+                var context = Timing.TimeStage("Initialise install context", () => new InstallContext(InstallPath));
+                if (!context.Valid)
                 {
-                    Log.Error("Failed to configure path manager");
+                    Log.Error("Invalid install context");
                     return;
                 }
 
@@ -93,7 +93,27 @@ public class RootCommand
                     Timing.TimeStage("Auto-detecting Campaign", CampaignFromDromedLog);
                 }
 
-                var lightMapper = new LightMapper(pathManager, CampaignName ?? "", MissionName);
+                var loadPaths = context.LoadPaths;
+                if (CampaignName != null)
+                {
+                    loadPaths.Insert(0, Path.Join(context.FmsDir, CampaignName));
+                }
+
+                var resources = new ResourceManager();
+                Timing.TimeStage("Resource Path Gathering", () => resources.InitWithPaths([..loadPaths]));
+
+                var (loaded, mission) = Timing.TimeStage("Load Mission File", () =>
+                {
+                    var loaded = resources.TryGetDbFile(MissionName, out var mission);
+                    return (loaded, mission);
+                });
+
+                if (!loaded || mission == null)
+                {
+                    return;
+                }
+
+                var lightMapper = new LightMapper(resources, mission);
                 if (Inspect)
                 {
                     lightMapper.Inspect();
@@ -101,7 +121,13 @@ public class RootCommand
                 else
                 {
                     lightMapper.Light(SimpleVis);
-                    lightMapper.Save(OutputName ?? Path.GetFileNameWithoutExtension(MissionName));
+                    if (resources.TryGetFilePath(MissionName, out var misPath))
+                    {
+                        var folder = Path.GetDirectoryName(misPath);
+                        var misName = OutputName != null ? OutputName + Path.GetExtension(misPath) : MissionName;
+                        var savePath = Path.Join(folder, misName);
+                        Timing.TimeStage("Save Mission File", () => mission.Save(savePath));
+                    }
                 }
             });
             Timing.LogAll();
