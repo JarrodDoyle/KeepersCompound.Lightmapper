@@ -7,6 +7,8 @@ namespace KeepersCompound.LGS.Resources;
 
 public class ResourceManager
 {
+    private static string[] _textureExtensions = [".dds", ".png", ".tga", ".pcx", ".gif", ".bmp", ".cel"];
+
     public HashSet<string> DbFileNames { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
     public HashSet<string> TextureNames { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
     public HashSet<string> ObjectNames { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
@@ -31,13 +33,11 @@ public class ResourceManager
             var path = paths[^(i + 1)];
             _vfs.Mount("", path);
         }
-
-        var txtExtensions = new[] { ".dds", ".png", ".tga", ".pcx", ".gif", ".bmp", ".cel" };
         DbFileNames = _vfs.GetFilesInFolder("", [".mis", ".cow", ".gam"], false);
-        TextureNames = _vfs.GetFilesInFolder("fam", txtExtensions, true);
+        TextureNames = _vfs.GetFilesInFolder("fam", _textureExtensions, true);
         ObjectNames = _vfs.GetFilesInFolder("obj", [".bin"], false);
-        ObjectTextureNames = _vfs.GetFilesInFolder("obj/txt", txtExtensions, false);
-        ObjectTextureNames.UnionWith(_vfs.GetFilesInFolder("obj/txt16", txtExtensions, false));
+        ObjectTextureNames = _vfs.GetFilesInFolder("obj/txt", _textureExtensions, false);
+        ObjectTextureNames.UnionWith(_vfs.GetFilesInFolder("obj/txt16", _textureExtensions, false));
 
         Log.Information(
             "Found {DbFiles} mis/gam/cow, {Textures} textures, {Objects} objects, {ObjectTextures} object textures",
@@ -80,5 +80,28 @@ public class ResourceManager
     public bool TryGetFilePath(string virtualPath, out string osPath)
     {
         return _vfs.TryGetFilePath(virtualPath, out osPath);
+    }
+
+    public bool TryGetFileMemoryStream(string virtualPath, [MaybeNullWhen(false)] out MemoryStream memoryStream)
+    {
+        return _vfs.TryGetFileMemoryStream(virtualPath, out memoryStream);
+    }
+
+    public bool TryGetObjectTextureVirtualPath(string name, out string virtualPath)
+    {
+        foreach (var prefix in new []{"obj/txt16", "obj/txt"})
+        {
+            foreach (var ext in _textureExtensions)
+            {
+                virtualPath = $"{prefix}/{name}{ext}";
+                if (_vfs.FileExists(virtualPath))
+                {
+                    return true;
+                }
+            }
+        }
+
+        virtualPath = "";
+        return false;
     }
 }
