@@ -59,6 +59,7 @@ public class InstallContext
             var name = Path.GetFileName(dir);
             Fms.Add(name);
         }
+        Fms.Sort();
 
         Valid = true;
     }
